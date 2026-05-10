@@ -71,6 +71,7 @@ model Product {
   images        ProductImage[]
   orderItems    OrderItem[]
   wishlists     Wishlist[]
+  stockReservations StockReservation[]
   isActive      Boolean     @default(true)
   isFeatured    Boolean     @default(false)
   weight        Float?      // in grams, for shipping
@@ -234,4 +235,30 @@ enum ShipmentStatus {
 enum DiscountType {
   PERCENTAGE
   FLAT
+}
+
+model StockReservation {
+  id            String   @id @default(uuid())
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId        String?  // null for guest sessions
+  sessionId     String?  // for guest users (cookie/session based)
+  quantity      Int
+  expiresAt     DateTime
+  status        ReservationStatus @default(ACTIVE)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([productId])
+  @@index([userId])
+  @@index([sessionId])
+  @@index([expiresAt])
+  @@index([status])
+}
+
+enum ReservationStatus {
+  ACTIVE
+  CONVERTED
+  EXPIRED
+  RELEASED
 }

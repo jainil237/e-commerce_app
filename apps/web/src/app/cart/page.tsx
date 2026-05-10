@@ -15,6 +15,7 @@ interface CartProduct {
   price: string
   mrp: string
   stock: number
+  availableStock: number
   gstPercent: number
   images: Array<{ url: string }>
 }
@@ -49,7 +50,10 @@ export default function CartPage() {
         if (data.data?.items) {
           for (const item of data.data.items) {
             if (item.product) {
-              productMap[item.productId] = item.product
+              productMap[item.productId] = {
+                ...item.product,
+                availableStock: item.availableStock ?? item.product.stock,
+              }
             }
           }
         }
@@ -64,6 +68,12 @@ export default function CartPage() {
 
   const shipping = subtotal >= config.shipping.freeShippingAbove ? 0 : config.shipping.baseShippingCharge
   const total = subtotal + shipping
+
+  // Determine if any cart item exceeds available stock
+  const hasStockErrors = items.some(item => {
+    const product = products[item.productId]
+    return product ? item.quantity > product.availableStock : false
+  })
 
   if (!isHydrated || isLoading) {
     return (
@@ -183,12 +193,17 @@ export default function CartPage() {
                         <button
                           onClick={() => updateQuantity(item.productId, item.quantity + 1)}
                           className={styles.quantityBtn}
-                          disabled={product ? item.quantity >= product.stock : false}
+                          disabled={product ? item.quantity >= product.availableStock : false}
                           aria-label="Increase quantity"
                         >
                           <Plus className="w-4 h-4" />
                         </button>
                       </div>
+                      {product && item.quantity > product.availableStock && (
+                        <span className="text-xs text-red-600 dark:text-red-400 font-medium">
+                          Only {product.availableStock} available
+                        </span>
+                      )}
 
                       <button
                         onClick={() => {
@@ -253,8 +268,19 @@ export default function CartPage() {
               </div>
 
               <div className={styles.actions}>
-                <Link href="/checkout" className="block w-full">
-                  <Button variant="primary" size="lg" className="w-full" rightIcon={<ArrowRight className="w-5 h-5" />}>
+                {hasStockErrors && (
+                  <p className="text-sm text-red-600 dark:text-red-400 mb-2">
+                    Please adjust quantities to match available stock before checkout.
+                  </p>
+                )}
+                <Link href={hasStockErrors ? '#' : '/checkout'} className="block w-full">
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    className="w-full"
+                    disabled={hasStockErrors}
+                    rightIcon={<ArrowRight className="w-5 h-5" />}
+                  >
                     Proceed to Checkout
                   </Button>
                 </Link>

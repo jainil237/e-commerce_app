@@ -70,13 +70,8 @@ router.post('/razorpay', async (req, res: Response) => {
           },
         })
 
-        // Deduct stock
-        for (const item of order.items) {
-          await prisma.product.update({
-            where: { id: item.productId },
-            data: { stock: { decrement: item.quantity } },
-          })
-        }
+        // NOTE: Stock was already deducted during order creation.
+        // Do NOT deduct again here to prevent double-reduction.
 
         if (!order.user) {
           console.error('Order user not found for webhook:', razorpayOrderId)
@@ -104,6 +99,14 @@ router.post('/razorpay', async (req, res: Response) => {
             status: 'CANCELLED',
           },
         })
+
+        // Restore stock since payment failed and order is cancelled
+        for (const item of order.items) {
+          await prisma.product.update({
+            where: { id: item.productId },
+            data: { stock: { increment: item.quantity } },
+          })
+        }
         break
 
       case 'refund.created':
@@ -114,6 +117,14 @@ router.post('/razorpay', async (req, res: Response) => {
             status: 'REFUNDED',
           },
         })
+
+        // Restore stock on refund
+        for (const item of order.items) {
+          await prisma.product.update({
+            where: { id: item.productId },
+            data: { stock: { increment: item.quantity } },
+          })
+        }
         break
     }
 

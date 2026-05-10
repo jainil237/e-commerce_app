@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { Minus, Plus, ShoppingCart, Heart, Share2, ChevronRight, Truck, ShieldCheck, RotateCcw, Package, Info, Tag } from 'lucide-react'
 import { useCart, useToast, useStoreConfig, useAuth, useWishlist } from '@/components/providers'
+import { refreshSnapshot, getSnapshot } from '@/lib/inventory-snapshot'
 import { FallbackImage } from '@/components/ui/fallback-image'
 import { Button } from '@/components/atoms/Button/Button'
 import { Badge } from '@/components/atoms/Badge/Badge'
@@ -46,7 +47,11 @@ export default function ProductDetailPage() {
       try {
         const res = await fetch(`/api/v1/products/${slug}`)
         const data = await res.json()
-        setProduct(data.data || null)
+        const fetchedProduct = data.data || null
+        setProduct(fetchedProduct)
+        if (fetchedProduct) {
+          refreshSnapshot(fetchedProduct.id).catch(() => {})
+        }
       } catch (error) {
         console.error("Failed to fetch product", error)
       } finally {
@@ -93,6 +98,10 @@ export default function ProductDetailPage() {
   }
 
   const discount = Math.round((1 - Number(product.price) / Number(product.mrp)) * 100)
+
+  // Use snapshot availableQty if present, otherwise fallback to raw stock
+  const snapshot = product ? getSnapshot(product.id) : null
+  const availableStock = snapshot?.availableQty ?? product.stock
 
   const handleAddToCart = () => {
     addItem(product.id, quantity, { price: Number(product.price), name: product.name })
@@ -196,12 +205,12 @@ export default function ProductDetailPage() {
               <h1 className={styles.title}>{product.name}</h1>
               
               <div className={styles.statusRow}>
-                {product.stock > 0 ? (
+                {availableStock > 0 ? (
                   <>
                     <span className={`${styles.statusIndicator} bg-emerald-500`} />
                     <span className="text-emerald-600 dark:text-emerald-500">In Stock</span>
-                    {product.stock < 10 && (
-                      <span className={styles.stockAlert}>Hurry! Only {product.stock} left</span>
+                    {availableStock < 10 && (
+                      <span className={styles.stockAlert}>Hurry! Only {availableStock} left</span>
                     )}
                   </>
                 ) : (
@@ -228,7 +237,7 @@ export default function ProductDetailPage() {
 
             {/* Actions Block */}
             <div className={styles.actionBlock}>
-              {product.stock > 0 && (
+              {availableStock > 0 && (
                 <div className={styles.quantityRow}>
                   <span className={styles.quantityLabel}>Quantity:</span>
                   <div className={styles.quantityCtrl}>
@@ -242,9 +251,9 @@ export default function ProductDetailPage() {
                     </button>
                     <span className={styles.quantityValue}>{quantity}</span>
                     <button
-                      onClick={() => setQuantity(q => Math.min(product.stock, q + 1))}
+                      onClick={() => setQuantity(q => Math.min(availableStock, q + 1))}
                       className={styles.quantityBtn}
-                      disabled={quantity >= product.stock}
+                      disabled={quantity >= availableStock}
                       aria-label="Increase quantity"
                     >
                       <Plus className="w-5 h-5" />
@@ -259,10 +268,10 @@ export default function ProductDetailPage() {
                   size="lg"
                   className={styles.cartBtn}
                   onClick={handleAddToCart}
-                  disabled={product.stock === 0}
+                  disabled={availableStock === 0}
                   leftIcon={<ShoppingCart className="w-5 h-5" />}
                 >
-                  {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
+                  {availableStock === 0 ? 'Out of Stock' : 'Add to Cart'}
                 </Button>
                 <Button 
                   variant="secondary" 

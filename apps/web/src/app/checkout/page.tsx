@@ -45,6 +45,8 @@ export default function CheckoutPage() {
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [products, setProducts] = useState<Record<string, CartProduct>>({})
+  const [checkoutValid, setCheckoutValid] = useState(true)
+  const [checkoutErrors, setCheckoutErrors] = useState<Record<string, string>>({})
 
   const shipping = subtotal >= config.shipping.freeShippingAbove ? 0 : config.shipping.baseShippingCharge
   const discount = appliedCoupon?.discount || 0
@@ -71,24 +73,37 @@ export default function CheckoutPage() {
   useEffect(() => {
     async function fetchProducts() {
       if (items.length === 0) return
+      const sessionId = typeof window !== 'undefined' ? localStorage.getItem('cartSessionId') || undefined : undefined
       try {
-        const res = await fetch('/api/v1/cart/validate', {
+        const res = await fetch('/api/v1/cart/validate-checkout', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ items: items.map(i => ({ productId: i.productId, quantity: i.quantity })) }),
+          body: JSON.stringify({
+            items: items.map(i => ({ productId: i.productId, quantity: i.quantity })),
+            sessionId,
+          }),
         })
         const data = await res.json()
         const productMap: Record<string, CartProduct> = {}
+        const errorMap: Record<string, string> = {}
+        let allValid = true
         if (data.data?.items) {
           for (const item of data.data.items) {
             if (item.product) {
               productMap[item.productId] = item.product
             }
+            if (!item.valid) {
+              allValid = false
+              errorMap[item.productId] = item.error || 'Unavailable'
+            }
           }
         }
         setProducts(productMap)
+        setCheckoutValid(allValid)
+        setCheckoutErrors(errorMap)
       } catch (err) {
         console.error('Failed to validate cart for checkout', err)
+        setCheckoutValid(false)
       }
     }
     fetchProducts()
@@ -338,6 +353,7 @@ export default function CheckoutPage() {
                 {items.map(item => {
                   const product = products[item.productId]
                   if (!product) return null
+                  const error = checkoutErrors[item.productId]
                   return (
                     <div key={item.productId} className={styles.orderItem}>
                       <div className={styles.itemImageWrapper}>
@@ -351,6 +367,9 @@ export default function CheckoutPage() {
                       <div className={styles.itemInfo}>
                         <p className={styles.itemName}>{product.name}</p>
                         <p className={styles.itemQty}>Qty: {item.quantity}</p>
+                        {error && (
+                          <p className="text-xs text-red-600 dark:text-red-400 font-medium">{error}</p>
+                        )}
                       </div>
                       <p className={styles.itemTotal}>₹{(Number(product.price) * item.quantity).toFixed(2)}</p>
                     </div>
@@ -397,12 +416,17 @@ export default function CheckoutPage() {
                 <p className={styles.taxNotice}>Taxes included</p>
               </div>
 
+              {!checkoutValid && (
+                <p className="text-sm text-red-600 dark:text-red-400 mb-3">
+                  Some items in your cart are no longer available in the requested quantity. Please update your cart.
+                </p>
+              )}
               <Button
                 variant="primary"
                 size="lg"
                 className="w-full"
                 onClick={createOrder}
-                disabled={isLoading || !selectedAddress}
+                disabled={isLoading || !selectedAddress || !checkoutValid}
                 isLoading={isLoading}
                 leftIcon={<CreditCard className="w-5 h-5 shrink-0" />}
               >

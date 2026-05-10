@@ -61,13 +61,46 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next) => 
       throw createError(400, 'Some products are unavailable', 'PRODUCTS_UNAVAILABLE')
     }
 
-    // Check stock
+    // Check stock (consider reservations)
     for (const item of validatedData.items) {
       const product = products.find(p => p.id === item.productId)!
-      if (product.stock < item.quantity) {
+      const reserved = await prisma.stockReservation.aggregate({
+        where: {
+          productId: item.productId,
+          status: 'ACTIVE',
+          expiresAt: { gt: new Date() },
+        },
+        _sum: { quantity: true },
+      })
+      const availableStock = product.stock - (reserved._sum.quantity || 0)
+      if (availableStock < item.quantity) {
         throw createError(400, `Insufficient stock for ${product.name}`, 'INSUFFICIENT_STOCK')
       }
     }
+
+    // Convert reservations to order (deduct stock and mark as converted)
+    // Lock all products in consistent order to prevent deadlocks
+    const sortedProductIds = [...productIds].sort()
+    await prisma.$transaction(async (tx) => {
+      for (const id of sortedProductIds) {
+        await tx.$executeRaw`SELECT id FROM Product WHERE id = ${id} FOR UPDATE`
+      }
+
+      for (const item of validatedData.items) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stock: { decrement: item.quantity } },
+        })
+        await tx.stockReservation.updateMany({
+          where: {
+            productId: item.productId,
+            userId: req.user!.id,
+            status: 'ACTIVE',
+          },
+          data: { status: 'CONVERTED' },
+        })
+      }
+    })
 
     // Calculate totals
     let subtotal = 0
@@ -272,15 +305,8 @@ router.post('/verify-payment', authenticate, async (req: AuthRequest, res: Respo
       },
     })
 
-    // Deduct stock
-    for (const item of order.items) {
-      await prisma.product.update({
-        where: { id: item.productId },
-        data: {
-          stock: { decrement: item.quantity },
-        },
-      })
-    }
+    // NOTE: Stock was already deducted during order creation.
+    // Do NOT deduct again here to prevent double-reduction.
 
     // Increment coupon usage
     if (order.couponCode) {

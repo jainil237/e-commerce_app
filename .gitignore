@@ -1,5 +1,10 @@
+.next/
 node_modules
 *.env*
 *.agents
 *test-rzp.js
-*Here's your comprehensive DSA Pattern Ma.css
+.prisma/
+.db/
+*.gz*
+trace.log
+.DS_Store

@@ -89,5 +89,9 @@
   "seo": {
     "googleAnalyticsId": "",
     "facebookPixelId": ""
+  },
+  "inventory": {
+    "stockLockThreshold": 5,
+    "reservationDurationMinutes": 15
   }
 }

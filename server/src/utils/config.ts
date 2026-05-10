@@ -89,6 +89,10 @@ interface StoreConfig {
     googleAnalyticsId: string
     facebookPixelId: string
   }
+  inventory: {
+    stockLockThreshold: number
+    reservationDurationMinutes: number
+  }
 }
 
 let cachedConfig: StoreConfig | null = null

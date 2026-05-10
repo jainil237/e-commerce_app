@@ -1,7 +1,0 @@
-{
-  "/products/[slug]/page": "app/products/[slug]/page.js",
-  "/_not-found/page": "app/_not-found/page.js",
-  "/cart/page": "app/cart/page.js",
-  "/orders/[id]/page": "app/orders/[id]/page.js",
-  "/checkout/page": "app/checkout/page.js"
-}

@@ -2,6 +2,36 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
 import useSWR, { SWRConfig } from 'swr'
+import {
+  getSnapshot,
+  validateAgainstSnapshot,
+  refreshSnapshot,
+  refreshSnapshots,
+} from '@/lib/inventory-snapshot'
+
+// ─── Cart API helper ───
+async function cartApi(endpoint: string, body: object) {
+  const res = await fetch(`/api/v1/cart/${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+
+  let data: any = {}
+  const text = await res.text()
+  try {
+    data = JSON.parse(text)
+  } catch {
+    // Not JSON — probably a server crash page
+    throw new Error(`Server error (${res.status}): ${res.statusText || 'Unknown error'}`)
+  }
+
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || data.error || `Request failed (${res.status})`)
+  }
+
+  return data
+}
 
 // ─── Theme Context ───
 const ThemeContext = createContext<{
@@ -270,9 +300,18 @@ function AuthProvider({ children }: { children: ReactNode }) {
 //
 function CartProvider({ children }: { children: ReactNode }) {
   const { user, isLoading: authLoading } = useAuth()
+  const { showToast } = useToast()
   const [items, setItems] = useState<CartItem[]>([])
   const [userId, setUserId] = useState<string | null>(null)
   const [isHydrated, setIsHydrated] = useState(false)
+
+  // ── 0. Ensure guest session ID exists ──
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (!localStorage.getItem('cartSessionId')) {
+      localStorage.setItem('cartSessionId', crypto.randomUUID())
+    }
+  }, [])
 
   // ── 1. HYDRATE from localStorage — runs once on mount ──
   useEffect(() => {
@@ -320,11 +359,28 @@ function CartProvider({ children }: { children: ReactNode }) {
   // ── Cart operations ──
 
   const addItem = useCallback(
-    (productId: string, quantity = 1, productMeta?: { price: number; name: string }) => {
+    async (productId: string, quantity = 1, productMeta?: { price: number; name: string }) => {
+      const sessionId = typeof window !== 'undefined' ? localStorage.getItem('cartSessionId') || undefined : undefined
+
+      // Check local snapshot first to avoid unnecessary API calls
+      const snapCheck = validateAgainstSnapshot(productId, quantity)
+      if (!snapCheck.valid && snapCheck.error) {
+        showToast('error', snapCheck.error)
+        return
+      }
+
+      try {
+        await cartApi('add', { productId, quantity, sessionId })
+      } catch (err: any) {
+        showToast('error', err.message || 'Failed to add item')
+        // Refresh snapshot so UI reflects actual stock
+        refreshSnapshot(productId).catch(() => {})
+        return
+      }
+
       setItems(prev => {
         const existing = prev.find(item => item.productId === productId)
         if (existing) {
-          // Same Product.id → increment quantity, refresh price/name
           return prev.map(item =>
             item.productId === productId
               ? {
@@ -335,7 +391,6 @@ function CartProvider({ children }: { children: ReactNode }) {
               : item
           )
         }
-        // New Product.id → append to the array
         return [
           ...prev,
           {
@@ -346,27 +401,63 @@ function CartProvider({ children }: { children: ReactNode }) {
           },
         ]
       })
+
+      // Refresh snapshot after successful add
+      refreshSnapshot(productId).catch(() => {})
     },
-    []
+    [showToast]
   )
 
-  const removeItem = useCallback((productId: string) => {
+  const removeItem = useCallback(async (productId: string) => {
+    const sessionId = typeof window !== 'undefined' ? localStorage.getItem('cartSessionId') || undefined : undefined
+    try {
+      await cartApi('remove', { productId, sessionId })
+    } catch (err: any) {
+      console.error('Failed to remove reservation:', err.message)
+      showToast('error', err.message || 'Failed to remove item')
+    }
     setItems(prev => prev.filter(item => item.productId !== productId))
-  }, [])
+  }, [showToast])
 
   const updateQuantity = useCallback(
-    (productId: string, quantity: number) => {
+    async (productId: string, quantity: number) => {
+      const sessionId = typeof window !== 'undefined' ? localStorage.getItem('cartSessionId') || undefined : undefined
+
       if (quantity <= 0) {
+        try {
+          await cartApi('remove', { productId, sessionId })
+        } catch (err: any) {
+          console.error('Failed to remove reservation:', err.message)
+          showToast('error', err.message || 'Failed to remove item')
+        }
         setItems(prev => prev.filter(item => item.productId !== productId))
         return
       }
+
+      // Check local snapshot first
+      const snapCheck = validateAgainstSnapshot(productId, quantity)
+      if (!snapCheck.valid && snapCheck.error) {
+        showToast('error', snapCheck.error)
+        return
+      }
+
+      try {
+        await cartApi('update-quantity', { productId, quantity, sessionId })
+      } catch (err: any) {
+        showToast('error', err.message || 'Failed to update quantity')
+        refreshSnapshot(productId).catch(() => {})
+        return
+      }
+
       setItems(prev =>
         prev.map(item =>
           item.productId === productId ? { ...item, quantity } : item
         )
       )
+
+      refreshSnapshot(productId).catch(() => {})
     },
-    []
+    [showToast]
   )
 
   const clearCart = useCallback(() => {
