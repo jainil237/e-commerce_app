@@ -1,0 +1,188 @@
+.wrapper {
+  @apply min-h-screen bg-[var(--surface-1)];
+}
+
+.container {
+  @apply max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-8;
+}
+
+/* ─── Header ─── */
+.header {
+  @apply flex items-center gap-4 mb-8;
+}
+
+.backBtn {
+  @apply p-2 hover:bg-[var(--surface-2)] rounded-xl transition-colors text-[var(--text-primary)];
+}
+
+.pageTitle {
+  @apply text-2xl md:text-3xl font-bold tracking-tight text-[var(--text-primary)];
+}
+
+/* ─── Layout Grid ─── */
+.layoutGrid {
+  @apply grid md:grid-cols-3 gap-8;
+}
+
+.mainColumn {
+  @apply md:col-span-2 space-y-6;
+}
+
+/* ─── Cards ─── */
+.sectionCard {
+  @apply bg-[var(--surface-0)] p-6 rounded-2xl border border-[var(--border-subtle)] shadow-sm shrink-0;
+}
+
+.sectionHeader {
+  @apply font-semibold text-xl tracking-tight mb-5 flex items-center gap-2 text-[var(--text-primary)];
+}
+
+.sectionIcon {
+  @apply text-[var(--text-tertiary)];
+}
+
+/* ─── Address ─── */
+.addressEmpty {
+  @apply text-center py-8 bg-[var(--surface-1)] rounded-xl border border-dashed border-[var(--border-base)];
+}
+
+.addressEmptyText {
+  @apply text-[var(--text-secondary)] mb-4;
+}
+
+.addressList {
+  @apply space-y-3;
+}
+
+.addressLabel {
+  @apply block p-4 border rounded-xl cursor-pointer transition-all hover:shadow-md bg-[var(--surface-0)];
+}
+
+.addressSelected {
+  @apply border-[var(--brand-primary)] ring-1;
+  background-color: color-mix(in srgb, var(--brand-primary) 5%, transparent);
+  --tw-ring-color: color-mix(in srgb, var(--brand-primary) 20%, transparent);
+}
+
+.addressUnselected {
+  @apply border-[var(--border-base)] hover:border-[var(--border-subtle)];
+}
+
+.addressInfo {
+  @apply flex items-start gap-4;
+}
+
+.radioInput {
+  @apply mt-1 w-4 h-4 text-[var(--brand-primary)] border-[var(--border-subtle)] focus:ring-[var(--brand-primary)] bg-[var(--surface-0)];
+}
+
+.addressContent {
+  @apply flex-1;
+}
+
+.addressName {
+  @apply font-bold text-[var(--text-primary)] text-base mb-1;
+}
+
+.addressLines {
+  @apply text-sm text-[var(--text-secondary)] leading-relaxed;
+}
+
+.checkIcon {
+  @apply w-5 h-5 text-[var(--brand-primary)];
+}
+
+/* ─── Coupon ─── */
+.couponApplied {
+  @apply flex items-center justify-between p-4 bg-green-50/50 border border-green-200 rounded-xl dark:bg-green-900/10 dark:border-green-800;
+}
+
+.couponCode {
+  @apply font-bold tracking-widest text-green-700 uppercase dark:text-green-500;
+}
+
+.couponRemove {
+  @apply text-sm font-semibold text-red-500 hover:text-red-700 transition-colors uppercase tracking-widest px-2;
+}
+
+.couponInputWrapper {
+  @apply flex gap-3;
+}
+
+.couponInput {
+  @apply flex-1 uppercase tracking-widest;
+}
+
+/* ─── Order Items ─── */
+.orderItemsList {
+  @apply space-y-4;
+}
+
+.orderItem {
+  @apply flex items-center gap-4 p-3 hover:bg-[var(--surface-1)] rounded-xl transition-colors;
+}
+
+.itemImageWrapper {
+  @apply relative w-14 h-14 bg-[var(--surface-2)] rounded-lg overflow-hidden flex-shrink-0 border border-[var(--border-subtle)];
+}
+
+.itemImage {
+  @apply object-cover;
+}
+
+.itemInfo {
+  @apply flex-1 min-w-0;
+}
+
+.itemName {
+  @apply text-sm font-semibold text-[var(--text-primary)] line-clamp-1 mb-0.5;
+}
+
+.itemQty {
+  @apply text-xs font-medium text-[var(--text-secondary)];
+}
+
+.itemTotal {
+  @apply text-sm font-bold text-[var(--text-primary)] tabular-nums;
+}
+
+/* ─── Summary Section ─── */
+.summarySection {
+  @apply sticky top-24;
+}
+
+.summaryRow {
+  @apply flex justify-between text-sm mb-3 text-[var(--text-secondary)] font-medium;
+}
+
+.summaryValue {
+  @apply text-[var(--text-primary)] tabular-nums;
+}
+
+.summaryDiscount {
+  @apply flex justify-between text-sm mb-3 font-medium text-[var(--success)];
+}
+
+.divider {
+  @apply my-5 border-t border-[var(--border-subtle)];
+}
+
+.totalRow {
+  @apply flex items-end justify-between mb-1;
+}
+
+.totalLabel {
+  @apply text-lg font-bold text-[var(--text-primary)];
+}
+
+.totalValue {
+  @apply text-2xl font-black text-[var(--text-primary)] tracking-tight tabular-nums;
+}
+
+.taxNotice {
+  @apply text-xs text-[var(--text-tertiary)] font-medium;
+}
+
+.secureNotice {
+  @apply text-xs font-medium text-[var(--text-secondary)] text-center flex items-center justify-center gap-1.5 mt-5;
+}

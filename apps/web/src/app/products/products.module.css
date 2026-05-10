@@ -1,0 +1,170 @@
+.wrapper {
+  @apply min-h-screen bg-[var(--surface-1)];
+}
+
+.container {
+  @apply max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-8;
+}
+
+/* ─── Header ─── */
+.header {
+  @apply flex items-center justify-between mb-8;
+}
+
+.title {
+  @apply text-2xl md:text-3xl font-bold text-[var(--text-primary)] tracking-tight;
+}
+
+.subtitle {
+  @apply text-[var(--text-secondary)] mt-1 font-medium;
+}
+
+/* ─── Filter Chips ─── */
+.filterChips {
+  @apply flex flex-wrap gap-2 mb-6;
+}
+
+.filterChip {
+  @apply inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-full
+         text-[var(--brand-primary)]
+         transition-colors cursor-pointer;
+  background-color: color-mix(in srgb, var(--brand-primary) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--brand-primary) 20%, transparent);
+}
+.filterChip:hover {
+  background-color: color-mix(in srgb, var(--brand-primary) 20%, transparent);
+}
+
+.filterChipLabel {
+  @apply text-xs opacity-70;
+}
+
+.clearAllBtn {
+  @apply text-sm font-medium text-red-500 hover:text-red-600 px-3 py-1.5 transition-colors;
+}
+
+/* ─── Stock Toggle ─── */
+.stockToggle {
+  @apply flex items-center gap-3 cursor-pointer select-none;
+}
+
+.stockCheckbox {
+  @apply w-5 h-5 rounded border-2 border-[var(--border-base)] text-[var(--brand-primary)]
+         focus:ring-[var(--brand-primary)] focus:ring-offset-0 cursor-pointer accent-[var(--brand-primary)];
+}
+
+.stockLabel {
+  @apply text-sm font-medium text-[var(--text-primary)];
+}
+
+/* ─── Content Area ─── */
+.mainLayout {
+  @apply flex gap-8;
+}
+
+/* ─── Sidebar Filters (Desktop) ─── */
+.sidebar {
+  @apply hidden md:block w-64 flex-shrink-0;
+}
+
+.filterCard {
+  @apply bg-[var(--surface-0)] p-6 rounded-2xl border border-[var(--border-subtle)] shadow-sm sticky top-24;
+}
+
+.filterSectionTitle {
+  @apply font-bold text-lg mb-4 text-[var(--text-primary)] tracking-tight;
+}
+
+.categoryList {
+  @apply space-y-1.5;
+}
+
+.categoryLink {
+  @apply block text-sm px-3 py-2 -mx-3 rounded-lg transition-colors font-medium;
+}
+
+.categoryLinkActive {
+  @apply text-[var(--brand-primary)];
+  background-color: color-mix(in srgb, var(--brand-primary) 10%, transparent);
+}
+
+.categoryLinkInactive {
+  @apply text-[var(--text-secondary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)];
+}
+
+.divider {
+  @apply my-6 border-t border-[var(--border-subtle)];
+}
+
+.priceRangeGroup {
+  @apply flex gap-2;
+}
+
+/* ─── Mobile Filters Menu ─── */
+.mobileFilterOverlay {
+  @apply fixed inset-0 z-50 md:hidden;
+}
+
+.mobileFilterBackdrop {
+  @apply absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity;
+}
+
+.mobileFilterPanel {
+  @apply absolute right-0 top-0 bottom-0 w-80 bg-[var(--surface-0)] p-6 overflow-y-auto shadow-2xl;
+}
+
+.mobileFilterHeader {
+  @apply flex items-center justify-between mb-8 pb-4 border-b border-[var(--border-subtle)];
+}
+
+.mobileFilterTitle {
+  @apply font-bold text-xl text-[var(--text-primary)] tracking-tight;
+}
+
+/* ─── Product Grid ─── */
+.productsColumn {
+  @apply flex-1;
+}
+
+.layoutGrid {
+  @apply grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6;
+}
+
+/* ─── Loading Skeletons ─── */
+.skeletonCard {
+  @apply bg-[var(--surface-0)] rounded-2xl overflow-hidden border border-[var(--border-subtle)];
+}
+
+.skeletonImage {
+  @apply aspect-[4/3] bg-gray-200 animate-pulse dark:bg-gray-800;
+}
+
+.skeletonContent {
+  @apply p-4 space-y-3;
+}
+
+.skeletonLine1 {
+  @apply h-4 w-3/4 bg-gray-200 animate-pulse rounded dark:bg-gray-800;
+}
+
+.skeletonLine2 {
+  @apply h-4 w-1/2 bg-gray-200 animate-pulse rounded dark:bg-gray-800;
+}
+
+/* ─── Empty State ─── */
+.emptyState {
+  @apply text-center py-20 px-4 bg-[var(--surface-0)] rounded-3xl border border-[var(--border-subtle)] border-dashed;
+}
+
+.emptyText {
+  @apply text-[var(--text-secondary)] text-lg mb-4;
+}
+
+/* ─── Pagination ─── */
+.pagination {
+  @apply flex items-center justify-center mt-10 gap-2;
+}
+
+.pageIndicator {
+  @apply px-4 py-2 text-[var(--text-secondary)] font-medium text-sm;
+}

@@ -1,0 +1,49 @@
+.button {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98];
+}
+
+/* ─── Sizes ─── */
+.size-sm {
+  @apply h-9 px-4 py-2;
+}
+
+.size-md {
+  @apply h-11 px-6 py-2.5;
+}
+
+.size-lg {
+  @apply h-14 px-8 py-3 text-base;
+}
+
+/* ─── Variants ─── */
+.primary {
+  @apply bg-[var(--text-primary)] text-[var(--surface-0)] border border-transparent shadow-sm hover:brightness-110;
+}
+
+.primary-brand {
+  @apply bg-[var(--brand-primary)] text-white border border-transparent shadow-sm hover:opacity-90;
+}
+
+.secondary {
+  @apply bg-[var(--surface-0)] text-[var(--text-primary)] border border-[var(--border-base)] shadow-sm hover:bg-[var(--surface-2)];
+}
+
+.outline {
+  @apply bg-transparent text-[var(--text-secondary)] border border-[var(--border-base)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)];
+}
+
+.ghost {
+  @apply bg-transparent text-[var(--text-secondary)] border border-transparent hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)];
+}
+
+.danger {
+  @apply bg-red-500 text-white border border-transparent hover:bg-red-600;
+}
+
+.leftIcon {
+  @apply mr-2;
+}
+
+.rightIcon {
+  @apply ml-2;
+}

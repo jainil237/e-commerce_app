@@ -1,0 +1,213 @@
+.wrapper {
+  @apply min-h-screen bg-gray-50 dark:bg-gray-950 pb-20;
+}
+
+.breadcrumbNav {
+  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950;
+}
+
+.breadcrumbList {
+  @apply flex items-center gap-2 text-sm text-gray-500 overflow-x-auto whitespace-nowrap;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.breadcrumbLink {
+  @apply hover:text-brand-primary transition-colors;
+}
+
+.breadcrumbSeparator {
+  @apply w-4 h-4 text-gray-400;
+}
+
+.breadcrumbCurrent {
+  @apply text-gray-900 dark:text-gray-100 font-medium truncate;
+}
+
+.container {
+  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8;
+}
+
+.layoutGrid {
+  @apply grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start;
+}
+
+/* --- Left Column: Images --- */
+.imageSection {
+  @apply lg:col-span-5 xl:col-span-6 lg:sticky lg:top-24 flex flex-col gap-4;
+}
+
+.mainImageWrapper {
+  @apply relative aspect-[4/5] bg-white dark:bg-gray-900 rounded-3xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm;
+}
+
+.mainImage {
+  @apply object-contain transition-transform duration-500;
+}
+
+.discountBadge {
+  @apply absolute top-4 left-4 z-10;
+}
+
+.thumbnailGallery {
+  @apply flex gap-3 overflow-x-auto pb-2;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.thumbnailBtn {
+  @apply relative w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 border-2 transition-all duration-200 bg-white dark:bg-gray-900;
+}
+
+.thumbnailBtnActive {
+  @apply border-brand-primary shadow-md;
+}
+
+.thumbnailBtnInactive {
+  @apply border-transparent opacity-60 hover:opacity-100;
+}
+
+.thumbnailImage {
+  @apply object-cover;
+}
+
+/* --- Right Column: Details --- */
+.detailsSection {
+  @apply lg:col-span-7 xl:col-span-6 flex flex-col gap-8;
+}
+
+.headerBlock {
+  @apply border-b border-gray-200 dark:border-gray-800 pb-6;
+}
+
+.categoryLabel {
+  @apply text-sm font-bold tracking-widest uppercase text-brand-primary mb-2;
+}
+
+.title {
+  @apply text-3xl sm:text-4xl font-black tracking-tight text-gray-900 dark:text-white mb-4 leading-tight;
+}
+
+/* Pricing */
+.pricingBlock {
+  @apply flex items-end gap-3 flex-wrap;
+}
+
+.price {
+  @apply text-4xl font-bold tracking-tight text-gray-900 dark:text-white;
+}
+
+.mrp {
+  @apply text-xl line-through text-gray-500 font-medium mb-1;
+}
+
+.taxNotice {
+  @apply text-sm text-gray-500 mt-2 font-medium;
+}
+
+/* Status */
+.statusRow {
+  @apply flex items-center gap-2 mt-4 font-medium;
+}
+
+.statusIndicator {
+  @apply w-2.5 h-2.5 rounded-full animate-pulse;
+}
+
+.stockAlert {
+  @apply text-sm text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md ml-2;
+}
+
+/* Description */
+.descriptionBlock {
+  @apply py-6 border-b border-gray-200 dark:border-gray-800;
+}
+
+.sectionTitle {
+  @apply text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2;
+}
+
+.description {
+  @apply prose prose-gray dark:prose-invert max-w-none text-gray-600 dark:text-gray-300;
+}
+
+/* Add to Cart Actions */
+.actionBlock {
+  @apply flex flex-col gap-4 py-6 border-b border-gray-200 dark:border-gray-800;
+}
+
+.quantityRow {
+  @apply flex items-center gap-4 mb-2;
+}
+
+.quantityLabel {
+  @apply font-semibold text-gray-900 dark:text-white;
+}
+
+.quantityCtrl {
+  @apply flex items-center bg-gray-100 dark:bg-gray-800 rounded-xl p-1 border border-gray-200 dark:border-gray-700;
+}
+
+.quantityBtn {
+  @apply w-10 h-10 flex items-center justify-center rounded-lg text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 hover:shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.quantityValue {
+  @apply font-bold w-12 text-center text-gray-900 dark:text-white;
+}
+
+.actionBtns {
+  @apply flex gap-3 w-full;
+}
+
+.cartBtn {
+  @apply flex-1 shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300;
+}
+
+.secondaryBtn {
+  @apply aspect-square px-0 w-14 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-all hover:border-gray-300;
+}
+
+/* Trust Grid */
+.trustGrid {
+  @apply grid grid-cols-1 sm:grid-cols-3 gap-4 py-6;
+}
+
+.trustItem {
+  @apply flex flex-col items-center justify-center text-center p-4 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 hover:border-gray-300 transition-colors;
+}
+
+.trustIconWrapper {
+  @apply w-12 h-12 flex items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/20 text-brand-primary mb-3;
+}
+
+.trustText {
+  @apply text-sm font-semibold text-gray-900 dark:text-white;
+}
+
+/* Metadata */
+.metadataPanel {
+  @apply bg-gray-50 dark:bg-gray-900/50 rounded-2xl p-6 border border-gray-200 dark:border-gray-800;
+}
+
+.metaGrid {
+  @apply grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8;
+}
+
+.metaItem {
+  @apply flex justify-between sm:flex-col sm:justify-start gap-1 pb-3 border-b border-gray-200 dark:border-gray-700 sm:border-0 sm:pb-0;
+}
+
+.metaLabel {
+  @apply text-sm font-medium text-gray-500;
+}
+
+.metaValue {
+  @apply text-sm font-bold text-gray-900 dark:text-white text-right sm:text-left;
+}

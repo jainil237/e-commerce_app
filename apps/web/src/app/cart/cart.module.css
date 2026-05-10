@@ -1,0 +1,152 @@
+.wrapper {
+  @apply min-h-screen bg-[var(--surface-1)];
+}
+
+.container {
+  @apply max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-8;
+}
+
+.pageTitle {
+  @apply text-2xl md:text-3xl font-bold mb-8 text-[var(--text-primary)];
+}
+
+/* ─── Grid Layout ─── */
+.layoutGrid {
+  @apply grid lg:grid-cols-3 gap-8 items-start;
+}
+
+.itemsColumn {
+  @apply lg:col-span-2 space-y-4;
+}
+
+/* ─── Cart Items ─── */
+.itemCard {
+  @apply flex flex-col sm:flex-row gap-4 p-4 md:p-6 bg-[var(--surface-0)] rounded-2xl border border-[var(--border-subtle)] shadow-sm;
+}
+
+.itemImageWrapper {
+  @apply relative w-24 h-24 sm:w-28 sm:h-28 bg-[var(--surface-2)] rounded-xl overflow-hidden flex-shrink-0 border border-[var(--border-subtle)];
+}
+
+.itemImage {
+  @apply object-cover transition-transform hover:scale-105;
+}
+
+.itemContent {
+  @apply flex flex-col flex-1;
+}
+
+.itemHeaderRow {
+  @apply flex justify-between items-start gap-4 mb-2;
+}
+
+.itemTitle {
+  @apply font-semibold text-lg text-[var(--text-primary)] hover:text-[var(--brand-primary)] transition-colors line-clamp-2;
+}
+
+.itemMeta {
+  @apply text-sm text-[var(--text-secondary)] mt-1;
+}
+
+.priceBlock {
+  @apply text-right shrink-0;
+}
+
+.itemTotal {
+  @apply font-bold text-lg text-[var(--text-primary)] tabular-nums;
+}
+
+.itemDiscount {
+  @apply text-xs font-semibold text-[var(--success)] mt-1;
+}
+
+.priceBreakdown {
+  @apply flex items-center gap-2 mb-4;
+}
+
+.unitPrice {
+  @apply text-sm font-medium text-[var(--text-primary)] tabular-nums;
+}
+
+.unitMrp {
+  @apply text-xs line-through text-[var(--text-tertiary)] tabular-nums;
+}
+
+/* ─── Controls ─── */
+.controlsRow {
+  @apply flex items-center justify-between mt-auto pt-4 border-t border-[var(--border-subtle)];
+}
+
+.quantityCtrl {
+  @apply flex items-center border border-[var(--border-base)] rounded-lg overflow-hidden bg-[var(--surface-0)];
+}
+
+.quantityBtn {
+  @apply p-2 text-[var(--text-secondary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.quantityValue {
+  @apply w-10 text-center font-medium text-sm tabular-nums text-[var(--text-primary)];
+}
+
+.removeBtn {
+  @apply p-2 text-[var(--error)] hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors ml-auto;
+}
+
+.clearCartBtn {
+  @apply block w-full py-4 text-center text-sm font-medium text-[var(--error)] hover:text-red-700 hover:underline transition-colors mt-4;
+}
+
+/* ─── Summary ─── */
+.summaryCard {
+  @apply bg-[var(--surface-0)] p-6 rounded-2xl border border-[var(--border-base)] shadow-sm sticky top-24;
+}
+
+.summaryTitle {
+  @apply text-xl font-bold mb-6 tracking-tight text-[var(--text-primary)];
+}
+
+.summaryRow {
+  @apply flex justify-between text-[var(--text-secondary)] text-sm;
+}
+
+.summaryValue {
+  @apply text-[var(--text-primary)] font-medium tabular-nums;
+}
+
+.freeShippingNotice {
+  @apply text-sm font-medium text-amber-600 bg-amber-50 p-3 rounded-lg border border-amber-200 mt-4 text-center;
+}
+
+.divider {
+  @apply my-6 border-t border-[var(--border-subtle)];
+}
+
+.totalRow {
+  @apply flex justify-between items-end mb-2;
+}
+
+.totalLabel {
+  @apply text-lg font-bold text-[var(--text-primary)];
+}
+
+.totalValue {
+  @apply text-2xl font-black text-[var(--text-primary)] tabular-nums tracking-tight;
+}
+
+.taxesNotice {
+  @apply text-xs text-[var(--text-tertiary)];
+}
+
+.actions {
+  @apply space-y-3 mt-8;
+}
+
+/* ─── Empty State ─── */
+.emptyState {
+  @apply flex flex-col items-center justify-center min-h-[60vh] py-16 text-center max-w-md mx-auto;
+}
+
+.emptyIconWrapper {
+  @apply w-24 h-24 mb-6 rounded-full bg-[var(--surface-2)] text-[var(--text-tertiary)] flex items-center justify-center;
+}

@@ -1,0 +1,127 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Brand — injected from store.config.json */
+  --brand-primary: #1D4ED8;
+  --brand-accent: #F59E0B;
+  --brand-primary-fg: #FFFFFF;
+
+  /* Neutrals */
+  --gray-50: #FAFAFA;
+  --gray-100: #F4F4F5;
+  --gray-200: #E4E4E7;
+  --gray-300: #D4D4D8;
+  --gray-400: #A1A1AA;
+  --gray-500: #71717A;
+  --gray-700: #3F3F46;
+  --gray-900: #18181B;
+
+  /* Semantic */
+  --success: #10B981;
+  --warning: #F59E0B;
+  --error: #EF4444;
+  --info: #3B82F6;
+
+  /* Surfaces */
+  --surface-0: #FFFFFF;
+  --surface-1: #FAFAFA;
+  --surface-2: #F4F4F5;
+  --surface-glass: rgba(255, 255, 255, 0.85);
+
+  /* Text */
+  --text-primary: #18181B;
+  --text-secondary: #71717A;
+  --text-tertiary: #A1A1AA;
+  --text-inverse: #FFFFFF;
+
+  /* Radii */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+
+  /* UI Borders */
+  --border-base: var(--gray-200);
+  --border-subtle: var(--gray-100);
+}
+
+.dark {
+  /* Brand */
+  --brand-primary: #3B82F6;
+  --brand-accent: #FBBF24;
+  --brand-primary-fg: #18181B;
+
+  /* Neutrals inverted mapping */
+  --gray-50: #18181B;
+  --gray-100: #27272A;
+  --gray-200: #3F3F46;
+  --gray-300: #52525B;
+  --gray-400: #71717A;
+  --gray-500: #A1A1AA;
+  --gray-700: #E4E4E7;
+  --gray-900: #F4F4F5;
+
+  /* Surfaces */
+  --surface-0: #18181B; 
+  --surface-1: #09090B; 
+  --surface-2: #27272A; 
+  --surface-glass: rgba(24, 24, 27, 0.85);
+
+  /* Text */
+  --text-primary: #FAFAFA;
+  --text-secondary: #A1A1AA;
+  --text-tertiary: #71717A;
+  --text-inverse: #18181B;
+
+  /* UI Borders */
+  --border-base: #27272A;   /* gray-800 equivalent */
+  --border-subtle: #18181B; /* gray-900 equivalent */
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-[var(--surface-1)] text-[var(--text-primary)] antialiased;
+    /* Apple-style typography */
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Remove default border colors so they don't look harsh */
+  * {
+    border-color: var(--border-base);
+  }
+
+  /* Sleek modern focus states */
+  *:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--surface-0), 0 0 0 4px var(--brand-primary);
+  }
+}
+
+@layer utilities {
+  .text-price {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Apple-style translucency */
+  .glass {
+    @apply bg-white/80 backdrop-blur-md border border-white/20 dark:bg-black/60 dark:border-white/10;
+  }
+}

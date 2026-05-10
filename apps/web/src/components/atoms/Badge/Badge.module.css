@@ -1,0 +1,28 @@
+.badge {
+  @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold tracking-wide transition-colors;
+}
+
+/* ─── Variants ─── */
+.primary {
+  @apply bg-[var(--brand-primary)] text-white;
+}
+
+.secondary {
+  @apply bg-[var(--surface-2)] text-[var(--text-secondary)];
+}
+
+.outline {
+  @apply border border-[var(--border-subtle)] text-[var(--text-primary)] bg-transparent;
+}
+
+.success {
+  @apply bg-[var(--surface-2)] text-[var(--success)] shadow-sm;
+}
+
+.warning {
+  @apply bg-[var(--surface-2)] text-[var(--warning)] shadow-sm;
+}
+
+.error {
+  @apply bg-[var(--surface-2)] text-[var(--error)] shadow-sm;
+}

@@ -1,0 +1,94 @@
+{
+  "store": {
+    "name": "MyStore",
+    "tagline": "Fresh picks, delivered fast",
+    "logo": "/assets/logo.png",
+    "favicon": "/assets/favicon.ico",
+    "primaryColor": "#1D4ED8",
+    "accentColor": "#F59E0B",
+    "currency": "INR",
+    "currencySymbol": "₹",
+    "locale": "en-IN",
+    "gstNumber": "27AABCU9603R1ZX",
+    "address": {
+      "line1": "Shop No. 12, Market Road",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "pincode": "400001",
+      "country": "India"
+    },
+    "contact": {
+      "phone": "+91-XXXXXXXXXX",
+      "email": "support@mystore.in",
+      "whatsapp": "+91-XXXXXXXXXX"
+    },
+    "social": {
+      "instagram": "",
+      "facebook": "",
+      "twitter": ""
+    },
+    "meta": {
+      "title": "MyStore — Fresh picks, delivered fast",
+      "description": "Shop the best products at MyStore. Free delivery above ₹499.",
+      "ogImage": "/assets/og-image.jpg"
+    }
+  },
+  "features": {
+    "guestCheckout": true,
+    "wishlist": true,
+    "productReviews": true,
+    "couponCodes": true,
+    "whatsappSupport": true,
+    "codEnabled": false,
+    "emailService": true
+  },
+  "courier": {
+    "partners": ["Delhivery", "Xpressbees", "DTDC", "BlueDart"],
+    "defaultPartner": "Delhivery",
+    "trackingUrls": {
+      "Delhivery":  "https://www.delhivery.com/track/package/{awb}",
+      "Xpressbees": "https://www.xpressbees.com/track?awbno={awb}",
+      "DTDC":       "https://www.dtdc.in/tracking.asp?shipmentId={awb}",
+      "BlueDart":   "https://www.bluedart.com/tracking?trackFor=0&trackNo={awb}"
+    }
+  },
+  "razorpay": {
+    "keyIdEnvVar":      "RAZORPAY_KEY_ID",
+    "keySecretEnvVar":  "RAZORPAY_KEY_SECRET",
+    "webhookSecretEnvVar": "RAZORPAY_WEBHOOK_SECRET"
+  },
+  "shipping": {
+    "freeShippingAbove": 499,
+    "baseShippingCharge": 49,
+    "estimatedDeliveryDays": {
+      "metro": 2,
+      "tier2": 4,
+      "rest": 7
+    }
+  },
+  "homepage": {
+    "heroBanner": {
+      "headline": "Discover Amazing Products",
+      "subtext": "Shop the best deals — delivered to your door",
+      "ctaText": "Shop Now",
+      "ctaLink": "/products",
+      "backgroundImage": "/assets/hero-banner.jpg"
+    },
+    "promotionalBanner": {
+      "text": "🎉 FREE delivery on orders above ₹499 · Use code WELCOME10 for 10% off your first order",
+      "bgColor": "#1D4ED8",
+      "textColor": "#FFFFFF"
+    }
+  },
+  "invoice": {
+    "prefix": "INV",
+    "startNumber": 1001,
+    "termsAndConditions": "All sales are final. For support, contact support@mystore.in within 7 days of delivery.",
+    "logoForPdf": "/assets/logo-pdf.png",
+    "footerNote": "Thank you for shopping with us!"
+  },
+  "seo": {
+    "googleAnalyticsId": "",
+    "facebookPixelId": ""
+  }
+}
