@@ -379,21 +379,29 @@ export default function ProductDetailPage() {
                 </div>
               </div>
 
-              {product.tags && product.tags.length > 0 && (
-                <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-800">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Tag className="w-4 h-4 text-gray-400" />
-                    <span className={styles.metaLabel}>Tags</span>
+              {(() => {
+                const tags = Array.isArray(product.tags) 
+                  ? product.tags 
+                  : (typeof product.tags === 'string' ? (product.tags as string).split(',').map(t => t.trim()).filter(Boolean) : []);
+                
+                if (tags.length === 0) return null;
+
+                return (
+                  <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-800">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Tag className="w-4 h-4 text-gray-400" />
+                      <span className={styles.metaLabel}>Tags</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {tags.map(tag => (
+                        <span key={tag} className="px-3 py-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full text-xs font-medium text-gray-600 dark:text-gray-300">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {product.tags.map(tag => (
-                      <span key={tag} className="px-3 py-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full text-xs font-medium text-gray-600 dark:text-gray-300">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
 
 

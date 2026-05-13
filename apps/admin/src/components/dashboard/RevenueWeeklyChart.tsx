@@ -31,7 +31,7 @@ export default function RevenueWeeklyChart({ series }: RevenueWeeklyChartProps) 
 
     const containerWidth = containerRef.current.clientWidth
     const containerHeight = 320
-    const margin = { top: 30, right: 120, bottom: 40, left: 60 }
+    const margin = { top: 40, right: 120, bottom: 65, left: 60 }
     const width = containerWidth - margin.left - margin.right
     const height = containerHeight - margin.top - margin.bottom
 
@@ -56,7 +56,7 @@ export default function RevenueWeeklyChart({ series }: RevenueWeeklyChartProps) 
       .attr('color', '#9ca3af')
       .selectAll('text')
       .style('font-size', '12px')
-      .attr('dy', '1.5em')
+      .attr('dy', '2.5em')
 
     svg.selectAll('.domain').remove() // Remove all axis lines for ultimate cleanliness
 
@@ -181,13 +181,24 @@ export default function RevenueWeeklyChart({ series }: RevenueWeeklyChartProps) 
       // Inline labels at the end of each line
       const lastPoint = s.values[s.values.length - 1]
       if (lastPoint) {
+        // Find if there's another series ending close to this one
+        const otherSeries = series.find(other => other.id !== s.id)
+        const otherLastPoint = otherSeries?.values[otherSeries.values.length - 1]
+        
+        let dy = s.id === 'current' ? '-0.5em' : '1.2em'
+        
+        // If they end at the same X and close Y, increase separation
+        if (otherLastPoint && Math.abs(y(lastPoint.revenue) - y(otherLastPoint.revenue)) < 20) {
+          dy = s.id === 'current' ? '-1.2em' : '2em'
+        }
+
         svg.append('text')
           .attr('x', (x(lastPoint.name) || 0) + 10)
           .attr('y', y(lastPoint.revenue))
-          .attr('dy', '0.35em')
+          .attr('dy', dy)
           .attr('fill', s.color)
           .style('font-weight', 'bold')
-          .style('font-size', '12px')
+          .style('font-size', '11px')
           .style('opacity', 0)
           .text(s.label)
           .transition()

@@ -172,9 +172,14 @@ export async function generateInvoicePdf(order: OrderWithRelations): Promise<str
     rowY += 15
   }
 
-  doc.text(`GST:`, 350, rowY)
-  doc.text(`₹${gst.toFixed(2)}`, 430, rowY)
-  rowY += 15
+  if (gst > 0) {
+    doc.text(`GST:`, 350, rowY)
+    doc.text(`₹${gst.toFixed(2)}`, 430, rowY)
+    rowY += 15
+  } else {
+    doc.fontSize(8).font('Helvetica-Oblique').text(`(Price inclusive of taxes)`, 350, rowY)
+    rowY += 15
+  }
 
   // Grand total
   doc.font('Helvetica-Bold')

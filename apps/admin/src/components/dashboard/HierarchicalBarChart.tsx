@@ -13,6 +13,17 @@ interface HierarchicalBarChartProps {
   data: HierarchyNode
 }
 
+function xTicks(maxValue: number) {
+  const tickCount = Math.min(5, Math.max(2, Math.ceil(maxValue)))
+  const ticks = d3.ticks(0, maxValue, tickCount).filter(Number.isInteger)
+
+  if (ticks[ticks.length - 1] !== maxValue) {
+    ticks.push(maxValue)
+  }
+
+  return [...new Set(ticks)]
+}
+
 export default function HierarchicalBarChart({ data }: HierarchicalBarChartProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -22,15 +33,13 @@ export default function HierarchicalBarChart({ data }: HierarchicalBarChartProps
     if (!svgRef.current || !containerRef.current || !data) return
 
     const containerWidth = containerRef.current.clientWidth
-    const containerHeight = 320
-    const margin = { top: 30, right: 60, bottom: 20, left: 140 }
-    const width = containerWidth - margin.left - margin.right
-    const height = containerHeight - margin.top - margin.bottom
+    const margin = { top: 40, right: 60, bottom: 20, left: 140 }
     const barStep = 32
     const barPadding = 8
+    const valueLabelGutter = 38
 
     const root = d3.hierarchy(data)
-      .sum(d => d.value || 0)
+      .sum(d => Number(d.value) || 0)
       .sort((a, b) => (b.value || 0) - (a.value || 0))
 
     // Find the node corresponding to currentPath
@@ -39,6 +48,28 @@ export default function HierarchicalBarChart({ data }: HierarchicalBarChartProps
       const child = currentNode.children?.find(c => c.data.name === currentPath[i])
       if (child) currentNode = child
     }
+
+    const rows = (currentNode.children || []).map(node => ({
+      ...node,
+      value: Number(node.value) || 0,
+    }))
+    const rowCount = Math.max(rows.length, 1)
+    const containerHeight = Math.max(280, margin.top + rowCount * barStep + margin.bottom)
+    const width = Math.max(0, containerWidth - margin.left - margin.right)
+    const plotWidth = Math.max(0, width - valueLabelGutter)
+    const maxValue = d3.max(rows, d => d.value) || 0
+    const domainMax = Math.max(1, maxValue)
+    const tickValues = domainMax <= 5
+      ? d3.range(0, domainMax + 1)
+      : xTicks(domainMax)
+    const x = d3.scaleLinear()
+      .domain([0, domainMax])
+      .range([0, plotWidth])
+    const barWidth = (value?: number) => {
+      if (!value || value <= 0) return 0
+      return Math.min(plotWidth, Math.max(14, x(value)))
+    }
+    const valueLabelX = (value?: number) => Math.max(0, Math.min(barWidth(value) + 8, width - 4))
 
     const svg = d3.select(svgRef.current)
       .attr('width', containerWidth)
@@ -62,16 +93,11 @@ export default function HierarchicalBarChart({ data }: HierarchicalBarChartProps
     const g = svg.append('g')
       .attr('transform', `translate(${margin.left},${margin.top})`)
 
-    const x = d3.scaleLinear()
-      .domain([0, d3.max(currentNode.children || [], d => d.value || 0) || 0])
-      .nice()
-      .range([0, width])
-
     // X-axis (Top)
     g.append('g')
       .attr('class', 'x-axis')
-      .attr('transform', `translate(0,-10)`)
-      .call(d3.axisTop(x).ticks(5).tickFormat(d3.format('~s')).tickSize(0))
+      .attr('transform', `translate(0,-20)`)
+      .call(d3.axisTop(x).tickValues(tickValues).tickFormat(d3.format('d')).tickSize(0))
       .attr('color', '#9ca3af')
       .selectAll('text')
       .style('font-size', '10px')
@@ -79,30 +105,18 @@ export default function HierarchicalBarChart({ data }: HierarchicalBarChartProps
     g.select('.domain').remove()
     g.selectAll('.tick line').remove()
 
-    // Chart Title
-    const isRoot = currentPath.length === 1
-    const currentName = currentPath[currentPath.length - 1]
-    
-    svg.append('text')
-      .attr('x', margin.left)
-      .attr('y', 20)
-      .attr('fill', '#111827')
-      .style('font-size', '13px')
-      .style('font-weight', '800')
-      .style('text-transform', 'uppercase')
-      .style('letter-spacing', '0.025em')
-      .text(isRoot ? 'Top Sales Categories' : `Top Selling Products in ${currentName}`)
+    // Title handled in React component for better wrapping
 
     // Render bars
     const bars = g.selectAll('.bar-group')
-      .data(currentNode.children || [])
+      .data(rows, (d: any) => d.data.name)
       .enter().append('g')
       .attr('class', 'bar-group')
       .attr('transform', (d, i) => `translate(0,${i * barStep})`)
-      .style('cursor', d => d.children ? 'pointer' : 'default')
+      .style('cursor', d => d.children && d.children.length > 0 ? 'pointer' : 'default')
       .on('click', (event, d) => {
         event.stopPropagation()
-        if (d.children) {
+        if (d.children && d.children.length > 0) {
           setCurrentPath([...currentPath, d.data.name])
         }
       })
@@ -119,14 +133,10 @@ export default function HierarchicalBarChart({ data }: HierarchicalBarChartProps
 
     bars.append('rect')
       .attr('class', 'main-bar')
-      .attr('fill', (d, i) => d.children ? '#3b82f6' : '#60a5fa')
-      .attr('width', 0)
+      .attr('fill', (d, i) => d.children && d.children.length > 0 ? '#3b82f6' : '#60a5fa')
+      .attr('width', d => barWidth(d.value))
       .attr('height', barStep - barPadding)
-      .attr('rx', 6) // Slightly more rounded for modern look
-      .transition()
-      .duration(750)
-      .delay((d, i) => i * 50)
-      .attr('width', d => x(d.value || 0))
+      .attr('rx', 6)
 
     bars.append('text')
       .attr('x', -15)
@@ -137,53 +147,41 @@ export default function HierarchicalBarChart({ data }: HierarchicalBarChartProps
       .style('font-size', '11px')
       .style('font-weight', '600')
       .text(d => d.data.name.length > 25 ? d.data.name.slice(0, 22) + '...' : d.data.name)
-      .style('opacity', 0)
-      .transition()
-      .duration(500)
-      .delay((d, i) => i * 50 + 400)
       .style('opacity', 1)
 
     bars.append('text')
       .attr('class', 'value-label')
-      .attr('x', d => x(d.value || 0) + 8)
+      .attr('x', d => valueLabelX(d.value))
       .attr('y', (barStep - barPadding) / 2)
       .attr('dy', '0.35em')
       .attr('fill', '#1d4ed8')
       .style('font-size', '11px')
       .style('font-weight', '700')
-      .attr('opacity', 0)
+      .style('opacity', 1)
       .text(d => d.value?.toLocaleString())
-      .transition()
-      .delay((d, i) => i * 50 + 600)
-      .duration(300)
-      .attr('opacity', 1)
 
     // Hover effects
     bars.on('mouseenter', function(event, d) {
       d3.select(this).select('.main-bar')
-        .transition().duration(200)
         .attr('fill', '#2563eb')
       
       d3.select(this).select('.value-label')
-        .transition().duration(200)
-        .attr('x', x(d.value || 0) + 12)
+        .attr('x', Math.min(barWidth(d.value) + 12, width - 4))
     })
     .on('mouseleave', function(event, d) {
       d3.select(this).select('.main-bar')
-        .transition().duration(200)
         .attr('fill', d.children ? '#3b82f6' : '#60a5fa')
 
       d3.select(this).select('.value-label')
-        .transition().duration(200)
-        .attr('x', x(d.value || 0) + 8)
+        .attr('x', valueLabelX(d.value))
     })
 
     return () => {}
   }, [data, currentPath])
 
   return (
-    <div className="relative h-full pt-4" ref={containerRef}>
-      <div className="flex items-center gap-3 mb-6 absolute -top-10 left-0 w-full justify-between pr-4 bg-white/80 backdrop-blur-sm py-2 z-20">
+    <div className="relative pt-4" ref={containerRef}>
+      <div className="flex items-center gap-3 mb-6 absolute -top-12 left-0 w-full justify-between pr-4 bg-white/80 backdrop-blur-sm py-2 z-20">
         <div className="flex items-center gap-2">
           {currentPath.length > 1 && (
             <button 
@@ -196,7 +194,7 @@ export default function HierarchicalBarChart({ data }: HierarchicalBarChartProps
               Back
             </button>
           )}
-          <div className="flex items-center gap-1 overflow-hidden">
+          <div className="flex items-center gap-1 flex-wrap">
             {currentPath.map((path, i) => (
               <React.Fragment key={path}>
                 {i > 0 && <span className="text-gray-300">/</span>}
@@ -208,7 +206,13 @@ export default function HierarchicalBarChart({ data }: HierarchicalBarChartProps
           </div>
         </div>
       </div>
-      <svg ref={svgRef} className="overflow-visible"></svg>
+
+      <div className="mb-4 pr-10">
+        <h3 className="text-[13px] font-extrabold text-gray-900 uppercase tracking-wide leading-tight break-words">
+          {currentPath.length === 1 ? 'Sales by Category' : `Top Selling Products in ${currentPath[currentPath.length - 1]}`}
+        </h3>
+      </div>
+      <svg ref={svgRef} className="block w-full overflow-visible"></svg>
       
       {currentPath.length === 1 && (
         <div className="absolute bottom-0 right-4 pointer-events-none">

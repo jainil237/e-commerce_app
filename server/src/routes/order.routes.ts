@@ -89,7 +89,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next) => 
 
     // Calculate totals
     let subtotal = 0
-    let totalGst = 0
+    const totalGst = 0 // GST is now inclusive
     const orderItems: Array<{
       productId: string
       quantity: number
@@ -101,10 +101,8 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next) => 
     for (const item of validatedData.items) {
       const product = products.find(p => p.id === item.productId)!
       const itemSubtotal = Number(product.price) * item.quantity
-      const itemGst = itemSubtotal * (product.gstPercent / 100)
       
       subtotal += itemSubtotal
-      totalGst += itemGst
       
       orderItems.push({
         productId: product.id,
@@ -147,7 +145,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next) => 
       }
     }
 
-    const total = subtotal + shippingCharge + totalGst - discount
+    const total = subtotal + shippingCharge - discount
 
     // Generate order number
     const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`

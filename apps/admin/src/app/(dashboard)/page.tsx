@@ -277,7 +277,7 @@ export default function DashboardPage() {
       <div className="grid lg:grid-cols-5 gap-8 mb-10">
         {/* Revenue Weekly Chart */}
         <div className="lg:col-span-3 bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between mb-12">
             <div>
               <h2 className="text-xl font-bold text-gray-900">Revenue Performance</h2>
               <p className="text-sm text-gray-500">Weekly earnings comparison</p>
@@ -316,12 +316,12 @@ export default function DashboardPage() {
 
         {/* Hierarchical Sales Chart */}
         <div className="lg:col-span-2 bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
-          <div className="mb-10">
+          <div className="mb-14">
             <h2 className="text-xl font-bold text-gray-900">Top Categories & Products</h2>
             <p className="text-sm text-gray-500">Hierarchical sales distribution</p>
           </div>
           
-          <div className="h-[340px] relative">
+          <div className="min-h-[340px] relative">
             {isHierarchyLoading && (
               <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] flex items-center justify-center z-30 rounded-2xl">
                 <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
