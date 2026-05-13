@@ -87,17 +87,21 @@ export default function OrdersPage() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
+              id="order-search"
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search orders..."
               className="input pl-10"
+              aria-label="Search orders"
             />
           </div>
           <select
+            id="status-filter"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             className="input w-48"
+            aria-label="Filter by status"
           >
             <option value="">All Status</option>
             <option value="PENDING">Pending</option>
@@ -160,6 +164,7 @@ export default function OrdersPage() {
                         value={order.status}
                         onChange={(e) => updateStatus(order.id, e.target.value)}
                         className="input text-sm py-1 px-2 w-32"
+                        aria-label={`Update status for order ${order.orderNumber}`}
                       >
                         <option value="PENDING">Pending</option>
                         <option value="PROCESSING">Processing</option>

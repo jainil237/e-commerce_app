@@ -35,30 +35,147 @@ const upload = multer({
 
 // ==================== Dashboard ====================
 
-router.get('/dashboard/summary', async (_req, res: Response, next) => {
+router.get('/dashboard/summary', async (req, res: Response, next) => {
   try {
-    const [totalRevenue, totalOrders, totalProducts, totalUsers, lowStockProducts] = await Promise.all([
+    const month = parseInt(req.query.month as string) || (new Date().getMonth() + 1)
+    const year = parseInt(req.query.year as string) || new Date().getFullYear()
+
+    const currentStart = new Date(year, month - 1, 1)
+    const currentEnd = new Date(year, month, 0, 23, 59, 59, 999)
+
+    // Calculate previous month
+    let prevMonth = month - 1
+    let prevYear = year
+    if (prevMonth === 0) {
+      prevMonth = 12
+      prevYear -= 1
+    }
+    const prevStart = new Date(prevYear, prevMonth - 1, 1)
+    const prevEnd = new Date(prevYear, prevMonth, 0, 23, 59, 59, 999)
+
+    const [
+      currentRevenue, 
+      currentOrders, 
+      currentProducts, 
+      currentUsers,
+      prevRevenue,
+      prevOrders,
+      prevProducts,
+      prevUsers
+    ] = await Promise.all([
+      // Current Period
       prisma.order.aggregate({
-        where: { paymentStatus: 'PAID' },
+        where: { paymentStatus: 'PAID', createdAt: { gte: currentStart, lte: currentEnd } },
         _sum: { total: true },
       }),
-      prisma.order.count(),
-      prisma.product.count({ where: { isActive: true } }),
-      prisma.user.count({ where: { role: 'CUSTOMER' } }),
-      prisma.product.count({
-        where: { isActive: true, stock: { lt: 10 } },
+      prisma.order.count({
+        where: { createdAt: { gte: currentStart, lte: currentEnd } },
+      }),
+      prisma.orderItem.groupBy({
+        by: ['productId'],
+        where: { order: { createdAt: { gte: currentStart, lte: currentEnd }, paymentStatus: 'PAID' } },
+      }),
+      prisma.user.count({
+        where: { role: 'CUSTOMER', createdAt: { gte: currentStart, lte: currentEnd } },
+      }),
+      // Previous Period
+      prisma.order.aggregate({
+        where: { paymentStatus: 'PAID', createdAt: { gte: prevStart, lte: prevEnd } },
+        _sum: { total: true },
+      }),
+      prisma.order.count({
+        where: { createdAt: { gte: prevStart, lte: prevEnd } },
+      }),
+      prisma.orderItem.groupBy({
+        by: ['productId'],
+        where: { order: { createdAt: { gte: prevStart, lte: prevEnd }, paymentStatus: 'PAID' } },
+      }),
+      prisma.user.count({
+        where: { role: 'CUSTOMER', createdAt: { gte: prevStart, lte: prevEnd } },
       }),
     ])
+
+    const calculateChange = (current: number, previous: number) => {
+      if (previous === 0) return current > 0 ? 100 : 0
+      return parseFloat(((current - previous) / previous * 100).toFixed(1))
+    }
+
+    const currRevValue = Number(currentRevenue._sum.total || 0)
+    const prevRevValue = Number(prevRevenue._sum.total || 0)
 
     res.json({
       success: true,
       data: {
-        totalRevenue: totalRevenue._sum.total?.toString() || '0',
-        totalOrders,
-        totalProducts,
-        totalUsers,
-        lowStockProducts,
+        revenue: {
+          value: currRevValue,
+          change: calculateChange(currRevValue, prevRevValue)
+        },
+        orders: {
+          value: currentOrders,
+          change: calculateChange(currentOrders, prevOrders)
+        },
+        products: {
+          value: currentProducts.length,
+          change: calculateChange(currentProducts.length, prevProducts.length)
+        },
+        customers: {
+          value: currentUsers,
+          change: calculateChange(currentUsers, prevUsers)
+        }
       },
+    })
+  } catch (error) {
+    next(error)
+  }
+})
+
+router.get('/dashboard/revenue-weekly', async (req, res: Response, next) => {
+  try {
+    const month = parseInt(req.query.month as string) || (new Date().getMonth() + 1)
+    const year = parseInt(req.query.year as string) || new Date().getFullYear()
+
+    const startDate = new Date(year, month - 1, 1)
+    const endDate = new Date(year, month, 0, 23, 59, 59, 999)
+
+    const orders = await prisma.order.findMany({
+      where: {
+        paymentStatus: 'PAID',
+        createdAt: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      select: {
+        total: true,
+        createdAt: true,
+      },
+    })
+
+    // Group by week
+    const grouped: Record<string, number> = {}
+    
+    // Initialize all weeks of the month to 0
+    // A month can have up to 6 weeks depending on how you split it
+    // We'll use "Week X" of the month
+    const lastDay = endDate.getDate()
+    for (let i = 1; i <= Math.ceil(lastDay / 7); i++) {
+      grouped[`Week ${i}`] = 0
+    }
+
+    for (const order of orders) {
+      const date = new Date(order.createdAt)
+      const weekOfMonth = Math.ceil(date.getDate() / 7)
+      const key = `Week ${weekOfMonth}`
+      grouped[key] = (grouped[key] || 0) + Number(order.total)
+    }
+
+    const chartData = Object.entries(grouped)
+      .map(([week, revenue]) => ({ name: week, revenue: Number(revenue.toFixed(2)) }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+
+    res.json({
+      success: true,
+      data: chartData,
     })
   } catch (error) {
     next(error)
@@ -68,15 +185,22 @@ router.get('/dashboard/summary', async (_req, res: Response, next) => {
 router.get('/dashboard/sales-chart', async (req, res: Response, next) => {
   try {
     const period = (req.query.period as string) || 'monthly'
-    const now = new Date()
+    const month = parseInt(req.query.month as string) || (new Date().getMonth() + 1)
+    const year = parseInt(req.query.year as string) || new Date().getFullYear()
+    
+    const targetDate = new Date(year, month - 1, 1)
+    const endDate = new Date(year, month, 0, 23, 59, 59, 999)
+
+    const startDate = period === 'monthly'
+      ? new Date(targetDate.getFullYear(), targetDate.getMonth() - 11, 1)
+      : new Date(targetDate.getTime() - 12 * 7 * 24 * 60 * 60 * 1000)
 
     const orders = await prisma.order.findMany({
       where: {
         paymentStatus: 'PAID',
         createdAt: {
-          gte: period === 'monthly'
-            ? new Date(now.getFullYear(), now.getMonth() - 11, 1)
-            : new Date(now.getTime() - 12 * 7 * 24 * 60 * 60 * 1000),
+          gte: startDate,
+          lte: endDate,
         },
       },
       select: {
@@ -110,10 +234,19 @@ router.get('/dashboard/sales-chart', async (req, res: Response, next) => {
   }
 })
 
-router.get('/dashboard/category-sales', async (_req, res: Response, next) => {
+router.get('/dashboard/category-sales', async (req, res: Response, next) => {
   try {
+    const month = parseInt(req.query.month as string) || (new Date().getMonth() + 1)
+    const year = parseInt(req.query.year as string) || new Date().getFullYear()
+
+    const startDate = new Date(year, month - 1, 1)
+    const endDate = new Date(year, month, 0, 23, 59, 59, 999)
+
     const orders = await prisma.order.findMany({
-      where: { paymentStatus: 'PAID' },
+      where: { 
+        paymentStatus: 'PAID',
+        createdAt: { gte: startDate, lte: endDate }
+      },
       include: {
         items: {
           include: {
@@ -143,6 +276,101 @@ router.get('/dashboard/category-sales', async (_req, res: Response, next) => {
       success: true,
       data: chartData,
     })
+  } catch (error) {
+    next(error)
+  }
+})
+
+router.get('/dashboard/hierarchical-sales', async (req, res: Response, next) => {
+  try {
+    const month = parseInt(req.query.month as string) || (new Date().getMonth() + 1)
+    const year = parseInt(req.query.year as string) || new Date().getFullYear()
+
+    const startDate = new Date(year, month - 1, 1)
+    const endDate = new Date(year, month, 0, 23, 59, 59, 999)
+
+    const orders = await prisma.order.findMany({
+      where: { 
+        paymentStatus: 'PAID',
+        createdAt: { gte: startDate, lte: endDate }
+      },
+      include: {
+        items: {
+          include: {
+            product: {
+              include: { category: true },
+            },
+          },
+        },
+      },
+    })
+
+    const hierarchy: Record<string, Record<string, number>> = {}
+
+    for (const order of orders) {
+      for (const item of order.items) {
+        const categoryName = item.product.category.name
+        const productName = item.product.name
+        
+        if (!hierarchy[categoryName]) {
+          hierarchy[categoryName] = {}
+        }
+        hierarchy[categoryName][productName] = (hierarchy[categoryName][productName] || 0) + item.quantity
+      }
+    }
+
+    const result = {
+      name: "root",
+      children: Object.entries(hierarchy).map(([category, products]) => ({
+        name: category,
+        children: Object.entries(products).map(([product, sales]) => ({
+          name: product,
+          value: sales
+        }))
+      }))
+    }
+
+    res.json({ success: true, data: result })
+  } catch (error) {
+    next(error)
+  }
+})
+
+router.get('/dashboard/top-products', async (req, res: Response, next) => {
+  try {
+    const month = parseInt(req.query.month as string) || (new Date().getMonth() + 1)
+    const year = parseInt(req.query.year as string) || new Date().getFullYear()
+
+    const startDate = new Date(year, month - 1, 1)
+    const endDate = new Date(year, month, 0, 23, 59, 59, 999)
+
+    const topProducts = await prisma.orderItem.groupBy({
+      by: ['productId'],
+      where: {
+        order: {
+          paymentStatus: 'PAID',
+          createdAt: { gte: startDate, lte: endDate }
+        }
+      },
+      _sum: { quantity: true },
+      orderBy: { _sum: { quantity: 'desc' } },
+      take: 5,
+    })
+
+    const productDetails = await Promise.all(
+      topProducts.map(async (item) => {
+        const product = await prisma.product.findUnique({
+          where: { id: item.productId },
+          select: { name: true },
+        })
+        return {
+          name: product?.name || 'Unknown Product',
+          sales: item._sum.quantity || 0,
+        }
+      })
+    )
+
+    res.json({ success: true, data: productDetails })
   } catch (error) {
     next(error)
   }

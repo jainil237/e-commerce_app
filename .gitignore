@@ -9,3 +9,8 @@ trace.log
 .DS_Store
 **/.next
 extras/
+.agent
+everything-claude-code
+.continue
+frontend_audit.md
+security_performance_audit.md

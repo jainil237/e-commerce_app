@@ -15,10 +15,11 @@ import rateLimit from 'express-rate-limit'
 const router = Router()
 const otpCache = new NodeCache({ stdTTL: 600 }) // 10 minutes OTP expiration
 
-// Strict rate limiting for authentication attempts (5 requests per 15 minutes)
+// Rate limiting for authentication attempts with environment-based limits
+const isDevelopment = process.env.NODE_ENV === 'development'
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: isDevelopment ? 50 : 5, // 50 requests in dev, 5 in prod
   message: { success: false, message: 'Too many requests, please try again later', code: 'RATE_LIMITED' },
   standardHeaders: true,
   legacyHeaders: false,

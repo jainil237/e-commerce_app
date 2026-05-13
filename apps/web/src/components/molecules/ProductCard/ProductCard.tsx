@@ -1,7 +1,8 @@
 'use client'
 
+import { useRef, useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ShoppingCart, Heart } from 'lucide-react'
+import { ShoppingCart, Heart, Info } from 'lucide-react'
 import { useCart, useToast, useAuth, useWishlist } from '@/components/providers'
 import { FallbackImage } from '@/components/ui/fallback-image'
 import { Button } from '@/components/atoms/Button/Button'
@@ -28,6 +29,28 @@ export function ProductCard({ product }: ProductCardProps) {
   const { showToast } = useToast()
   const { user } = useAuth()
   const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist()
+  
+  const titleRef = useRef<HTMLHeadingElement>(null)
+  const [isTruncated, setIsTruncated] = useState(false)
+
+  useEffect(() => {
+    const element = titleRef.current
+    if (!element) return
+
+    const checkTruncation = () => {
+      const { scrollHeight, clientHeight } = element
+      setIsTruncated(scrollHeight > clientHeight)
+    }
+
+    // Check on initial mount and when product name changes
+    checkTruncation()
+
+    // Observe size changes (e.g. responsive layout)
+    const observer = new ResizeObserver(checkTruncation)
+    observer.observe(element)
+    
+    return () => observer.disconnect()
+  }, [product.name])
 
   const discount = Math.round((1 - Number(product.price) / Number(product.mrp)) * 100)
   const wishlisted = isInWishlist(product.id)
@@ -95,13 +118,26 @@ export function ProductCard({ product }: ProductCardProps) {
 
         {/* Content Area */}
         <div className={styles.content}>
-          <div>
-            {product.category && (
-              <p className={styles.category}>{product.category.name}</p>
-            )}
-            <h3 className={styles.title} title={product.name}>
-              {product.name}
-            </h3>
+          <div className={styles.titleWrapper}>
+            <div className="flex-1 min-w-0">
+              <p className={styles.category}>
+                {product.category?.name || '\u00A0'}
+              </p>
+              <div className="relative">
+                <h3 ref={titleRef} className={styles.title}>
+                  {product.name}
+                </h3>
+                
+                {isTruncated && (
+                  <div className={styles.infoBtn}>
+                    <Info className="w-3.5 h-3.5" />
+                    <div className={styles.tooltip}>
+                      {product.name}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Pricing */}

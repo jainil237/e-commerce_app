@@ -39,10 +39,15 @@ export default function CartPage() {
       }
 
       try {
+        const sessionId = typeof window !== 'undefined' ? localStorage.getItem('cartSessionId') || undefined : undefined
         const res = await fetch('/api/v1/cart/validate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ items: items.map(i => ({ productId: i.productId, quantity: i.quantity })) }),
+          credentials: 'include',
+          body: JSON.stringify({
+            items: items.map(i => ({ productId: i.productId, quantity: i.quantity })),
+            sessionId,
+          }),
         })
         const data = await res.json()
 

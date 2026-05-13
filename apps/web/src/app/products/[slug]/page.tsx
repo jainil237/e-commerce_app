@@ -30,7 +30,7 @@ interface Product {
 export default function ProductDetailPage() {
   const params = useParams()
   const slug = params.slug as string
-  const { addItem } = useCart()
+  const { addItem, items: cartItems } = useCart()
   const { showToast } = useToast()
   const config = useStoreConfig()
   const { user } = useAuth()
@@ -99,11 +99,25 @@ export default function ProductDetailPage() {
 
   const discount = Math.round((1 - Number(product.price) / Number(product.mrp)) * 100)
 
-  // Use snapshot availableQty if present, otherwise fallback to raw stock
+  // Use snapshot's effectiveAvailableQty (stock minus OTHER users' reservations only).
+  // The user's own reservation is NOT subtracted — they can freely adjust their cart qty up to this limit.
   const snapshot = product ? getSnapshot(product.id) : null
-  const availableStock = snapshot?.availableQty ?? product.stock
+  const effectiveStock = snapshot?.effectiveAvailableQty ?? product.stock
+
+  // Get existing cart quantity for this product
+  const existingCartItem = cartItems.find(item => item.productId === product?.id)
+  const existingCartQty = existingCartItem?.quantity || 0
+
+  // remainingAddable = how many MORE the user can add beyond what's already in cart
+  // effectiveStock already includes the user's own reservation as "available"
+  const remainingAddable = Math.max(0, effectiveStock - existingCartQty)
+
+  // Determine if add-to-cart should be disabled
+  const isAddToCartDisabled = remainingAddable <= 0
+  const maxQuantityAllowed = Math.max(1, remainingAddable)
 
   const handleAddToCart = () => {
+    if (isAddToCartDisabled) return
     addItem(product.id, quantity, { price: Number(product.price), name: product.name })
     showToast('success', `Added ${quantity} item${quantity > 1 ? 's' : ''} to cart`)
   }
@@ -162,6 +176,7 @@ export default function ProductDetailPage() {
           <div className={styles.imageSection}>
             <div className={`${styles.mainImageWrapper} group`}>
               <FallbackImage
+                key={selectedImage}
                 src={product.images[selectedImage]?.url}
                 alt={product.images[selectedImage]?.altText || product.name}
                 fill
@@ -205,18 +220,28 @@ export default function ProductDetailPage() {
               <h1 className={styles.title}>{product.name}</h1>
               
               <div className={styles.statusRow}>
-                {availableStock > 0 ? (
+                {effectiveStock > 0 ? (
                   <>
                     <span className={`${styles.statusIndicator} bg-emerald-500`} />
                     <span className="text-emerald-600 dark:text-emerald-500">In Stock</span>
-                    {availableStock < 10 && (
-                      <span className={styles.stockAlert}>Hurry! Only {availableStock} left</span>
+                    {effectiveStock < 10 && (
+                      <span className={styles.stockAlert}>
+                        {existingCartQty > 0 
+                          ? `Hurry! Only ${remainingAddable} more available (${existingCartQty} in cart)`
+                          : `Hurry! Only ${effectiveStock} left`
+                        }
+                      </span>
                     )}
                   </>
                 ) : (
                   <>
                     <span className={`${styles.statusIndicator} bg-red-500`} />
-                    <span className="text-red-600 dark:text-red-400">Out of Stock</span>
+                    <span className="text-red-600 dark:text-red-400">
+                      {existingCartQty >= effectiveStock 
+                        ? 'Maximum available quantity already added'
+                        : 'Out of Stock'
+                      }
+                    </span>
                   </>
                 )}
               </div>
@@ -237,7 +262,7 @@ export default function ProductDetailPage() {
 
             {/* Actions Block */}
             <div className={styles.actionBlock}>
-              {availableStock > 0 && (
+              {remainingAddable > 0 && (
                 <div className={styles.quantityRow}>
                   <span className={styles.quantityLabel}>Quantity:</span>
                   <div className={styles.quantityCtrl}>
@@ -251,9 +276,9 @@ export default function ProductDetailPage() {
                     </button>
                     <span className={styles.quantityValue}>{quantity}</span>
                     <button
-                      onClick={() => setQuantity(q => Math.min(availableStock, q + 1))}
+                      onClick={() => setQuantity(q => Math.min(maxQuantityAllowed, q + 1))}
                       className={styles.quantityBtn}
-                      disabled={quantity >= availableStock}
+                      disabled={quantity >= maxQuantityAllowed}
                       aria-label="Increase quantity"
                     >
                       <Plus className="w-5 h-5" />
@@ -268,10 +293,13 @@ export default function ProductDetailPage() {
                   size="lg"
                   className={styles.cartBtn}
                   onClick={handleAddToCart}
-                  disabled={availableStock === 0}
+                  disabled={isAddToCartDisabled}
                   leftIcon={<ShoppingCart className="w-5 h-5" />}
                 >
-                  {availableStock === 0 ? 'Out of Stock' : 'Add to Cart'}
+                  {isAddToCartDisabled 
+                    ? (existingCartQty >= effectiveStock ? 'Maximum quantity added' : 'Out of Stock')
+                    : 'Add to Cart'
+                  }
                 </Button>
                 <Button 
                   variant="secondary" 
@@ -368,7 +396,13 @@ export default function ProductDetailPage() {
               )}
             </div>
 
+
+
+        
+
+
           </div>
+
         </div>
       </div>
     </div>

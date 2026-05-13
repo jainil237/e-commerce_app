@@ -4,11 +4,12 @@ import { useState, useEffect } from 'react'
 import { Plus, Edit2, Trash2 } from 'lucide-react'
 import { useToast } from '@/components/providers'
 
+
 interface Coupon {
   id: string
   code: string
-  type: 'PERCENTAGE' | 'FLAT'
-  value: string
+  discountType: 'PERCENTAGE' | 'FLAT'
+  discountValue: string
   minOrder: string
   maxDiscount: string | null
   usageLimit: number
@@ -27,7 +28,7 @@ export default function CouponsPage() {
   const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null)
   const [formData, setFormData] = useState({
     code: '',
-    type: 'PERCENTAGE',
+    discountType: 'PERCENTAGE',
     value: '',
     minOrder: '0',
     maxDiscount: '',
@@ -81,7 +82,7 @@ export default function CouponsPage() {
       setShowForm(false)
       setEditingCoupon(null)
       setFormData({
-        code: '', type: 'PERCENTAGE', value: '', minOrder: '0',
+        code: '', discountType: 'PERCENTAGE', value: '', minOrder: '0',
         maxDiscount: '', usageLimit: '100', validFrom: '', validUntil: '', isActive: true
       })
       fetchCoupons()
@@ -111,7 +112,7 @@ export default function CouponsPage() {
           onClick={() => {
             setEditingCoupon(null)
             setFormData({
-              code: '', type: 'PERCENTAGE', value: '', minOrder: '0',
+              code: '', discountType: 'PERCENTAGE', value: '', minOrder: '0',
               maxDiscount: '', usageLimit: '100', validFrom: '', validUntil: '', isActive: true
             })
             setShowForm(true)
@@ -129,8 +130,10 @@ export default function CouponsPage() {
           <h2 className="font-semibold mb-4">{editingCoupon ? 'Edit Coupon' : 'Create Coupon'}</h2>
           <form onSubmit={handleSubmit} className="grid md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Code</label>
+              <label htmlFor="coupon-code" className="block text-sm font-medium mb-1">Code</label>
               <input
+                id="coupon-code"
+                name="code"
                 type="text"
                 value={formData.code}
                 onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
@@ -140,10 +143,12 @@ export default function CouponsPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Type</label>
+              <label htmlFor="discount-type" className="block text-sm font-medium mb-1">Type</label>
               <select
-                value={formData.type}
-                onChange={(e) => setFormData({ ...formData, type: e.target.value as 'PERCENTAGE' | 'FLAT' })}
+                id="discount-type"
+                name="discountType"
+                value={formData.discountType}
+                onChange={(e) => setFormData({ ...formData, discountType: e.target.value as 'PERCENTAGE' | 'FLAT' })}
                 className="input"
               >
                 <option value="PERCENTAGE">Percentage</option>
@@ -151,19 +156,23 @@ export default function CouponsPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Value</label>
+              <label htmlFor="discount-value" className="block text-sm font-medium mb-1">Value</label>
               <input
+                id="discount-value"
+                name="value"
                 type="number"
                 value={formData.value}
                 onChange={(e) => setFormData({ ...formData, value: e.target.value })}
                 className="input"
-                placeholder={formData.type === 'PERCENTAGE' ? '10' : '100'}
+                placeholder={formData.discountType === 'PERCENTAGE' ? '10' : '100'}
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Min Order Amount</label>
+              <label htmlFor="min-order" className="block text-sm font-medium mb-1">Min Order Amount</label>
               <input
+                id="min-order"
+                name="minOrder"
                 type="number"
                 value={formData.minOrder}
                 onChange={(e) => setFormData({ ...formData, minOrder: e.target.value })}
@@ -171,10 +180,12 @@ export default function CouponsPage() {
                 placeholder="500"
               />
             </div>
-            {formData.type === 'PERCENTAGE' && (
+            {formData.discountType === 'PERCENTAGE' && (
               <div>
-                <label className="block text-sm font-medium mb-1">Max Discount (optional)</label>
+                <label htmlFor="max-discount" className="block text-sm font-medium mb-1">Max Discount (optional)</label>
                 <input
+                  id="max-discount"
+                  name="maxDiscount"
                   type="number"
                   value={formData.maxDiscount}
                   onChange={(e) => setFormData({ ...formData, maxDiscount: e.target.value })}
@@ -184,8 +195,10 @@ export default function CouponsPage() {
               </div>
             )}
             <div>
-              <label className="block text-sm font-medium mb-1">Usage Limit</label>
+              <label htmlFor="usage-limit" className="block text-sm font-medium mb-1">Usage Limit</label>
               <input
+                id="usage-limit"
+                name="usageLimit"
                 type="number"
                 value={formData.usageLimit}
                 onChange={(e) => setFormData({ ...formData, usageLimit: e.target.value })}
@@ -194,8 +207,10 @@ export default function CouponsPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Valid From</label>
+              <label htmlFor="valid-from" className="block text-sm font-medium mb-1">Valid From</label>
               <input
+                id="valid-from"
+                name="validFrom"
                 type="date"
                 value={formData.validFrom}
                 onChange={(e) => setFormData({ ...formData, validFrom: e.target.value })}
@@ -204,8 +219,10 @@ export default function CouponsPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Valid Until</label>
+              <label htmlFor="valid-until" className="block text-sm font-medium mb-1">Valid Until</label>
               <input
+                id="valid-until"
+                name="validUntil"
                 type="date"
                 value={formData.validUntil}
                 onChange={(e) => setFormData({ ...formData, validUntil: e.target.value })}
@@ -213,8 +230,10 @@ export default function CouponsPage() {
                 required
               />
             </div>
-            <label className="flex items-center gap-2">
+            <label htmlFor="is-active" className="flex items-center gap-2">
               <input
+                id="is-active"
+                name="isActive"
                 type="checkbox"
                 checked={formData.isActive}
                 onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
@@ -257,7 +276,7 @@ export default function CouponsPage() {
                 <tr key={coupon.id}>
                   <td className="font-mono font-medium">{coupon.code}</td>
                   <td>
-                    {coupon.type === 'PERCENTAGE' ? `${coupon.value}%` : `₹${coupon.value}`}
+                    {coupon.discountType === 'PERCENTAGE' ? `${coupon.discountValue}%` : `₹${coupon.discountValue}`}
                     {coupon.maxDiscount && <span className="text-gray-400 text-xs"> (max ₹{coupon.maxDiscount})</span>}
                   </td>
                   <td>₹{coupon.minOrder}</td>
@@ -277,13 +296,13 @@ export default function CouponsPage() {
                           setEditingCoupon(coupon)
                           setFormData({
                             code: coupon.code,
-                            type: coupon.type,
-                            value: coupon.value,
+                            discountType: coupon.discountType,
+                            discountValue: coupon.discountValue ?? '',
                             minOrder: coupon.minOrder,
                             maxDiscount: coupon.maxDiscount || '',
                             usageLimit: String(coupon.usageLimit),
-                            validFrom: coupon.validFrom.split('T')[0],
-                            validUntil: coupon.validUntil.split('T')[0],
+                            validFrom: coupon.validFrom ? coupon.validFrom.split('T')[0] : '',
+                            validUntil: coupon.validUntil ? coupon.validUntil.split('T')[0] : '',
                             isActive: coupon.isActive,
                           })
                           setShowForm(true)

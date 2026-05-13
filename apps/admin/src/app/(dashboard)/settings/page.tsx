@@ -124,8 +124,10 @@ export default function SettingsPage() {
           <h2 className="font-semibold mb-4">Store Information</h2>
           <div className="grid md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Store Name</label>
+              <label htmlFor="store-name" className="block text-sm font-medium mb-1">Store Name</label>
               <input
+                id="store-name"
+                name="storeName"
                 type="text"
                 value={config?.store.name || ''}
                 onChange={(e) => setConfig({
@@ -136,8 +138,10 @@ export default function SettingsPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Tagline</label>
+              <label htmlFor="tagline" className="block text-sm font-medium mb-1">Tagline</label>
               <input
+                id="tagline"
+                name="tagline"
                 type="text"
                 value={config?.store.tagline || ''}
                 onChange={(e) => setConfig({
@@ -148,8 +152,10 @@ export default function SettingsPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Email</label>
+              <label htmlFor="email" className="block text-sm font-medium mb-1">Email</label>
               <input
+                id="email"
+                name="email"
                 type="email"
                 value={config?.store.email || ''}
                 onChange={(e) => setConfig({
@@ -160,8 +166,10 @@ export default function SettingsPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Phone</label>
+              <label htmlFor="phone" className="block text-sm font-medium mb-1">Phone</label>
               <input
+                id="phone"
+                name="phone"
                 type="tel"
                 value={config?.store.phone || ''}
                 onChange={(e) => setConfig({
@@ -172,8 +180,10 @@ export default function SettingsPage() {
               />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-1">Address</label>
+              <label htmlFor="address" className="block text-sm font-medium mb-1">Address</label>
               <textarea
+                id="address"
+                name="address"
                 value={config?.store.address || ''}
                 onChange={(e) => setConfig({
                   ...config!,
@@ -191,9 +201,10 @@ export default function SettingsPage() {
           <h2 className="font-semibold mb-4">Branding</h2>
           <div className="grid md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Primary Color</label>
+              <label htmlFor="primary-color" className="block text-sm font-medium mb-1">Primary Color</label>
               <div className="flex gap-2">
                 <input
+                  id="primary-color-picker"
                   type="color"
                   value={config?.branding.primaryColor || '#3b82f6'}
                   onChange={(e) => setConfig({
@@ -203,6 +214,8 @@ export default function SettingsPage() {
                   className="w-12 h-10 rounded border border-gray-300"
                 />
                 <input
+                  id="primary-color"
+                  name="primaryColor"
                   type="text"
                   value={config?.branding.primaryColor || ''}
                   onChange={(e) => setConfig({
@@ -214,9 +227,10 @@ export default function SettingsPage() {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Secondary Color</label>
+              <label htmlFor="secondary-color" className="block text-sm font-medium mb-1">Secondary Color</label>
               <div className="flex gap-2">
                 <input
+                  id="secondary-color-picker"
                   type="color"
                   value={config?.branding.secondaryColor || '#1e40af'}
                   onChange={(e) => setConfig({
@@ -226,6 +240,8 @@ export default function SettingsPage() {
                   className="w-12 h-10 rounded border border-gray-300"
                 />
                 <input
+                  id="secondary-color"
+                  name="secondaryColor"
                   type="text"
                   value={config?.branding.secondaryColor || ''}
                   onChange={(e) => setConfig({
@@ -244,8 +260,10 @@ export default function SettingsPage() {
           <h2 className="font-semibold mb-4">Shipping</h2>
           <div className="grid md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Free Shipping Minimum</label>
+              <label htmlFor="free-shipping-min" className="block text-sm font-medium mb-1">Free Shipping Minimum</label>
               <input
+                id="free-shipping-min"
+                name="freeShippingMin"
                 type="number"
                 value={config?.shipping.freeShippingMin || ''}
                 onChange={(e) => setConfig({
@@ -257,8 +275,10 @@ export default function SettingsPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Default Shipping Charge</label>
+              <label htmlFor="default-charge" className="block text-sm font-medium mb-1">Default Shipping Charge</label>
               <input
+                id="default-charge"
+                name="defaultCharge"
                 type="number"
                 value={config?.shipping.defaultCharge || ''}
                 onChange={(e) => setConfig({
@@ -276,8 +296,10 @@ export default function SettingsPage() {
         <div className="card p-6">
           <h2 className="font-semibold mb-4">Features</h2>
           <div className="grid md:grid-cols-2 gap-4">
-            <label className="flex items-center gap-3">
+            <label htmlFor="guest-checkout" className="flex items-center gap-3">
               <input
+                id="guest-checkout"
+                name="guestCheckout"
                 type="checkbox"
                 checked={config?.features.guestCheckout || false}
                 onChange={(e) => setConfig({
@@ -288,8 +310,10 @@ export default function SettingsPage() {
               />
               <span>Enable Guest Checkout</span>
             </label>
-            <label className="flex items-center gap-3">
+            <label htmlFor="enable-wishlist" className="flex items-center gap-3">
               <input
+                id="enable-wishlist"
+                name="wishlist"
                 type="checkbox"
                 checked={config?.features.wishlist || false}
                 onChange={(e) => setConfig({
@@ -300,8 +324,10 @@ export default function SettingsPage() {
               />
               <span>Enable Wishlist</span>
             </label>
-            <label className="flex items-center gap-3">
+            <label htmlFor="enable-coupons" className="flex items-center gap-3">
               <input
+                id="enable-coupons"
+                name="coupons"
                 type="checkbox"
                 checked={config?.features.coupons || false}
                 onChange={(e) => setConfig({
@@ -312,8 +338,10 @@ export default function SettingsPage() {
               />
               <span>Enable Coupons</span>
             </label>
-            <label className="flex items-center gap-3">
+            <label htmlFor="enable-cod" className="flex items-center gap-3">
               <input
+                id="enable-cod"
+                name="cod"
                 type="checkbox"
                 checked={config?.features.cod || false}
                 onChange={(e) => setConfig({

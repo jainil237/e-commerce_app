@@ -85,12 +85,14 @@ app.use('/api', (_req, res, next) => {
   next()
 })
 
-// General rate limiting
+// General rate limiting with environment-based limits
+const isDevelopment = process.env.NODE_ENV === 'development'
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // 100 requests per window
+  max: isDevelopment ? 1000 : 100, // 1000 requests in dev, 100 in prod
   standardHeaders: true,
   legacyHeaders: false,
+  message: { success: false, message: 'Too many requests, please try again later', code: 'RATE_LIMITED' },
 })
 
 // Logging

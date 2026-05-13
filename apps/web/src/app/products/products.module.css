@@ -132,11 +132,11 @@
 
 /* ─── Loading Skeletons ─── */
 .skeletonCard {
-  @apply bg-[var(--surface-0)] rounded-2xl overflow-hidden border border-[var(--border-subtle)];
+  @apply bg-[var(--surface-0)] rounded-2xl overflow-hidden border border-[var(--border-subtle)] h-full flex flex-col;
 }
 
 .skeletonImage {
-  @apply aspect-[4/3] bg-gray-200 animate-pulse dark:bg-gray-800;
+  @apply aspect-[4/3] bg-gray-200 animate-pulse dark:bg-gray-800 shrink-0;
 }
 
 .skeletonContent {

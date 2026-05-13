@@ -78,6 +78,7 @@ export default function CheckoutPage() {
         const res = await fetch('/api/v1/cart/validate-checkout', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({
             items: items.map(i => ({ productId: i.productId, quantity: i.quantity })),
             sessionId,
@@ -142,6 +143,7 @@ export default function CheckoutPage() {
 
     setIsLoading(true)
     try {
+      const sessionId = typeof window !== 'undefined' ? localStorage.getItem('cartSessionId') || undefined : undefined
       const res = await fetch('/api/v1/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -150,6 +152,7 @@ export default function CheckoutPage() {
           items: items.map(i => ({ productId: i.productId, quantity: i.quantity })),
           addressId: selectedAddress,
           couponCode: appliedCoupon?.code,
+          sessionId,
         }),
       })
       const data = await res.json()

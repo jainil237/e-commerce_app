@@ -74,5 +74,8 @@ async function uploadToLocal(
   const filePath = path.join(uploadDir, finalName)
   await fs.writeFile(filePath, buffer)
 
-  return `/uploads/${folder}/${finalName}`
+  // Return a fully-qualified URL so the frontend can load it from any origin.
+  // FRONTEND_URL is not used here — we need the *server's* own base URL.
+  const serverBase = (process.env.SERVER_BASE_URL || `http://localhost:${process.env.PORT || 4000}`).replace(/\/+$/, '')
+  return `${serverBase}/uploads/${folder}/${finalName}`
 }

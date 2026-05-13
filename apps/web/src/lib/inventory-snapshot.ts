@@ -73,41 +73,84 @@ export function removeSnapshot(productId: string) {
   saveStore(store)
 }
 
-/** Clear all snapshots */
-export function clearSnapshots() {
+/** Clear all cached snapshots */
+export function clearSnapshots(): void {
   if (typeof window === 'undefined') return
   localStorage.removeItem(SNAPSHOT_KEY)
 }
 
-/** Validate requested quantity against cached snapshot */
-export function validateAgainstSnapshot(
+/** Force refresh snapshot for a product by clearing cache first */
+export async function forceRefreshSnapshot(productId: string): Promise<InventorySnapshot | null> {
+  // Clear ALL snapshots to ensure fresh data
+  clearSnapshots()
+
+  // Fetch fresh data
+  return await refreshSnapshot(productId)
+}
+
+// ───────────────────────────────────────────────────────────────────
+// CANONICAL INVENTORY VALIDATION
+// ───────────────────────────────────────────────────────────────────
+//
+// Single source of truth formula:
+//
+//   availableQty = local_snapshot_available_qty
+//
+// To validate a new absolute cart qty:
+//   allowed = (newCartQty <= availableQty)
+//
+// ───────────────────────────────────────────────────────────────────
+
+/**
+ * Validate whether a quantity update is allowed locally.
+ *
+ * @param productId  - product to check
+ * @param newAbsoluteQty - the TOTAL cart qty the user wants to have after the operation
+ * @returns validation result
+ */
+export function validateCartQuantity(
   productId: string,
-  requestedQty: number
-): { valid: boolean; availableQty?: number; error?: string } {
+  newAbsoluteQty: number,
+): { valid: boolean; maxAllowed?: number; error?: string } {
   const snap = getSnapshot(productId)
+
   if (!snap) {
-    return { valid: false, error: 'No inventory snapshot available' }
+    // No snapshot — allow and let the server be the gatekeeper during checkout
+    return { valid: true }
   }
   if (!snap.isActive) {
     return { valid: false, error: 'Product is no longer available' }
   }
-  if (snap.availableQty < requestedQty) {
+
+  const maxAllowed = snap.availableQty
+
+  if (newAbsoluteQty > maxAllowed) {
+    if (maxAllowed <= 0) {
+      return {
+        valid: false,
+        maxAllowed: 0,
+        error: 'This product is currently out of stock',
+      }
+    }
     return {
       valid: false,
-      availableQty: snap.availableQty,
-      error: `Only ${snap.availableQty} items available`,
+      maxAllowed,
+      error: `Only ${maxAllowed} items available`,
     }
   }
-  return { valid: true, availableQty: snap.availableQty }
+
+  return { valid: true, maxAllowed }
 }
 
 /** Fetch latest snapshots from backend and cache them */
 export async function refreshSnapshots(productIds: string[]): Promise<InventorySnapshot[]> {
   if (productIds.length === 0) return []
+  const sessionId = typeof window !== 'undefined' ? localStorage.getItem('cartSessionId') || undefined : undefined
   const res = await fetch('/api/v1/cart/snapshot', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ productIds }),
+    credentials: 'include',
+    body: JSON.stringify({ productIds, sessionId }),
   })
   const data = await res.json()
   if (!data.success) throw new Error(data.message || 'Failed to fetch inventory snapshot')
@@ -124,8 +167,12 @@ export async function refreshSnapshots(productIds: string[]): Promise<InventoryS
 
 /** Refresh a single product snapshot */
 export async function refreshSnapshot(productId: string): Promise<InventorySnapshot | null> {
-  const snaps = await refreshSnapshots([productId])
-  return snaps[0] || null
+  try {
+    const snaps = await refreshSnapshots([productId])
+    return snaps[0] || null
+  } catch (error) {
+    throw error
+  }
 }
 
 /** Auto-refresh if stale; always returns current cached data */

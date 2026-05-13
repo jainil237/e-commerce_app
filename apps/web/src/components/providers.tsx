@@ -1,19 +1,15 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react'
 import useSWR, { SWRConfig } from 'swr'
-import {
-  getSnapshot,
-  validateAgainstSnapshot,
-  refreshSnapshot,
-  refreshSnapshots,
-} from '@/lib/inventory-snapshot'
+import { validateCartQuantity, refreshSnapshot, clearSnapshots, forceRefreshSnapshot } from '../lib/inventory-snapshot'
 
 // ─── Cart API helper ───
 async function cartApi(endpoint: string, body: object) {
   const res = await fetch(`/api/v1/cart/${endpoint}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     body: JSON.stringify(body),
   })
 
@@ -287,17 +283,7 @@ function AuthProvider({ children }: { children: ReactNode }) {
   )
 }
 
-// ─── Cart Provider ───
-//
-// Cart is stored in localStorage as { userId, items[] }.
-//   - Product.id is the unique key (stored as `productId` in each CartItem).
-//   - Each item stores price + name so subtotal works offline (no API needed).
-//   - A `userId` field tracks ownership:
-//       • null  = guest cart
-//       • "abc" = belongs to user abc
-//   - On login  → guest cart is claimed by the new user; mismatched user carts are replaced.
-//   - On logout → cart + localStorage are wiped.
-//
+
 function CartProvider({ children }: { children: ReactNode }) {
   const { user, isLoading: authLoading } = useAuth()
   const { showToast } = useToast()
@@ -356,26 +342,37 @@ function CartProvider({ children }: { children: ReactNode }) {
     saveCartData({ userId, items })
   }, [items, userId, isHydrated])
 
+  // ── Ref to always have latest items without stale closures ──
+  const itemsRef = useRef(items)
+  useEffect(() => { itemsRef.current = items }, [items])
+
   // ── Cart operations ──
 
   const addItem = useCallback(
     async (productId: string, quantity = 1, productMeta?: { price: number; name: string }) => {
-      const sessionId = typeof window !== 'undefined' ? localStorage.getItem('cartSessionId') || undefined : undefined
+      const currentItems = itemsRef.current
 
-      // Check local snapshot first to avoid unnecessary API calls
-      const snapCheck = validateAgainstSnapshot(productId, quantity)
+      // Get existing cart quantity for this product
+      const existingItem = currentItems.find(item => item.productId === productId)
+      const existingCartQty = existingItem?.quantity || 0
+      const newTotalQty = existingCartQty + quantity
+
+      // Validate against snapshot locally
+      let snapCheck = validateCartQuantity(productId, newTotalQty)
+
+      // If validation fails, force refresh snapshot and retry once
       if (!snapCheck.valid && snapCheck.error) {
-        showToast('error', snapCheck.error)
-        return
-      }
+        try {
+          await forceRefreshSnapshot(productId)
+          snapCheck = validateCartQuantity(productId, newTotalQty)
+        } catch (refreshErr) {
+          console.warn('Failed to force refresh snapshot:', refreshErr)
+        }
 
-      try {
-        await cartApi('add', { productId, quantity, sessionId })
-      } catch (err: any) {
-        showToast('error', err.message || 'Failed to add item')
-        // Refresh snapshot so UI reflects actual stock
-        refreshSnapshot(productId).catch(() => {})
-        return
+        if (!snapCheck.valid && snapCheck.error) {
+          showToast('error', snapCheck.error)
+          return
+        }
       }
 
       setItems(prev => {
@@ -401,52 +398,44 @@ function CartProvider({ children }: { children: ReactNode }) {
           },
         ]
       })
-
-      // Refresh snapshot after successful add
-      refreshSnapshot(productId).catch(() => {})
     },
     [showToast]
   )
 
   const removeItem = useCallback(async (productId: string) => {
-    const sessionId = typeof window !== 'undefined' ? localStorage.getItem('cartSessionId') || undefined : undefined
-    try {
-      await cartApi('remove', { productId, sessionId })
-    } catch (err: any) {
-      console.error('Failed to remove reservation:', err.message)
-      showToast('error', err.message || 'Failed to remove item')
-    }
     setItems(prev => prev.filter(item => item.productId !== productId))
-  }, [showToast])
+  }, [])
 
   const updateQuantity = useCallback(
     async (productId: string, quantity: number) => {
-      const sessionId = typeof window !== 'undefined' ? localStorage.getItem('cartSessionId') || undefined : undefined
+      const currentItems = itemsRef.current
 
+      // Remove if qty drops to 0 or below
       if (quantity <= 0) {
-        try {
-          await cartApi('remove', { productId, sessionId })
-        } catch (err: any) {
-          console.error('Failed to remove reservation:', err.message)
-          showToast('error', err.message || 'Failed to remove item')
-        }
         setItems(prev => prev.filter(item => item.productId !== productId))
         return
       }
 
-      // Check local snapshot first
-      const snapCheck = validateAgainstSnapshot(productId, quantity)
-      if (!snapCheck.valid && snapCheck.error) {
-        showToast('error', snapCheck.error)
-        return
-      }
+      const existingItem = currentItems.find(item => item.productId === productId)
+      const existingCartQty = existingItem?.quantity || 0
 
-      try {
-        await cartApi('update-quantity', { productId, quantity, sessionId })
-      } catch (err: any) {
-        showToast('error', err.message || 'Failed to update quantity')
-        refreshSnapshot(productId).catch(() => {})
-        return
+      // DECREMENT is always allowed — only validate on INCREMENT
+      if (quantity > existingCartQty) {
+        let snapCheck = validateCartQuantity(productId, quantity)
+
+        if (!snapCheck.valid && snapCheck.error) {
+          try {
+            await forceRefreshSnapshot(productId)
+            snapCheck = validateCartQuantity(productId, quantity)
+          } catch (refreshErr) {
+            console.warn('Failed to force refresh snapshot:', refreshErr)
+          }
+
+          if (!snapCheck.valid && snapCheck.error) {
+            showToast('error', snapCheck.error)
+            return
+          }
+        }
       }
 
       setItems(prev =>
@@ -454,8 +443,6 @@ function CartProvider({ children }: { children: ReactNode }) {
           item.productId === productId ? { ...item, quantity } : item
         )
       )
-
-      refreshSnapshot(productId).catch(() => {})
     },
     [showToast]
   )
@@ -464,6 +451,7 @@ function CartProvider({ children }: { children: ReactNode }) {
     setItems([])
     setUserId(null)
     clearCartStorage()
+    clearSnapshots()
   }, [])
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0)
@@ -490,7 +478,8 @@ function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
 
   const showToast = (type: 'success' | 'error' | 'info', message: string) => {
-    const id = Date.now().toString()
+    // Use a combination of timestamp and random number to ensure uniqueness
+    const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
     setToasts(prev => [...prev, { id, type, message }])
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id))

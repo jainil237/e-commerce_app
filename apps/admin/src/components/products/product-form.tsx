@@ -168,8 +168,10 @@ export function ProductForm({ initialData, mode }: ProductFormProps) {
         
         <div className="grid md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <label className="text-sm font-medium">Product Name *</label>
+            <label htmlFor="name" className="text-sm font-medium">Product Name *</label>
             <input 
+              id="name"
+              name="name"
               required
               type="text" 
               className="input w-full"
@@ -179,8 +181,10 @@ export function ProductForm({ initialData, mode }: ProductFormProps) {
           </div>
           
           <div className="space-y-2">
-            <label className="text-sm font-medium">Slug (auto-generated if empty)</label>
+            <label htmlFor="slug" className="text-sm font-medium">Slug (auto-generated if empty)</label>
             <input 
+              id="slug"
+              name="slug"
               type="text" 
               className="input w-full"
               value={formData.slug}
@@ -189,8 +193,10 @@ export function ProductForm({ initialData, mode }: ProductFormProps) {
           </div>
           
           <div className="space-y-2 md:col-span-2">
-            <label className="text-sm font-medium">Description *</label>
+            <label htmlFor="description" className="text-sm font-medium">Description *</label>
             <textarea 
+              id="description"
+              name="description"
               required
               rows={4}
               className="input w-full"
@@ -200,9 +206,11 @@ export function ProductForm({ initialData, mode }: ProductFormProps) {
           </div>
           
           <div className="space-y-2">
-            <label className="text-sm font-medium">Category *</label>
+            <label htmlFor="categoryId" className="text-sm font-medium">Category *</label>
             {!isAddingCategory ? (
               <select 
+                id="categoryId"
+                name="categoryId"
                 required
                 className="input w-full"
                 value={formData.categoryId}
@@ -223,6 +231,8 @@ export function ProductForm({ initialData, mode }: ProductFormProps) {
             ) : (
               <div className="flex gap-2">
                 <input 
+                  id="newCategoryName"
+                  name="newCategoryName"
                   type="text"
                   placeholder="New category name"
                   className="input flex-1"
@@ -260,8 +270,10 @@ export function ProductForm({ initialData, mode }: ProductFormProps) {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">SKU *</label>
+            <label htmlFor="sku" className="text-sm font-medium">SKU *</label>
             <input 
+              id="sku"
+              name="sku"
               required
               type="text" 
               className="input w-full"
@@ -277,8 +289,10 @@ export function ProductForm({ initialData, mode }: ProductFormProps) {
         
         <div className="grid md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <label className="text-sm font-medium">Selling Price (₹) *</label>
+            <label htmlFor="price" className="text-sm font-medium">Selling Price (₹) *</label>
             <input 
+              id="price"
+              name="price"
               required
               type="number" 
               step="0.01"
@@ -290,8 +304,10 @@ export function ProductForm({ initialData, mode }: ProductFormProps) {
           </div>
           
           <div className="space-y-2">
-            <label className="text-sm font-medium">MRP (₹) *</label>
+            <label htmlFor="mrp" className="text-sm font-medium">MRP (₹) *</label>
             <input 
+              id="mrp"
+              name="mrp"
               required
               type="number" 
               step="0.01"
@@ -303,8 +319,10 @@ export function ProductForm({ initialData, mode }: ProductFormProps) {
           </div>
           
           <div className="space-y-2">
-            <label className="text-sm font-medium">Stock *</label>
+            <label htmlFor="stock" className="text-sm font-medium">Stock *</label>
             <input 
+              id="stock"
+              name="stock"
               required
               type="number" 
               min="0"
@@ -315,8 +333,10 @@ export function ProductForm({ initialData, mode }: ProductFormProps) {
           </div>
           
           <div className="space-y-2">
-            <label className="text-sm font-medium">GST (%) *</label>
+            <label htmlFor="gstPercent" className="text-sm font-medium">GST (%) *</label>
             <input 
+              id="gstPercent"
+              name="gstPercent"
               required
               type="number" 
               step="0.01"
@@ -348,10 +368,12 @@ export function ProductForm({ initialData, mode }: ProductFormProps) {
             ))}
             
             {imagePreviews.length < 5 && (
-              <label className="w-24 h-24 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors">
+              <label htmlFor="image-upload" className="w-24 h-24 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors">
                 <Camera className="w-6 h-6 text-gray-400 mb-1" />
                 <span className="text-xs text-gray-500">Add Image</span>
                 <input 
+                  id="image-upload"
+                  name="images"
                   type="file" 
                   accept="image/jpeg,image/png,image/webp" 
                   className="hidden" 
@@ -370,8 +392,10 @@ export function ProductForm({ initialData, mode }: ProductFormProps) {
         
         <div className="grid md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <label className="text-sm font-medium">Weight (grams)</label>
+            <label htmlFor="weight" className="text-sm font-medium">Weight (grams)</label>
             <input 
+              id="weight"
+              name="weight"
               type="number" 
               min="0"
               className="input w-full"
@@ -381,8 +405,10 @@ export function ProductForm({ initialData, mode }: ProductFormProps) {
           </div>
           
           <div className="space-y-2">
-            <label className="text-sm font-medium">Tags (comma separated)</label>
+            <label htmlFor="tags" className="text-sm font-medium">Tags (comma separated)</label>
             <input 
+              id="tags"
+              name="tags"
               type="text" 
               className="input w-full"
               value={formData.tags}
@@ -392,8 +418,10 @@ export function ProductForm({ initialData, mode }: ProductFormProps) {
         </div>
 
         <div className="flex items-center gap-6 mt-4">
-          <label className="flex items-center gap-2 cursor-pointer">
+          <label htmlFor="isActive" className="flex items-center gap-2 cursor-pointer">
             <input 
+              id="isActive"
+              name="isActive"
               type="checkbox" 
               checked={formData.isActive}
               onChange={e => setFormData({...formData, isActive: e.target.checked})}
@@ -402,8 +430,10 @@ export function ProductForm({ initialData, mode }: ProductFormProps) {
             <span className="text-sm font-medium">Active (Visible on store)</span>
           </label>
           
-          <label className="flex items-center gap-2 cursor-pointer">
+          <label htmlFor="isFeatured" className="flex items-center gap-2 cursor-pointer">
             <input 
+              id="isFeatured"
+              name="isFeatured"
               type="checkbox" 
               checked={formData.isFeatured}
               onChange={e => setFormData({...formData, isFeatured: e.target.checked})}

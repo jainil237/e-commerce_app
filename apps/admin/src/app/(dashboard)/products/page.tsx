@@ -83,11 +83,13 @@ export default function ProductsPage() {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input
+            id="product-search"
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search products..."
             className="input pl-10"
+            aria-label="Search products"
           />
         </div>
       </div>
@@ -117,7 +119,7 @@ export default function ProductsPage() {
                 <tr key={product.id}>
                   <td>
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gray-100 rounded-lg overflow-hidden">
+                      <div className="relative w-10 h-10 bg-gray-100 rounded-lg overflow-hidden">
                         <FallbackImage
                           src={product.images[0]?.url}
                           alt={product.name}

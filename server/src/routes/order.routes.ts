@@ -18,13 +18,16 @@ const razorpay = new Razorpay({
 })
 
 const createOrderSchema = z.object({
-  items: z.array(z.object({
-    productId: z.string().uuid(),
-    quantity: z.number().int().positive(),
-  })).min(1),
+  items: z.array(
+    z.object({
+      productId: z.string().uuid(),
+      quantity: z.number().int().positive(),
+    })
+  ).min(1),
   addressId: z.string().uuid(),
   couponCode: z.string().optional(),
   notes: z.string().optional(),
+  sessionId: z.string().optional(),
 })
 
 // Create order and Razorpay order
@@ -61,43 +64,25 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next) => 
       throw createError(400, 'Some products are unavailable', 'PRODUCTS_UNAVAILABLE')
     }
 
-    // Check stock (consider reservations)
-    for (const item of validatedData.items) {
-      const product = products.find(p => p.id === item.productId)!
-      const reserved = await prisma.stockReservation.aggregate({
-        where: {
-          productId: item.productId,
-          status: 'ACTIVE',
-          expiresAt: { gt: new Date() },
-        },
-        _sum: { quantity: true },
-      })
-      const availableStock = product.stock - (reserved._sum.quantity || 0)
-      if (availableStock < item.quantity) {
-        throw createError(400, `Insufficient stock for ${product.name}`, 'INSUFFICIENT_STOCK')
-      }
-    }
-
-    // Convert reservations to order (deduct stock and mark as converted)
-    // Lock all products in consistent order to prevent deadlocks
+    // Validate stock and deduct atomically with row-level locks
     const sortedProductIds = [...productIds].sort()
     await prisma.$transaction(async (tx) => {
+      // Lock all products in consistent order to prevent deadlocks
       for (const id of sortedProductIds) {
         await tx.$executeRaw`SELECT id FROM Product WHERE id = ${id} FOR UPDATE`
       }
 
       for (const item of validatedData.items) {
+        const product = products.find(p => p.id === item.productId)!
+
+        if (product.stock < item.quantity) {
+          throw createError(400, `Insufficient stock for ${product.name}`, 'INSUFFICIENT_STOCK')
+        }
+
+        // Deduct stock
         await tx.product.update({
           where: { id: item.productId },
           data: { stock: { decrement: item.quantity } },
-        })
-        await tx.stockReservation.updateMany({
-          where: {
-            productId: item.productId,
-            userId: req.user!.id,
-            status: 'ACTIVE',
-          },
-          data: { status: 'CONVERTED' },
         })
       }
     })
