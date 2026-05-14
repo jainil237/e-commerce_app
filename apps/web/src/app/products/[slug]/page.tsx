@@ -68,11 +68,11 @@ export default function ProductDetailPage() {
           <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 mt-4">
             <div className="lg:col-span-5 xl:col-span-6 skeleton aspect-[4/5] rounded-3xl" />
             <div className="lg:col-span-7 xl:col-span-6 space-y-6 mt-4">
-              <div className="skeleton h-6 w-32 rounded-lg" />
-              <div className="skeleton h-12 w-3/4 rounded-xl" />
-              <div className="skeleton h-10 w-1/3 rounded-lg" />
-              <div className="skeleton h-32 rounded-xl mt-8" />
-              <div className="skeleton h-16 rounded-xl mt-8" />
+              <div className="skeleton h-6 w-32" />
+              <div className="skeleton h-12 w-3/4" />
+              <div className="skeleton h-10 w-1/3" />
+              <div className="skeleton h-32 mt-8" />
+              <div className="skeleton h-16 mt-8" />
             </div>
           </div>
         </div>
@@ -84,11 +84,11 @@ export default function ProductDetailPage() {
     return (
       <div className={styles.wrapper}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32 text-center flex flex-col items-center justify-center">
-          <div className="w-24 h-24 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-6">
-            <Package className="w-12 h-12 text-gray-400" />
+          <div className="w-24 h-24 bg-[var(--surface-2)] rounded-full flex items-center justify-center mb-6">
+            <Package className="w-12 h-12 text-[var(--text-tertiary)]" />
           </div>
-          <h1 className="text-3xl font-black mb-4 text-gray-900 dark:text-white">Product not found</h1>
-          <p className="text-gray-500 mb-8 max-w-md">The product you're looking for doesn't exist or has been removed.</p>
+          <h1 className="text-3xl font-black mb-4 text-[var(--text-primary)]">Product not found</h1>
+          <p className="text-[var(--text-secondary)] mb-8 max-w-md">The product you're looking for doesn't exist or has been removed.</p>
           <Link href="/products">
             <Button variant="primary" size="lg">Browse all products</Button>
           </Link>
@@ -222,8 +222,8 @@ export default function ProductDetailPage() {
               <div className={styles.statusRow}>
                 {effectiveStock > 0 ? (
                   <>
-                    <span className={`${styles.statusIndicator} bg-emerald-500`} />
-                    <span className="text-emerald-600 dark:text-emerald-500">In Stock</span>
+                    <span className={`${styles.statusIndicator} bg-[var(--success)]`} />
+                    <span className="text-[var(--success)]">In Stock</span>
                     {effectiveStock < 10 && (
                       <span className={styles.stockAlert}>
                         {existingCartQty > 0 
@@ -235,8 +235,8 @@ export default function ProductDetailPage() {
                   </>
                 ) : (
                   <>
-                    <span className={`${styles.statusIndicator} bg-red-500`} />
-                    <span className="text-red-600 dark:text-red-400">
+                    <span className={`${styles.statusIndicator} bg-[var(--error)]`} />
+                    <span className="text-[var(--error)]">
                       {existingCartQty >= effectiveStock 
                         ? 'Maximum available quantity already added'
                         : 'Out of Stock'
@@ -328,19 +328,19 @@ export default function ProductDetailPage() {
                 <div className={styles.trustIconWrapper}>
                   <Truck className="w-6 h-6" />
                 </div>
-                <p className={styles.trustText}>Free Delivery<br/><span className="text-xs text-gray-500 font-normal">Above {config.store.currencySymbol}{config.shipping.freeShippingAbove}</span></p>
+                <p className={styles.trustText}>Free Delivery<br/><span className="text-xs text-[var(--text-tertiary)] font-normal">Above {config.store.currencySymbol}{config.shipping.freeShippingAbove}</span></p>
               </div>
               <div className={styles.trustItem}>
                 <div className={styles.trustIconWrapper}>
                   <ShieldCheck className="w-6 h-6" />
                 </div>
-                <p className={styles.trustText}>100% Secure<br/><span className="text-xs text-gray-500 font-normal">Encrypted payment</span></p>
+                <p className={styles.trustText}>100% Secure<br/><span className="text-xs text-[var(--text-tertiary)] font-normal">Encrypted payment</span></p>
               </div>
               <div className={styles.trustItem}>
                 <div className={styles.trustIconWrapper}>
                   <RotateCcw className="w-6 h-6" />
                 </div>
-                <p className={styles.trustText}>Easy Returns<br/><span className="text-xs text-gray-500 font-normal">7-day policy</span></p>
+                <p className={styles.trustText}>Easy Returns<br/><span className="text-xs text-[var(--text-tertiary)] font-normal">7-day policy</span></p>
               </div>
             </div>
 
@@ -357,7 +357,7 @@ export default function ProductDetailPage() {
 
             {/* Product Specifications */}
             <div className={styles.metadataPanel}>
-              <h3 className="text-base font-bold text-gray-900 dark:text-white mb-4">Specifications</h3>
+              <h3 className="text-base font-bold text-[var(--text-primary)] mb-4">Specifications</h3>
               <div className={styles.metaGrid}>
                 <div className={styles.metaItem}>
                   <span className={styles.metaLabel}>SKU</span>
@@ -387,14 +387,14 @@ export default function ProductDetailPage() {
                 if (tags.length === 0) return null;
 
                 return (
-                  <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-800">
+                  <div className="mt-6 pt-4 border-t border-[var(--border-subtle)]">
                     <div className="flex items-center gap-2 mb-2">
-                      <Tag className="w-4 h-4 text-gray-400" />
+                      <Tag className="w-4 h-4 text-[var(--text-tertiary)]" />
                       <span className={styles.metaLabel}>Tags</span>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {tags.map(tag => (
-                        <span key={tag} className="px-3 py-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full text-xs font-medium text-gray-600 dark:text-gray-300">
+                        <span key={tag} className="px-3 py-1 bg-[var(--surface-2)] border border-[var(--border-subtle)] rounded-full text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
                           {tag}
                         </span>
                       ))}

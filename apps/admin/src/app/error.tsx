@@ -19,17 +19,17 @@ export default function ErrorPage({
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center">
       <h2 className="text-2xl font-bold mb-2">Admin page failed to load</h2>
-      <p className="text-gray-500 mb-6">Please try again or go back to dashboard.</p>
+      <p className="text-[var(--text-secondary)] mb-6">Please try again or go back to dashboard.</p>
       <div className="flex items-center gap-3">
-        <button type="button" onClick={reset} className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700">
+        <button type="button" onClick={reset} className="btn btn-primary btn-md">
           Try again
         </button>
-        <Link href="/" className="px-4 py-2 rounded-md border border-gray-300 hover:bg-gray-50">
+        <Link href="/" className="btn btn-secondary btn-md border border-[var(--border-base)]">
           Dashboard
         </Link>
       </div>
       {process.env.NODE_ENV === 'development' && (
-        <pre className="mt-6 text-left text-xs bg-gray-100 p-3 rounded-md max-w-3xl overflow-x-auto">
+        <pre className="mt-6 text-left text-xs bg-[var(--surface-2)] p-3 rounded-md max-w-3xl overflow-x-auto text-[var(--text-primary)]">
           {error.message}
         </pre>
       )}

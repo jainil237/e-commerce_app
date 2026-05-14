@@ -77,11 +77,11 @@ export default function ProductsPage() {
           Add Product
         </Link>
       </div>
-      {fetchError && <p className="text-sm text-gray-500 mb-4">{fetchError}</p>}
+      {fetchError && <p className="text-sm text-[var(--text-secondary)] mb-4">{fetchError}</p>}
 
       <div className="card p-4 mb-6">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-tertiary)]" />
           <input
             id="product-search"
             type="text"
@@ -110,7 +110,7 @@ export default function ProductsPage() {
             <tbody>
               {!isLoading && filteredProducts.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="text-center py-8 text-gray-500">
+                  <td colSpan={6} className="text-center py-8 text-[var(--text-secondary)]">
                     No product data available
                   </td>
                 </tr>
@@ -119,7 +119,7 @@ export default function ProductsPage() {
                 <tr key={product.id}>
                   <td>
                     <div className="flex items-center gap-3">
-                      <div className="relative w-10 h-10 bg-gray-100 rounded-lg overflow-hidden">
+                      <div className="relative w-10 h-10 bg-[var(--surface-1)] rounded-lg overflow-hidden">
                         <FallbackImage
                           src={product.images[0]?.url}
                           alt={product.name}
@@ -130,11 +130,11 @@ export default function ProductsPage() {
                       <span className="font-medium">{product.name}</span>
                     </div>
                   </td>
-                  <td className="text-gray-500">{product.category?.name}</td>
+                  <td className="text-[var(--text-secondary)]">{product.category?.name}</td>
                   <td>
                     <span className="font-medium">₹{product.price}</span>
                     {Number(product.mrp) > Number(product.price) && (
-                      <span className="text-gray-400 line-through ml-2">₹{product.mrp}</span>
+                      <span className="text-[var(--text-tertiary)] line-through ml-2">₹{product.mrp}</span>
                     )}
                   </td>
                   <td>
@@ -151,21 +151,21 @@ export default function ProductsPage() {
                     <div className="flex items-center justify-end gap-2">
                       <Link 
                         href={`/products/${product.slug}`} 
-                        className="p-2 hover:bg-gray-100 rounded-lg"
+                        className="p-2 hover:bg-[var(--surface-1)] rounded-lg"
                         title="View"
                       >
-                        <Eye className="w-4 h-4 text-gray-500" />
+                        <Eye className="w-4 h-4 text-[var(--text-secondary)]" />
                       </Link>
                       <Link 
                         href={`/products/edit/${product.id}`} 
-                        className="p-2 hover:bg-gray-100 rounded-lg"
+                        className="p-2 hover:bg-[var(--surface-1)] rounded-lg"
                         title="Edit"
                       >
-                        <Edit2 className="w-4 h-4 text-gray-500" />
+                        <Edit2 className="w-4 h-4 text-[var(--text-secondary)]" />
                       </Link>
                       <button 
                         onClick={() => handleDelete(product.id)}
-                        className="p-2 hover:bg-gray-100 rounded-lg"
+                        className="p-2 hover:bg-[var(--surface-1)] rounded-lg"
                         title="Delete"
                       >
                         <Trash2 className="w-4 h-4 text-red-500" />

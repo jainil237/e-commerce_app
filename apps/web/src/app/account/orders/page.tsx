@@ -20,11 +20,12 @@ interface Order {
 }
 
 const statusColors: Record<string, string> = {
-  PENDING: 'bg-yellow-100 text-yellow-700',
-  PROCESSING: 'bg-blue-100 text-blue-700',
-  SHIPPED: 'bg-purple-100 text-purple-700',
-  DELIVERED: 'bg-green-100 text-green-700',
-  CANCELLED: 'bg-red-100 text-red-700',
+  PENDING: 'badge-warning',
+  PROCESSING: 'badge-info',
+  SHIPPED: 'badge-info',
+  CONFIRMED: 'badge-success',
+  DELIVERED: 'badge-success',
+  CANCELLED: 'badge-error',
 }
 
 export default function OrdersPage() {
@@ -46,7 +47,7 @@ export default function OrdersPage() {
   if (authLoading || isLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-16 text-center">
-        <Loader2 className="w-8 h-8 animate-spin mx-auto text-[--brand-primary]" />
+        <Loader2 className="w-8 h-8 animate-spin mx-auto text-[var(--brand-primary)]" />
       </div>
     )
   }
@@ -54,7 +55,7 @@ export default function OrdersPage() {
   if (!user) {
     return (
       <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-16 text-center">
-        <p className="text-gray-500">Please login to view your orders</p>
+        <p className="text-[var(--text-secondary)]">Please login to view your orders</p>
         <Link href="/account/login" className="btn btn-primary btn-sm mt-4">
           Login
         </Link>
@@ -63,51 +64,66 @@ export default function OrdersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-8">
-        <h1 className="text-2xl font-bold mb-6">My Orders</h1>
+    <div className="min-h-screen bg-[var(--surface-1)]">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-8 md:py-12">
+        <div className="mb-8">
+          <h1 className="text-2xl md:text-3xl font-bold text-[var(--text-primary)]">My Orders</h1>
+          <p className="text-[var(--text-secondary)] mt-1">Track and manage your recent purchases</p>
+        </div>
 
         {orders.length === 0 ? (
-          <div className="card p-12 text-center">
-            <Package className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-            <h2 className="text-lg font-semibold mb-2">No orders yet</h2>
-            <p className="text-gray-500 mb-4">Start shopping to see your orders here</p>
-            <Link href="/products" className="btn btn-primary btn-sm">
-              Browse Products
+          <div className="card p-16 text-center border-dashed">
+            <div className="w-20 h-20 bg-[var(--surface-2)] rounded-full flex items-center justify-center mx-auto mb-6">
+              <Package className="w-10 h-10 text-[var(--text-tertiary)]" />
+            </div>
+            <h2 className="text-xl font-bold text-[var(--text-primary)] mb-2">No orders yet</h2>
+            <p className="text-[var(--text-secondary)] mb-8 max-w-sm mx-auto">Start shopping to see your orders here</p>
+            <Link href="/products">
+              <Button variant="primary-brand" size="lg">Browse Products</Button>
             </Link>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="grid gap-6">
             {orders.map((order) => (
-              <Link key={order.id} href={`/orders/${order.id}`}>
-                <div className="card p-4 hover:shadow-md transition-shadow">
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <p className="font-medium">Order #{order.orderNumber}</p>
-                      <p className="text-sm text-gray-500">
-                        {new Date(order.createdAt).toLocaleDateString('en-IN', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric',
-                        })}
-                      </p>
+              <Link key={order.id} href={`/orders/${order.id}`} className="block group">
+                <div className="card card-hover p-6 md:p-8">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-[var(--surface-2)] flex items-center justify-center">
+                        <Package className="w-6 h-6 text-[var(--brand-primary)]" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-[var(--text-primary)] text-lg">Order #{order.orderNumber}</p>
+                        <p className="text-sm text-[var(--text-secondary)]">
+                          Placed on {new Date(order.createdAt).toLocaleDateString('en-IN', {
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric',
+                          })}
+                        </p>
+                      </div>
                     </div>
-                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${statusColors[order.status] || 'bg-gray-100 text-gray-700'}`}>
+                    <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider ${statusColors[order.status] || 'badge-neutral'}`}>
                       {order.status}
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-3 text-sm text-gray-600">
-                    <span>{order.items.length} item{order.items.length > 1 ? 's' : ''}</span>
-                    <span>•</span>
-                    <span className="font-medium text-gray-900">₹{order.total}</span>
-                  </div>
-
-                  <div className="flex items-center justify-end mt-2">
-                    <span className="text-sm text-[--brand-primary] flex items-center">
+                  <div className="flex flex-wrap items-center gap-x-8 gap-y-4 pt-6 border-t border-[var(--border-subtle)]">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs uppercase tracking-widest text-[var(--text-tertiary)] font-bold">Items</span>
+                      <span className="text-sm font-semibold text-[var(--text-primary)]">
+                        {order.items.length} item{order.items.length > 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs uppercase tracking-widest text-[var(--text-tertiary)] font-bold">Total Amount</span>
+                      <span className="text-sm font-bold text-[var(--brand-primary)]">₹{order.total}</span>
+                    </div>
+                    
+                    <div className="ml-auto flex items-center text-sm font-bold text-[var(--brand-primary)] group-hover:translate-x-1 transition-transform">
                       View Details
                       <ChevronRight className="w-4 h-4 ml-1" />
-                    </span>
+                    </div>
                   </div>
                 </div>
               </Link>

@@ -187,86 +187,98 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-50">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-gray-500 font-medium animate-pulse">Loading dashboard intelligence...</p>
+      <div className="flex items-center justify-center h-screen bg-[var(--surface-1)]">
+        <div className="flex flex-col items-center gap-6">
+          <div className="relative">
+            <div className="w-16 h-16 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-8 h-8 border-4 border-blue-400/20 border-b-blue-400 rounded-full animate-spin-reverse"></div>
+            </div>
+          </div>
+          <p className="text-[var(--text-secondary)] font-bold uppercase tracking-widest text-xs animate-pulse">Syncing Intelligence...</p>
         </div>
       </div>
     )
   }
-
+ 
   const statCards = [
-    { label: 'Total Revenue', key: 'revenue', icon: DollarSign, prefix: '₹', color: 'blue' },
-    { label: 'Orders', key: 'orders', icon: ShoppingCart, prefix: '', color: 'purple' },
-    { label: 'Products', key: 'products', icon: Package, prefix: '', color: 'orange' },
-    { label: 'Customers', key: 'customers', icon: Users, prefix: '', color: 'green' },
+    { label: 'Total Revenue', key: 'revenue', icon: DollarSign, prefix: '₹', color: 'blue', gradient: 'from-blue-500/10 to-indigo-500/10' },
+    { label: 'Orders', key: 'orders', icon: ShoppingCart, prefix: '', color: 'purple', gradient: 'from-purple-500/10 to-pink-500/10' },
+    { label: 'Products', key: 'products', icon: Package, prefix: '', color: 'orange', gradient: 'from-orange-500/10 to-amber-500/10' },
+    { label: 'Customers', key: 'customers', icon: Users, prefix: '', color: 'green', gradient: 'from-green-500/10 to-emerald-500/10' },
   ]
-
+ 
   return (
     <div className="max-w-[1600px] mx-auto">
-      <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="mb-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Executive Dashboard</h1>
-          <p className="text-gray-500 mt-1 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-green-500"></span>
-            System Online • Welcome back, {user?.name}
+          <h1 className="text-4xl font-black text-[var(--text-primary)] tracking-tight">Intelligence Dashboard</h1>
+          <p className="text-[var(--text-secondary)] mt-2 flex items-center gap-2 font-medium">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+            </span>
+            Real-time analytics • {user?.name}
           </p>
         </div>
-        <div className="flex items-center gap-3 bg-white p-2 rounded-xl shadow-sm border border-gray-100">
-          <Calendar className="w-4 h-4 text-gray-400 ml-2" />
-          <select 
-            id="month-selector"
-            name="selectedMonth"
-            aria-label="Select month"
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(Number(e.target.value))}
-            className="text-sm font-semibold bg-transparent outline-none cursor-pointer pr-4"
-          >
-            {Array.from({ length: 12 }, (_, i) => (
-              <option key={i + 1} value={i + 1}>
-                {new Date(0, i).toLocaleString('default', { month: 'long' })}
-              </option>
-            ))}
-          </select>
-          <select 
-            id="year-selector"
-            name="selectedYear"
-            aria-label="Select year"
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(Number(e.target.value))}
-            className="text-sm font-semibold bg-transparent outline-none cursor-pointer border-l border-gray-100 pl-4"
-          >
-            {Array.from({ length: 5 }, (_, i) => {
-              const y = new Date().getFullYear() - i
-              return <option key={y} value={y}>{y}</option>
-            })}
-          </select>
+        <div className="flex items-center gap-3 bg-[var(--surface-0)] p-1.5 rounded-2xl shadow-lg border border-[var(--border-base)]">
+          <div className="flex items-center gap-2 px-3 py-2 bg-[var(--surface-1)] rounded-xl border border-[var(--border-base)]">
+            <Calendar className="w-4 h-4 text-blue-500" />
+            <select 
+              id="month-selector"
+              name="selectedMonth"
+              aria-label="Select month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(Number(e.target.value))}
+              className="text-xs font-bold bg-transparent outline-none cursor-pointer uppercase tracking-wider text-[var(--text-primary)]"
+            >
+              {Array.from({ length: 12 }, (_, i) => (
+                <option key={i + 1} value={i + 1} className="bg-[var(--surface-0)]">
+                  {new Date(0, i).toLocaleString('default', { month: 'long' })}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-2 bg-[var(--surface-1)] rounded-xl border border-[var(--border-base)]">
+            <select 
+              id="year-selector"
+              name="selectedYear"
+              aria-label="Select year"
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              className="text-xs font-bold bg-transparent outline-none cursor-pointer uppercase tracking-wider text-[var(--text-primary)]"
+            >
+              {Array.from({ length: 5 }, (_, i) => {
+                const y = new Date().getFullYear() - i
+                return <option key={y} value={y} className="bg-[var(--surface-0)]">{y}</option>
+              })}
+            </select>
+          </div>
         </div>
       </div>
-
+ 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
         {statCards.map((card) => {
           const data = stats?.[card.key as keyof DashboardStats] as { value: number; change: number }
           const isPositive = data?.change >= 0
           return (
-            <div key={card.label} className="group relative overflow-hidden bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
-              <div className="absolute top-0 right-0 w-24 h-24 -mr-8 -mt-8 bg-gray-50 rounded-full group-hover:scale-110 transition-transform duration-500 opacity-50"></div>
+            <div key={card.label} className={`group relative overflow-hidden bg-[var(--surface-0)] p-6 rounded-3xl shadow-sm border border-[var(--border-base)] hover:shadow-xl hover:-translate-y-1 transition-all duration-300`}>
+              <div className={`absolute top-0 right-0 w-32 h-32 -mr-8 -mt-8 bg-gradient-to-br ${card.gradient} rounded-full group-hover:scale-125 transition-transform duration-700 blur-2xl opacity-60`}></div>
               <div className="relative z-10">
-                <div className="flex items-center justify-between mb-4">
-                  <div className={`p-3 rounded-xl bg-${card.color}-50 text-${card.color}-600`}>
+                <div className="flex items-center justify-between mb-6">
+                  <div className={`p-3.5 rounded-2xl bg-${card.color}-500/10 text-${card.color}-600 dark:text-${card.color}-400 border border-${card.color}-500/20`}>
                     <card.icon className="w-6 h-6" />
                   </div>
-                  <div className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full ${isPositive ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-                    {isPositive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                  <div className={`flex items-center gap-1 text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider ${isPositive ? 'bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20'}`}>
+                    {isPositive ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
                     {Math.abs(data?.change || 0)}%
                   </div>
                 </div>
-                <p className="text-3xl font-bold text-gray-900 tracking-tight">
+                <p className="text-3xl font-black text-[var(--text-primary)] tracking-tight">
                   {card.prefix}{data?.value?.toLocaleString('en-IN') || 0}
                 </p>
-                <p className="text-sm font-medium text-gray-400 uppercase tracking-wider mt-1">{card.label}</p>
+                <p className="text-xs font-bold text-[var(--text-tertiary)] uppercase tracking-[0.15em] mt-2">{card.label}</p>
               </div>
             </div>
           )
@@ -276,16 +288,16 @@ export default function DashboardPage() {
       {/* Charts Section */}
       <div className="grid lg:grid-cols-5 gap-8 mb-10">
         {/* Revenue Weekly Chart */}
-        <div className="lg:col-span-3 bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+        <div className="lg:col-span-3 bg-[var(--surface-0)] p-8 rounded-3xl shadow-sm border border-[var(--border-base)]">
           <div className="flex items-center justify-between mb-12">
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Revenue Performance</h2>
+              <h2 className="text-xl font-bold text-[var(--text-primary)]">Revenue Performance</h2>
               <p className="text-sm text-gray-500">Weekly earnings comparison</p>
             </div>
             <div className="flex items-center gap-6 text-xs font-bold uppercase tracking-widest">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-blue-600"></div>
-                <span className="text-gray-900">Current</span>
+                <span className="text-[var(--text-primary)]">Current</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-gray-300"></div>
@@ -296,7 +308,7 @@ export default function DashboardPage() {
           
           <div className="h-[340px] relative">
             {isWeeklyLoading && (
-              <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] flex items-center justify-center z-10 rounded-2xl">
+              <div className="absolute inset-0 bg-[var(--surface-0)]/60 backdrop-blur-[2px] flex items-center justify-center z-10 rounded-2xl">
                 <div className="flex flex-col items-center gap-2">
                   <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
                   <span className="text-[10px] font-bold text-blue-600 uppercase tracking-tighter">Syncing...</span>
@@ -315,15 +327,15 @@ export default function DashboardPage() {
         </div>
 
         {/* Hierarchical Sales Chart */}
-        <div className="lg:col-span-2 bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+        <div className="lg:col-span-2 bg-[var(--surface-0)] p-8 rounded-3xl shadow-sm border border-[var(--border-base)]">
           <div className="mb-14">
-            <h2 className="text-xl font-bold text-gray-900">Top Categories & Products</h2>
+            <h2 className="text-xl font-bold text-[var(--text-primary)]">Top Categories & Products</h2>
             <p className="text-sm text-gray-500">Hierarchical sales distribution</p>
           </div>
           
           <div className="min-h-[340px] relative">
             {isHierarchyLoading && (
-              <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] flex items-center justify-center z-30 rounded-2xl">
+              <div className="absolute inset-0 bg-[var(--surface-0)]/60 backdrop-blur-[2px] flex items-center justify-center z-30 rounded-2xl">
                 <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
               </div>
             )}
@@ -340,18 +352,18 @@ export default function DashboardPage() {
       </div>
 
       {/* Recent Orders */}
-      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-8 border-b border-gray-50 flex items-center justify-between">
+      <div className="bg-[var(--surface-0)] rounded-3xl shadow-sm border border-[var(--border-base)] overflow-hidden">
+        <div className="p-8 border-b border-[var(--border-base)] flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Recent Transactions</h2>
+            <h2 className="text-xl font-bold text-[var(--text-primary)]">Recent Transactions</h2>
             <p className="text-sm text-gray-500">Monitor latest order activity</p>
           </div>
-          <button className="text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors px-4 py-2 bg-blue-50 rounded-xl">View All Activity</button>
+          <button className="text-sm font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 transition-colors px-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-xl">View All Activity</button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="bg-gray-50/50">
+              <tr className="bg-[var(--surface-1)]">
                 <th className="px-8 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Order ID</th>
                 <th className="px-8 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Customer</th>
                 <th className="px-8 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Amount</th>
@@ -359,7 +371,7 @@ export default function DashboardPage() {
                 <th className="px-8 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Date</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-[var(--border-base)]">
               {(stats?.recentOrders?.length || 0) === 0 && (
                 <tr>
                   <td colSpan={5} className="px-8 py-12 text-center text-gray-400 italic">
@@ -368,16 +380,16 @@ export default function DashboardPage() {
                 </tr>
               )}
               {stats?.recentOrders?.map((order) => (
-                <tr key={order.id} className="hover:bg-gray-50/30 transition-colors">
-                  <td className="px-8 py-5 text-sm font-bold text-gray-900">{order.orderNumber}</td>
-                  <td className="px-8 py-5 text-sm text-gray-600 font-medium">{order.customer}</td>
-                  <td className="px-8 py-5 text-sm font-bold text-gray-900">₹{order.total}</td>
+                <tr key={order.id} className="hover:bg-[var(--surface-1)] transition-colors">
+                  <td className="px-8 py-5 text-sm font-bold text-[var(--text-primary)]">{order.orderNumber}</td>
+                  <td className="px-8 py-5 text-sm text-[var(--text-secondary)] font-medium">{order.customer}</td>
+                  <td className="px-8 py-5 text-sm font-bold text-[var(--text-primary)]">₹{order.total}</td>
                   <td className="px-8 py-5">
                     <span className={`inline-flex px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                      order.status === 'DELIVERED' ? 'bg-green-50 text-green-600' :
-                      order.status === 'SHIPPED' ? 'bg-blue-50 text-blue-600' :
-                      order.status === 'PROCESSING' ? 'bg-amber-50 text-amber-600' :
-                      order.status === 'CANCELLED' ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-600'
+                      order.status === 'DELIVERED' ? 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400' :
+                      order.status === 'SHIPPED' ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400' :
+                      order.status === 'PROCESSING' ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400' :
+                      order.status === 'CANCELLED' ? 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400' : 'bg-[var(--surface-1)] text-[var(--text-secondary)]'
                     }`}>
                       {order.status}
                     </span>

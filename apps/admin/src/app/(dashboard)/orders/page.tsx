@@ -80,12 +80,12 @@ export default function OrdersPage() {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">Orders</h1>
-      {fetchError && <p className="text-sm text-gray-500 mb-4">{fetchError}</p>}
+      {fetchError && <p className="text-sm text-[var(--text-secondary)] mb-4">{fetchError}</p>}
 
       <div className="card p-4 mb-6">
         <div className="flex gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-tertiary)]" />
             <input
               id="order-search"
               type="text"
@@ -130,7 +130,7 @@ export default function OrdersPage() {
             <tbody>
               {!isLoading && filteredOrders.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="text-center py-8 text-gray-500">
+                  <td colSpan={7} className="text-center py-8 text-[var(--text-secondary)]">
                     No order data available
                   </td>
                 </tr>
@@ -141,7 +141,7 @@ export default function OrdersPage() {
                   <td>
                     <div>
                       <p>{order.user.name}</p>
-                      <p className="text-gray-400 text-xs">{order.user.email}</p>
+                      <p className="text-[var(--text-tertiary)] text-xs">{order.user.email}</p>
                     </div>
                   </td>
                   <td className="font-medium">₹{order.total}</td>
@@ -155,7 +155,7 @@ export default function OrdersPage() {
                       {order.paymentStatus}
                     </span>
                   </td>
-                  <td className="text-gray-500">
+                  <td className="text-[var(--text-secondary)]">
                     {new Date(order.createdAt).toLocaleDateString('en-IN')}
                   </td>
                   <td>
@@ -172,8 +172,8 @@ export default function OrdersPage() {
                         <option value="DELIVERED">Delivered</option>
                         <option value="CANCELLED">Cancelled</option>
                       </select>
-                      <button className="p-2 hover:bg-gray-100 rounded-lg" title="View Details">
-                        <Eye className="w-4 h-4 text-gray-500" />
+                      <button className="p-2 hover:bg-[var(--surface-1)] rounded-lg" title="View Details">
+                        <Eye className="w-4 h-4 text-[var(--text-secondary)]" />
                       </button>
                     </div>
                   </td>

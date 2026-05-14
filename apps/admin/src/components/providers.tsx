@@ -19,12 +19,63 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null)
 
+interface ThemeContextType {
+  theme: 'light' | 'dark'
+  toggleTheme: () => void
+}
+
+const ThemeContext = createContext<ThemeContextType | null>(null)
+
 export function useAuth() {
   const context = useContext(AuthContext)
   if (!context) {
     throw new Error('useAuth must be used within AuthProvider')
   }
   return context
+}
+
+export function useTheme() {
+  const context = useContext(ThemeContext)
+  if (!context) {
+    throw new Error('useTheme must be used within ThemeProvider')
+  }
+  return context
+}
+
+function ThemeProvider({ children }: { children: ReactNode }) {
+  const [theme, setTheme] = useState<'light' | 'dark'>('light')
+
+  useEffect(() => {
+    const storedTheme = localStorage.getItem('admin_theme') as 'light' | 'dark' | null
+    if (storedTheme) {
+      setTheme(storedTheme)
+      if (storedTheme === 'dark') {
+        document.documentElement.classList.add('dark')
+      }
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      setTheme('dark')
+      document.documentElement.classList.add('dark')
+    }
+  }, [])
+
+  const toggleTheme = () => {
+    setTheme((prev) => {
+      const newTheme = prev === 'light' ? 'dark' : 'light'
+      localStorage.setItem('admin_theme', newTheme)
+      if (newTheme === 'dark') {
+        document.documentElement.classList.add('dark')
+      } else {
+        document.documentElement.classList.remove('dark')
+      }
+      return newTheme
+    })
+  }
+
+  return (
+    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+      {children}
+    </ThemeContext.Provider>
+  )
 }
 
 interface Toast {
@@ -137,10 +188,12 @@ function AuthProvider({ children }: { children: ReactNode }) {
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
-    <ToastProvider>
-      <AuthProvider>
-        {children}
-      </AuthProvider>
-    </ToastProvider>
+    <ThemeProvider>
+      <ToastProvider>
+        <AuthProvider>
+          {children}
+        </AuthProvider>
+      </ToastProvider>
+    </ThemeProvider>
   )
 }

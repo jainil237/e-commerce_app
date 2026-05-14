@@ -98,7 +98,7 @@ export default function HierarchicalBarChart({ data }: HierarchicalBarChartProps
       .attr('class', 'x-axis')
       .attr('transform', `translate(0,-20)`)
       .call(d3.axisTop(x).tickValues(tickValues).tickFormat(d3.format('d')).tickSize(0))
-      .attr('color', '#9ca3af')
+      .attr('color', 'var(--text-tertiary)')
       .selectAll('text')
       .style('font-size', '10px')
 
@@ -143,7 +143,7 @@ export default function HierarchicalBarChart({ data }: HierarchicalBarChartProps
       .attr('y', (barStep - barPadding) / 2)
       .attr('dy', '0.35em')
       .attr('text-anchor', 'end')
-      .attr('fill', '#4b5563')
+      .attr('fill', 'var(--text-secondary)')
       .style('font-size', '11px')
       .style('font-weight', '600')
       .text(d => d.data.name.length > 25 ? d.data.name.slice(0, 22) + '...' : d.data.name)
@@ -154,7 +154,7 @@ export default function HierarchicalBarChart({ data }: HierarchicalBarChartProps
       .attr('x', d => valueLabelX(d.value))
       .attr('y', (barStep - barPadding) / 2)
       .attr('dy', '0.35em')
-      .attr('fill', '#1d4ed8')
+      .attr('fill', 'var(--brand-primary)')
       .style('font-size', '11px')
       .style('font-weight', '700')
       .style('opacity', 1)
@@ -181,12 +181,12 @@ export default function HierarchicalBarChart({ data }: HierarchicalBarChartProps
 
   return (
     <div className="relative pt-4" ref={containerRef}>
-      <div className="flex items-center gap-3 mb-6 absolute -top-12 left-0 w-full justify-between pr-4 bg-white/80 backdrop-blur-sm py-2 z-20">
+      <div className="flex items-center gap-3 mb-6 absolute -top-12 left-0 w-full justify-between pr-4 bg-[var(--surface-glass)] backdrop-blur-sm py-2 z-20">
         <div className="flex items-center gap-2">
           {currentPath.length > 1 && (
             <button 
               onClick={() => setCurrentPath(currentPath.slice(0, -1))}
-              className="group flex items-center gap-1 px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-[10px] font-bold uppercase tracking-wider hover:bg-blue-600 hover:text-white transition-all duration-300"
+              className="group flex items-center gap-1 px-3 py-1 bg-[var(--surface-2)] text-[var(--text-primary)] rounded-full text-[10px] font-bold uppercase tracking-wider hover:bg-blue-600 hover:text-white transition-all duration-300"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
@@ -197,8 +197,8 @@ export default function HierarchicalBarChart({ data }: HierarchicalBarChartProps
           <div className="flex items-center gap-1 flex-wrap">
             {currentPath.map((path, i) => (
               <React.Fragment key={path}>
-                {i > 0 && <span className="text-gray-300">/</span>}
-                <span className={`text-[11px] font-bold uppercase tracking-widest whitespace-nowrap ${i === currentPath.length - 1 ? 'text-blue-600' : 'text-gray-400'}`}>
+                {i > 0 && <span className="text-[var(--border-base)]">/</span>}
+                <span className={`text-[11px] font-bold uppercase tracking-widest whitespace-nowrap ${i === currentPath.length - 1 ? 'text-blue-600' : 'text-[var(--text-tertiary)]'}`}>
                   {path === 'root' ? 'All Categories' : path}
                 </span>
               </React.Fragment>
@@ -208,7 +208,7 @@ export default function HierarchicalBarChart({ data }: HierarchicalBarChartProps
       </div>
 
       <div className="mb-4 pr-10">
-        <h3 className="text-[13px] font-extrabold text-gray-900 uppercase tracking-wide leading-tight break-words">
+        <h3 className="text-[13px] font-extrabold text-[var(--text-primary)] uppercase tracking-wide leading-tight break-words">
           {currentPath.length === 1 ? 'Sales by Category' : `Top Selling Products in ${currentPath[currentPath.length - 1]}`}
         </h3>
       </div>
@@ -216,7 +216,7 @@ export default function HierarchicalBarChart({ data }: HierarchicalBarChartProps
       
       {currentPath.length === 1 && (
         <div className="absolute bottom-0 right-4 pointer-events-none">
-          <p className="text-[10px] text-gray-400 italic bg-white/80 px-2 py-1 rounded">Click any category to view products</p>
+          <p className="text-[10px] text-[var(--text-tertiary)] italic bg-[var(--surface-glass)] px-2 py-1 rounded">Click any category to view products</p>
         </div>
       )}
     </div>

@@ -1,13 +1,13 @@
 .wrapper {
-  @apply min-h-screen bg-gray-50 dark:bg-gray-950 pb-20;
+  @apply min-h-screen bg-[var(--surface-1)] pb-20;
 }
 
 .breadcrumbNav {
-  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950;
+  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 border-b border-[var(--border-subtle)] bg-[var(--surface-0)] transition-colors duration-300;
 }
 
 .breadcrumbList {
-  @apply flex items-center gap-2 text-sm text-gray-500 overflow-x-auto whitespace-nowrap;
+  @apply flex items-center gap-2 text-sm text-[var(--text-secondary)] overflow-x-auto whitespace-nowrap;
   -ms-overflow-style: none;
   scrollbar-width: none;
   &::-webkit-scrollbar {
@@ -20,11 +20,11 @@
 }
 
 .breadcrumbSeparator {
-  @apply w-4 h-4 text-gray-400;
+  @apply w-4 h-4 text-[var(--text-tertiary)];
 }
 
 .breadcrumbCurrent {
-  @apply text-gray-900 dark:text-gray-100 font-medium truncate;
+  @apply text-[var(--text-primary)] font-medium truncate;
 }
 
 .container {
@@ -41,7 +41,7 @@
 }
 
 .mainImageWrapper {
-  @apply relative aspect-[4/5] bg-white dark:bg-gray-900 rounded-3xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm;
+  @apply relative aspect-[4/5] bg-[var(--surface-0)] rounded-3xl overflow-hidden border border-[var(--border-subtle)] shadow-sm;
 }
 
 .mainImage {
@@ -62,7 +62,7 @@
 }
 
 .thumbnailBtn {
-  @apply relative w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 border-2 transition-all duration-200 bg-white dark:bg-gray-900;
+  @apply relative w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 border-2 transition-all duration-200 bg-[var(--surface-0)];
 }
 
 .thumbnailBtnActive {
@@ -83,7 +83,7 @@
 }
 
 .headerBlock {
-  @apply border-b border-gray-200 dark:border-gray-800 pb-6;
+  @apply border-b border-[var(--border-subtle)] pb-6;
 }
 
 .categoryLabel {
@@ -91,7 +91,7 @@
 }
 
 .title {
-  @apply text-3xl sm:text-4xl font-black tracking-tight text-gray-900 dark:text-white mb-4 leading-tight;
+  @apply text-3xl sm:text-4xl font-black tracking-tight text-[var(--text-primary)] mb-4 leading-tight;
 }
 
 /* Pricing */
@@ -100,15 +100,15 @@
 }
 
 .price {
-  @apply text-4xl font-bold tracking-tight text-gray-900 dark:text-white;
+  @apply text-4xl font-bold tracking-tight text-[var(--text-primary)];
 }
 
 .mrp {
-  @apply text-xl line-through text-gray-500 font-medium mb-1;
+  @apply text-xl line-through text-[var(--text-tertiary)] font-medium mb-1;
 }
 
 .taxNotice {
-  @apply text-sm text-gray-500 mt-2 font-medium;
+  @apply text-sm text-[var(--text-secondary)] mt-2 font-medium;
 }
 
 /* Status */
@@ -121,25 +121,25 @@
 }
 
 .stockAlert {
-  @apply text-sm text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md ml-2;
+  @apply text-sm text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md ml-2;
 }
 
 /* Description */
 .descriptionBlock {
-  @apply py-6 border-b border-gray-200 dark:border-gray-800;
+  @apply py-6 border-b border-[var(--border-subtle)];
 }
 
 .sectionTitle {
-  @apply text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2;
+  @apply text-lg font-bold text-[var(--text-primary)] mb-4 flex items-center gap-2;
 }
 
 .description {
-  @apply prose prose-gray dark:prose-invert max-w-none text-gray-600 dark:text-gray-300;
+  @apply prose prose-gray dark:prose-invert max-w-none text-[var(--text-secondary)];
 }
 
 /* Add to Cart Actions */
 .actionBlock {
-  @apply flex flex-col gap-4 py-6 border-b border-gray-200 dark:border-gray-800;
+  @apply flex flex-col gap-4 py-6 border-b border-[var(--border-subtle)];
 }
 
 .quantityRow {
@@ -147,19 +147,19 @@
 }
 
 .quantityLabel {
-  @apply font-semibold text-gray-900 dark:text-white;
+  @apply font-semibold text-[var(--text-primary)];
 }
 
 .quantityCtrl {
-  @apply flex items-center bg-gray-100 dark:bg-gray-800 rounded-xl p-1 border border-gray-200 dark:border-gray-700;
+  @apply flex items-center bg-[var(--surface-2)] rounded-xl p-1 border border-[var(--border-subtle)];
 }
 
 .quantityBtn {
-  @apply w-10 h-10 flex items-center justify-center rounded-lg text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 hover:shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply w-10 h-10 flex items-center justify-center rounded-lg text-[var(--text-secondary)] hover:bg-[var(--surface-0)] hover:shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed;
 }
 
 .quantityValue {
-  @apply font-bold w-12 text-center text-gray-900 dark:text-white;
+  @apply font-bold w-12 text-center text-[var(--text-primary)];
 }
 
 .actionBtns {
@@ -171,7 +171,7 @@
 }
 
 .secondaryBtn {
-  @apply aspect-square px-0 w-14 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-all hover:border-gray-300;
+  @apply aspect-square px-0 w-14 border border-[var(--border-base)] hover:bg-[var(--surface-2)] text-[var(--text-secondary)] transition-all hover:border-[var(--brand-primary)];
 }
 
 /* Trust Grid */
@@ -180,20 +180,20 @@
 }
 
 .trustItem {
-  @apply flex flex-col items-center justify-center text-center p-4 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 hover:border-gray-300 transition-colors;
+  @apply flex flex-col items-center justify-center text-center p-4 rounded-2xl bg-[var(--surface-0)] border border-[var(--border-subtle)] hover:border-[var(--brand-primary)] transition-all duration-300;
 }
 
 .trustIconWrapper {
-  @apply w-12 h-12 flex items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/20 text-brand-primary mb-3;
+  @apply w-12 h-12 flex items-center justify-center rounded-full bg-[var(--surface-2)] text-brand-primary mb-3;
 }
 
 .trustText {
-  @apply text-sm font-semibold text-gray-900 dark:text-white;
+  @apply text-sm font-semibold text-[var(--text-primary)];
 }
 
 /* Metadata */
 .metadataPanel {
-  @apply bg-gray-50 dark:bg-gray-900/50 rounded-2xl p-6 border border-gray-200 dark:border-gray-800;
+  @apply bg-[var(--surface-0)] rounded-3xl p-6 border border-[var(--border-base)] shadow-sm;
 }
 
 .metaGrid {
@@ -201,13 +201,13 @@
 }
 
 .metaItem {
-  @apply flex justify-between sm:flex-col sm:justify-start gap-1 pb-3 border-b border-gray-200 dark:border-gray-700 sm:border-0 sm:pb-0;
+  @apply flex justify-between sm:flex-col sm:justify-start gap-1 pb-3 border-b border-[var(--border-subtle)] sm:border-0 sm:pb-0;
 }
 
 .metaLabel {
-  @apply text-sm font-medium text-gray-500;
+  @apply text-sm font-medium text-[var(--text-secondary)];
 }
 
 .metaValue {
-  @apply text-sm font-bold text-gray-900 dark:text-white text-right sm:text-left;
+  @apply text-sm font-bold text-[var(--text-primary)] text-right sm:text-left;
 }

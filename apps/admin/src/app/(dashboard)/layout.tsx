@@ -33,10 +33,10 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-[var(--surface-1)]">
       <Sidebar />
       <main className="ml-64 min-h-screen">
-        <div className="p-8">
+        <div className="p-8 text-[var(--text-primary)]">
           {children}
         </div>
       </main>

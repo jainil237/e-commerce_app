@@ -123,7 +123,7 @@ export default function CouponsPage() {
           Add Coupon
         </button>
       </div>
-      {fetchError && <p className="text-sm text-gray-500 mb-4">{fetchError}</p>}
+      {fetchError && <p className="text-sm text-[var(--text-secondary)] mb-4">{fetchError}</p>}
 
       {showForm && (
         <div className="card p-6 mb-6">
@@ -267,7 +267,7 @@ export default function CouponsPage() {
             <tbody>
               {!isLoading && coupons.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="text-center py-8 text-gray-500">
+                  <td colSpan={7} className="text-center py-8 text-[var(--text-secondary)]">
                     No coupon data available
                   </td>
                 </tr>
@@ -277,11 +277,11 @@ export default function CouponsPage() {
                   <td className="font-mono font-medium">{coupon.code}</td>
                   <td>
                     {coupon.discountType === 'PERCENTAGE' ? `${coupon.discountValue}%` : `₹${coupon.discountValue}`}
-                    {coupon.maxDiscount && <span className="text-gray-400 text-xs"> (max ₹{coupon.maxDiscount})</span>}
+                    {coupon.maxDiscount && <span className="text-[var(--text-tertiary)] text-xs"> (max ₹{coupon.maxDiscount})</span>}
                   </td>
                   <td>₹{coupon.minOrder}</td>
                   <td>{coupon.usedCount}/{coupon.usageLimit}</td>
-                  <td className="text-gray-500">
+                  <td className="text-[var(--text-secondary)]">
                     {new Date(coupon.validUntil).toLocaleDateString('en-IN')}
                   </td>
                   <td>
@@ -307,13 +307,13 @@ export default function CouponsPage() {
                           })
                           setShowForm(true)
                         }}
-                        className="p-2 hover:bg-gray-100 rounded-lg"
+                        className="p-2 hover:bg-[var(--surface-1)] rounded-lg"
                       >
-                        <Edit2 className="w-4 h-4 text-gray-500" />
+                        <Edit2 className="w-4 h-4 text-[var(--text-secondary)]" />
                       </button>
                       <button
                         onClick={() => handleDelete(coupon.id)}
-                        className="p-2 hover:bg-gray-100 rounded-lg"
+                        className="p-2 hover:bg-[var(--surface-1)] rounded-lg"
                       >
                         <Trash2 className="w-4 h-4 text-red-500" />
                       </button>

@@ -84,7 +84,7 @@ export default function SettingsPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
       </div>
     )
   }
@@ -94,7 +94,7 @@ export default function SettingsPage() {
       <div>
         <h1 className="text-2xl font-bold mb-6">Settings</h1>
         <div className="card p-6">
-          <p className="text-gray-500">{fetchError || 'No settings data available'}</p>
+          <p className="text-[var(--text-secondary)]">{fetchError || 'No settings data available'}</p>
         </div>
       </div>
     )
@@ -211,7 +211,7 @@ export default function SettingsPage() {
                     ...config!,
                     branding: { ...config!.branding, primaryColor: e.target.value }
                   })}
-                  className="w-12 h-10 rounded border border-gray-300"
+                  className="w-12 h-10 rounded border border-[var(--border-base)] bg-[var(--surface-0)]"
                 />
                 <input
                   id="primary-color"
@@ -237,7 +237,7 @@ export default function SettingsPage() {
                     ...config!,
                     branding: { ...config!.branding, secondaryColor: e.target.value }
                   })}
-                  className="w-12 h-10 rounded border border-gray-300"
+                  className="w-12 h-10 rounded border border-[var(--border-base)] bg-[var(--surface-0)]"
                 />
                 <input
                   id="secondary-color"

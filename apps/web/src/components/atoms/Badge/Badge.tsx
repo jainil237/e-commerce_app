@@ -2,13 +2,13 @@ import React, { HTMLAttributes } from 'react'
 import styles from './Badge.module.css'
 
 interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
-  variant?: 'default' | 'success' | 'warning' | 'danger' | 'brand'
+  variant?: 'primary' | 'secondary' | 'outline' | 'success' | 'warning' | 'error'
   size?: 'sm' | 'md'
 }
 
 export const Badge: React.FC<BadgeProps> = ({
   className = '',
-  variant = 'default',
+  variant = 'secondary',
   size = 'md',
   children,
   ...props

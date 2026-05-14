@@ -3,25 +3,96 @@
 @tailwind utilities;
 
 :root {
-  --font-inter: 'Inter', sans-serif;
+  /* Brand — injected from store.config.json */
+  --brand-primary: #1D4ED8;
+  --brand-accent: #F59E0B;
+  --brand-primary-fg: #FFFFFF;
+
+  /* Neutrals */
+  --gray-50: #FAFAFA;
+  --gray-100: #F4F4F5;
+  --gray-200: #E4E4E7;
+  --gray-300: #D4D4D8;
+  --gray-400: #A1A1AA;
+  --gray-500: #71717A;
+  --gray-700: #3F3F46;
+  --gray-900: #18181B;
+
+  /* Semantic */
+  --success: #10B981;
+  --warning: #F59E0B;
+  --error: #EF4444;
+  --info: #3B82F6;
+
+  /* Surfaces */
+  --surface-0: #FFFFFF;
+  --surface-1: #FAFAFA;
+  --surface-2: #F4F4F5;
+  --surface-glass: rgba(255, 255, 255, 0.85);
+
+  /* Text */
+  --text-primary: #18181B;
+  --text-secondary: #71717A;
+  --text-tertiary: #A1A1AA;
+  --text-inverse: #FFFFFF;
+
+  /* UI Borders */
+  --border-base: var(--gray-200);
+  --border-subtle: var(--gray-100);
 }
 
-body {
-  font-family: var(--font-inter);
+.dark {
+  /* Brand */
+  --brand-primary: #3B82F6;
+  --brand-accent: #FBBF24;
+  --brand-primary-fg: #18181B;
+
+  /* Neutrals inverted mapping */
+  --gray-50: #18181B;
+  --gray-100: #27272A;
+  --gray-200: #3F3F46;
+  --gray-300: #52525B;
+  --gray-400: #71717A;
+  --gray-500: #A1A1AA;
+  --gray-700: #E4E4E7;
+  --gray-900: #F4F4F5;
+
+  /* Surfaces */
+  --surface-0: #18181B; 
+  --surface-1: #09090B; 
+  --surface-2: #27272A; 
+  --surface-glass: rgba(24, 24, 27, 0.85);
+
+  /* Text */
+  --text-primary: #FAFAFA;
+  --text-secondary: #A1A1AA;
+  --text-tertiary: #71717A;
+  --text-inverse: #18181B;
+
+  /* UI Borders */
+  --border-base: #27272A;
+  --border-subtle: #18181B;
+}
+
+@layer base {
+  body {
+    @apply min-h-screen bg-[var(--surface-1)] text-[var(--text-primary)] antialiased transition-colors duration-300;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
 }
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed dark:focus:ring-offset-black;
   }
   .btn-primary {
-    @apply bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500;
+    @apply bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500 dark:bg-blue-500 dark:hover:bg-blue-600;
   }
   .btn-secondary {
-    @apply bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-gray-400;
+    @apply bg-[var(--surface-2)] text-[var(--text-primary)] hover:bg-[var(--gray-200)] focus:ring-[var(--gray-400)];
   }
   .btn-danger {
-    @apply bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+    @apply bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 dark:bg-red-500 dark:hover:bg-red-600;
   }
   .btn-sm {
     @apply px-3 py-1.5 text-sm;
@@ -34,45 +105,45 @@ body {
   }
 
   .input {
-    @apply w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+    @apply w-full rounded-lg border border-[var(--border-base)] bg-[var(--surface-0)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors;
   }
 
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-200;
+    @apply bg-[var(--surface-0)] rounded-xl shadow-sm border border-[var(--border-base)] transition-colors;
   }
 
   .table-container {
-    @apply overflow-x-auto rounded-lg border border-gray-200;
+    @apply overflow-x-auto rounded-lg border border-[var(--border-base)];
   }
 
   .table {
-    @apply min-w-full divide-y divide-gray-200;
+    @apply min-w-full divide-y divide-[var(--border-base)];
   }
   .table th {
-    @apply bg-gray-50 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider;
+    @apply bg-[var(--surface-1)] px-4 py-3 text-left text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider;
   }
   .table td {
-    @apply px-4 py-3 text-sm whitespace-nowrap;
+    @apply px-4 py-3 text-sm whitespace-nowrap text-[var(--text-primary)];
   }
   .table tbody tr {
-    @apply hover:bg-gray-50;
+    @apply hover:bg-[var(--surface-1)] transition-colors;
   }
   .table tbody {
-    @apply bg-white divide-y divide-gray-200;
+    @apply bg-[var(--surface-0)] divide-y divide-[var(--border-base)];
   }
 }
 
 /* Sidebar */
 .sidebar {
-  @apply fixed inset-y-0 left-0 w-64 bg-gray-900 text-white;
+  @apply fixed inset-y-0 left-0 w-64 bg-[#0F172A] text-white dark:bg-[#020617] dark:border-r dark:border-[var(--border-base)];
 }
 
 .sidebar-link {
-  @apply flex items-center gap-3 px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white transition-colors;
+  @apply flex items-center gap-3 px-4 py-3 text-slate-400 hover:bg-slate-800/50 hover:text-white transition-colors rounded-lg mx-2;
 }
 
 .sidebar-link.active {
-  @apply bg-gray-800 text-white;
+  @apply bg-blue-600 text-white hover:bg-blue-700;
 }
 
 /* Stat cards */
@@ -81,11 +152,11 @@ body {
 }
 
 .stat-value {
-  @apply text-2xl font-bold text-gray-900;
+  @apply text-2xl font-bold text-[var(--text-primary)];
 }
 
 .stat-label {
-  @apply text-sm text-gray-500 mt-1;
+  @apply text-sm text-[var(--text-secondary)] mt-1;
 }
 
 /* Status badges */
@@ -94,21 +165,21 @@ body {
 }
 
 .badge-success {
-  @apply bg-green-100 text-green-800;
+  @apply bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400;
 }
 
 .badge-warning {
-  @apply bg-yellow-100 text-yellow-800;
+  @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400;
 }
 
 .badge-error {
-  @apply bg-red-100 text-red-800;
+  @apply bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400;
 }
 
 .badge-info {
-  @apply bg-blue-100 text-blue-800;
+  @apply bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400;
 }
 
 .badge-gray {
-  @apply bg-gray-100 text-gray-800;
+  @apply bg-gray-100 text-gray-800 dark:bg-gray-800/30 dark:text-gray-400;
 }

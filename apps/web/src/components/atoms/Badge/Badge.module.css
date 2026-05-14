@@ -8,21 +8,30 @@
 }
 
 .secondary {
-  @apply bg-[var(--surface-2)] text-[var(--text-secondary)];
+  @apply bg-[var(--surface-2)] text-[var(--text-secondary)] border border-[var(--border-subtle)];
 }
 
 .outline {
-  @apply border border-[var(--border-subtle)] text-[var(--text-primary)] bg-transparent;
+  @apply border border-[var(--border-base)] text-[var(--text-primary)] bg-transparent;
 }
 
 .success {
-  @apply bg-[var(--surface-2)] text-[var(--success)] shadow-sm;
+  @apply bg-[var(--surface-2)] text-[var(--success)] border border-emerald-500/20 shadow-sm;
 }
 
 .warning {
-  @apply bg-[var(--surface-2)] text-[var(--warning)] shadow-sm;
+  @apply bg-[var(--surface-2)] text-[var(--warning)] border border-amber-500/20 shadow-sm;
 }
 
 .error {
-  @apply bg-[var(--surface-2)] text-[var(--error)] shadow-sm;
+  @apply bg-[var(--surface-2)] text-[var(--error)] border border-red-500/20 shadow-sm;
+}
+
+/* ─── Sizes ─── */
+.size-sm {
+  @apply px-2 py-0 text-[10px];
+}
+
+.size-md {
+  @apply px-2.5 py-0.5 text-xs;
 }

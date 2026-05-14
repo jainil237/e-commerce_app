@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, MapPin, Phone, Mail, Truck, CheckCircle, XCircle, Loader2, Download, Send } from 'lucide-react'
+import { ArrowLeft, MapPin, Phone, Mail, Truck, CheckCircle, XCircle, Loader2, Download, Send, Package } from 'lucide-react'
 import { useAuth, useStoreConfig, useToast } from '@/components/providers'
 import { FallbackImage } from '@/components/ui/fallback-image'
 
@@ -144,19 +144,19 @@ export default function OrderDetailPage() {
   const currentStepIndex = order.status === 'PENDING' ? 0 : statusSteps.indexOf(order.status)
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[var(--surface-1)]">
       <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-8">
         {isSuccess && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 flex items-center gap-3">
-            <CheckCircle className="w-6 h-6 text-green-600" />
+          <div className="badge-success rounded-xl p-4 mb-6 flex items-center gap-3">
+            <CheckCircle className="w-6 h-6" />
             <div>
-              <p className="font-medium text-green-800">Order placed successfully!</p>
-              <p className="text-sm text-green-600">We'll send you an email with order details.</p>
+              <p className="font-bold">Order placed successfully!</p>
+              <p className="text-sm opacity-90">We'll send you an email with order details.</p>
             </div>
           </div>
         )}
 
-        <button onClick={() => router.back()} className="flex items-center gap-2 text-gray-600 mb-6">
+        <button onClick={() => router.back()} className="flex items-center gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] mb-6 transition-colors font-medium">
           <ArrowLeft className="w-5 h-5" />
           Back
         </button>
@@ -167,8 +167,8 @@ export default function OrderDetailPage() {
             <div className="card p-6">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-4">
                 <div className="min-w-0">
-                  <h1 className="text-xl font-bold break-words">Order #{order.orderNumber}</h1>
-                  <p className="text-sm text-gray-500">
+                  <h1 className="text-xl md:text-2xl font-black text-[var(--text-primary)] break-words">Order #{order.orderNumber}</h1>
+                  <p className="text-sm text-[var(--text-secondary)] mt-1">
                     Placed on {new Date(order.createdAt).toLocaleDateString('en-IN', {
                       day: 'numeric',
                       month: 'long',
@@ -178,8 +178,8 @@ export default function OrderDetailPage() {
                     })}
                   </p>
                 </div>
-                <span className={`w-fit shrink-0 text-sm font-medium px-3 py-1 rounded-full ${
-                  order.paymentStatus === 'PAID' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                <span className={`w-fit shrink-0 text-xs font-bold px-3 py-1 rounded-full tracking-wider ${
+                  order.paymentStatus === 'PAID' ? 'badge-success' : 'badge-warning'
                 }`}>
                   {order.paymentStatus}
                 </span>
@@ -193,11 +193,11 @@ export default function OrderDetailPage() {
                   return (
                     <div key={step} className="flex-1 flex flex-col items-center">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                        isCompleted ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'
-                      } ${isCurrent ? 'ring-4 ring-green-200' : ''}`}>
+                        isCompleted ? 'bg-[var(--success)] text-white' : 'bg-[var(--surface-2)] text-[var(--text-tertiary)]'
+                      } ${isCurrent ? 'ring-4 ring-[var(--success)]/20' : ''}`}>
                         {isCompleted ? <CheckCircle className="w-5 h-5" /> : index + 1}
                       </div>
-                      <p className={`text-xs mt-2 ${isCompleted ? 'text-green-600 font-medium' : 'text-gray-400'}`}>
+                      <p className={`text-xs mt-2 ${isCompleted ? 'text-[var(--success)] font-medium' : 'text-[var(--text-tertiary)]'}`}>
                         {index === 0 && order.status === 'PENDING' ? 'PENDING' : step}
                       </p>
                     </div>
@@ -206,31 +206,34 @@ export default function OrderDetailPage() {
               </div>
 
               {order.status === 'CANCELLED' && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2">
-                  <XCircle className="w-5 h-5 text-red-500" />
-                  <span className="text-red-700">This order has been cancelled</span>
+                <div className="badge-error rounded-xl p-3 flex items-center gap-2">
+                  <XCircle className="w-5 h-5" />
+                  <span className="font-bold">This order has been cancelled</span>
                 </div>
               )}
             </div>
 
             {/* Items */}
             <div className="card p-6">
-              <h2 className="font-semibold mb-4">Order Items</h2>
+              <h2 className="font-bold text-[var(--text-primary)] mb-6 flex items-center gap-2">
+                <Package className="w-5 h-5 text-[var(--brand-primary)]" />
+                Order Items
+              </h2>
               <div className="space-y-4">
                 {order.items.map((item) => (
                   <div key={item.id} className="flex gap-4">
-                    <div className="relative w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                    <div className="relative w-20 h-20 bg-[var(--surface-2)] rounded-2xl overflow-hidden flex-shrink-0 border border-[var(--border-subtle)]">
                       <FallbackImage src={item.product.images[0]?.url} alt={item.product.name} fill className="object-cover" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <Link href={`/products/${item.product.slug}`} className="font-medium hover:text-[--brand-primary] break-words">
+                      <Link href={`/products/${item.product.slug}`} className="font-bold text-[var(--text-primary)] hover:text-[var(--brand-primary)] break-words transition-colors">
                         {item.product.name}
                       </Link>
-                      <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
-                      <p className="text-sm text-gray-500">GST: {item.gstPercent}%</p>
+                      <p className="text-sm text-[var(--text-secondary)] mt-1">Qty: {item.quantity}</p>
+                      <p className="text-xs text-[var(--text-tertiary)] mt-0.5">GST: {item.gstPercent}%</p>
                     </div>
                     <div className="shrink-0 text-right">
-                      <p className="font-medium">{formatCurrency(item.subtotal)}</p>
+                      <p className="font-bold text-[var(--text-primary)]">{formatCurrency(item.subtotal)}</p>
                     </div>
                   </div>
                 ))}
@@ -239,16 +242,16 @@ export default function OrderDetailPage() {
 
             {/* Delivery Address */}
             <div className="card p-6">
-              <h2 className="font-semibold mb-4 flex items-center gap-2">
-                <MapPin className="w-5 h-5" />
+              <h2 className="font-bold text-[var(--text-primary)] mb-4 flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-[var(--brand-primary)]" />
                 Delivery Address
               </h2>
-              <p className="font-medium">{order.address.label}</p>
-              <p className="text-gray-600">
+              <p className="font-bold text-[var(--text-primary)]">{order.address.label}</p>
+              <p className="text-[var(--text-secondary)] mt-1">
                 {order.address.line1}
                 {order.address.line2 && `, ${order.address.line2}`}
               </p>
-              <p className="text-gray-600">
+              <p className="text-[var(--text-secondary)]">
                 {order.address.city}, {order.address.state} - {order.address.pincode}
               </p>
             </div>
@@ -258,35 +261,35 @@ export default function OrderDetailPage() {
           <div className="space-y-6">
             {/* Order Summary */}
             <div className="card p-6">
-              <h2 className="font-semibold mb-4">Order Summary</h2>
+              <h2 className="font-bold text-[var(--text-primary)] mb-4">Order Summary</h2>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Subtotal</span>
-                  <span>{formatCurrency(order.subtotal)}</span>
+                  <span className="text-[var(--text-secondary)]">Subtotal</span>
+                  <span className="text-[var(--text-primary)]">{formatCurrency(order.subtotal)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Shipping</span>
-                  <span>{Number(order.shippingCharge) === 0 ? 'FREE' : formatCurrency(order.shippingCharge)}</span>
+                  <span className="text-[var(--text-secondary)]">Shipping</span>
+                  <span className="text-[var(--text-primary)] font-medium">{Number(order.shippingCharge) === 0 ? 'FREE' : formatCurrency(order.shippingCharge)}</span>
                 </div>
                 {Number(order.discount) > 0 && (
-                  <div className="flex justify-between text-green-600">
+                  <div className="flex justify-between text-[var(--success)] font-medium">
                     <span>Discount</span>
                     <span>-{formatCurrency(order.discount)}</span>
                   </div>
                 )}
                 {Number(order.gstAmount) > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-gray-500">GST</span>
-                    <span>{formatCurrency(order.gstAmount)}</span>
+                    <span className="text-[var(--text-secondary)]">GST</span>
+                    <span className="text-[var(--text-primary)]">{formatCurrency(order.gstAmount)}</span>
                   </div>
                 )}
               </div>
               <hr className="my-4" />
-              <div className="flex justify-between font-semibold text-lg">
+              <div className="flex justify-between font-black text-xl text-[var(--text-primary)]">
                 <span>Total</span>
                 <span>{formatCurrency(order.total)}</span>
               </div>
-              <p className="text-xs text-gray-500 mt-2">
+              <p className="text-xs text-[var(--text-tertiary)] mt-3">
                 Payment: {order.razorpayPaymentId ? 'Razorpay' : order.paymentStatus}
               </p>
             </div>
@@ -315,7 +318,7 @@ export default function OrderDetailPage() {
                 </button>
               </div>
               {order.paymentStatus !== 'PAID' && (
-                <p className="text-xs text-gray-500 mt-3">Invoice is available after payment is completed.</p>
+                <p className="text-xs text-[var(--text-tertiary)] mt-3">Invoice is available after payment is completed.</p>
               )}
             </div>
 
@@ -326,8 +329,8 @@ export default function OrderDetailPage() {
                   <Truck className="w-5 h-5" />
                   Tracking
                 </h2>
-                <p className="text-sm text-gray-600">Courier: {order.tracking.courier}</p>
-                <p className="text-sm text-gray-600">Tracking ID: {order.tracking.trackingId}</p>
+                <p className="text-sm text-[var(--text-secondary)]">Courier: {order.tracking.courier}</p>
+                <p className="text-sm text-[var(--text-secondary)]">Tracking ID: {order.tracking.trackingId}</p>
                 <a
                   href={order.tracking.trackingUrl}
                   target="_blank"
@@ -343,11 +346,11 @@ export default function OrderDetailPage() {
             <div className="card p-6">
               <h2 className="font-semibold mb-4">Need Help?</h2>
               <div className="space-y-3">
-                <a href={`tel:${config.store.contact.phone}`} className="flex items-center gap-2 text-sm text-gray-600">
+                <a href={`tel:${config.store.contact.phone}`} className="flex items-center gap-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
                   <Phone className="w-4 h-4" />
                   {config.store.contact.phone}
                 </a>
-                <a href={`mailto:${config.store.contact.email}`} className="flex items-center gap-2 text-sm text-gray-600">
+                <a href={`mailto:${config.store.contact.email}`} className="flex items-center gap-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
                   <Mail className="w-4 h-4" />
                   {config.store.contact.email}
                 </a>

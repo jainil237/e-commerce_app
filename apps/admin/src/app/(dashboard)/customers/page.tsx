@@ -61,11 +61,11 @@ export default function CustomersPage() {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">Customers</h1>
-      {fetchError && <p className="text-sm text-gray-500 mb-4">{fetchError}</p>}
+      {fetchError && <p className="text-sm text-[var(--text-secondary)] mb-4">{fetchError}</p>}
 
       <div className="card p-4 mb-6">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-tertiary)]" />
           <input
             id="customer-search"
             type="text"
@@ -94,7 +94,7 @@ export default function CustomersPage() {
             <tbody>
               {!isLoading && filteredCustomers.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="text-center py-8 text-gray-500">
+                  <td colSpan={6} className="text-center py-8 text-[var(--text-secondary)]">
                     No customer data available
                   </td>
                 </tr>
@@ -103,32 +103,32 @@ export default function CustomersPage() {
                 <tr key={customer.id}>
                   <td>
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center font-medium">
+                      <div className="w-10 h-10 bg-[var(--surface-2)] rounded-full flex items-center justify-center font-medium">
                         {getFirstLetter(customer.name)}
                       </div>
                       <div>
                         <p className="font-medium">{customer.name}</p>
-                        <p className="text-gray-400 text-xs">{customer.email}</p>
+                        <p className="text-[var(--text-tertiary)] text-xs">{customer.email}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="text-gray-500">{customer.phone}</td>
+                  <td className="text-[var(--text-secondary)]">{customer.phone}</td>
                   <td>{customer.orders}</td>
                   <td className="font-medium">₹{customer.totalSpent}</td>
-                  <td className="text-gray-500">
+                  <td className="text-[var(--text-secondary)]">
                     {new Date(customer.createdAt).toLocaleDateString('en-IN')}
                   </td>
                   <td>
                     <div className="flex items-center justify-end gap-2">
                       <a 
                         href={`mailto:${customer.email}`}
-                        className="p-2 hover:bg-gray-100 rounded-lg"
+                        className="p-2 hover:bg-[var(--surface-1)] rounded-lg"
                         title="Send Email"
                       >
-                        <Mail className="w-4 h-4 text-gray-500" />
+                        <Mail className="w-4 h-4 text-[var(--text-secondary)]" />
                       </a>
-                      <button className="p-2 hover:bg-gray-100 rounded-lg" title="View Details">
-                        <Eye className="w-4 h-4 text-gray-500" />
+                      <button className="p-2 hover:bg-[var(--surface-1)] rounded-lg" title="View Details">
+                        <Eye className="w-4 h-4 text-[var(--text-secondary)]" />
                       </button>
                     </div>
                   </td>

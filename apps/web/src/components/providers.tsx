@@ -493,10 +493,10 @@ function ToastProvider({ children }: { children: ReactNode }) {
         {toasts.map(toast => (
           <div
             key={toast.id}
-            className={`px-4 py-3 rounded-lg shadow-lg animate-slide-in ${
-              toast.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' :
-              toast.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' :
-              'bg-blue-50 text-blue-700 border border-blue-200'
+            className={`px-4 py-3 rounded-xl shadow-2xl animate-slide-in backdrop-blur-md border ${
+              toast.type === 'success' ? 'bg-[var(--surface-0)] text-[var(--success)] border-emerald-500/20' :
+              toast.type === 'error' ? 'bg-[var(--surface-0)] text-[var(--error)] border-red-500/20' :
+              'bg-[var(--surface-0)] text-[var(--info)] border-blue-500/20'
             }`}
           >
             {toast.message}

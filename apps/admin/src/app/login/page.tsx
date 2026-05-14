@@ -102,14 +102,16 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--surface-1)] py-12 px-4 transition-colors">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <Store className="w-10 h-10 text-blue-600" />
-            <span className="text-2xl font-bold">Admin Panel</span>
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <div className="p-3 bg-blue-600 rounded-2xl shadow-xl shadow-blue-600/20">
+              <Store className="w-8 h-8 text-white" />
+            </div>
+            <span className="text-3xl font-extrabold tracking-tight text-[var(--text-primary)]">Admin Panel</span>
           </div>
-          <h1 className="text-xl font-semibold">
+          <h1 className="text-xl font-semibold text-[var(--text-secondary)]">
             {view === 'login' && 'Sign in to your account'}
             {view === 'forgot' && 'Reset your password'}
             {view === 'reset' && 'Enter OTP & new password'}
@@ -121,9 +123,9 @@ export default function LoginPage() {
           {view === 'login' && (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label htmlFor="email" className="block text-sm font-medium mb-1">Email</label>
+                <label htmlFor="email" className="block text-sm font-semibold mb-1.5 text-[var(--text-primary)]">Email Address</label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-tertiary)]" />
                   <input
                     id="email"
                     name="email"
@@ -136,11 +138,11 @@ export default function LoginPage() {
                   />
                 </div>
               </div>
-
+ 
               <div>
-                <label htmlFor="password" className="block text-sm font-medium mb-1">Password</label>
+                <label htmlFor="password" className="block text-sm font-semibold mb-1.5 text-[var(--text-primary)]">Password</label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-tertiary)]" />
                   <input
                     id="password"
                     name="password"
@@ -181,22 +183,21 @@ export default function LoginPage() {
           {/* ─── FORGOT PASSWORD VIEW ─── */}
           {view === 'forgot' && (
             <form onSubmit={handleForgotPassword} className="space-y-4">
-              <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm">
+              <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/30 rounded-xl text-amber-800 dark:text-amber-400 text-sm">
                 <Info className="w-5 h-5 mt-0.5 shrink-0" />
                 <div>
-                  <p className="font-medium">Email service not yet configured</p>
-                  <p className="text-xs mt-1 text-amber-700">
+                  <p className="font-bold uppercase tracking-wider text-[10px]">Email service status</p>
+                  <p className="mt-1 font-medium leading-relaxed">
                     OTP will be printed to the server console. Enable email delivery by setting{' '}
-                    <code className="bg-amber-100 px-1 rounded">features.emailService: true</code> in{' '}
-                    <code className="bg-amber-100 px-1 rounded">store.config.json</code> after purchasing an SMTP plan.
+                    <code className="bg-amber-100 dark:bg-amber-900/40 px-1.5 py-0.5 rounded font-mono text-[11px]">features.emailService: true</code>
                   </p>
                 </div>
               </div>
-
+ 
               <div>
-                <label htmlFor="forgot-email" className="block text-sm font-medium mb-1">Email</label>
+                <label htmlFor="forgot-email" className="block text-sm font-semibold mb-1.5 text-[var(--text-primary)]">Email Address</label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-tertiary)]" />
                   <input
                     id="forgot-email"
                     name="email"
@@ -209,7 +210,7 @@ export default function LoginPage() {
                   />
                 </div>
               </div>
-
+ 
               <button
                 type="submit"
                 disabled={isLoading}
@@ -221,11 +222,11 @@ export default function LoginPage() {
                   'Send OTP'
                 )}
               </button>
-
+ 
               <button
                 type="button"
                 onClick={goBackToLogin}
-                className="flex items-center justify-center gap-1 w-full text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                className="flex items-center justify-center gap-2 w-full text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors py-2"
               >
                 <ArrowLeft className="w-4 h-4" />
                 Back to login
@@ -237,18 +238,18 @@ export default function LoginPage() {
           {view === 'reset' && (
             <form onSubmit={handleResetPassword} className="space-y-4">
               {!emailServiceEnabled && (
-                <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 text-sm">
+                <div className="flex items-start gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-900/30 rounded-xl text-blue-800 dark:text-blue-400 text-sm">
                   <Info className="w-5 h-5 mt-0.5 shrink-0" />
-                  <p>
+                  <p className="font-medium leading-relaxed">
                     Check your <strong>server terminal / console</strong> for the 6-digit OTP.
                   </p>
                 </div>
               )}
-
+ 
               <div>
-                <label htmlFor="otp" className="block text-sm font-medium mb-1">OTP Code</label>
+                <label htmlFor="otp" className="block text-sm font-semibold mb-1.5 text-[var(--text-primary)]">OTP Code</label>
                 <div className="relative">
-                  <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-tertiary)]" />
                   <input
                     id="otp"
                     name="otp"
@@ -264,11 +265,11 @@ export default function LoginPage() {
                   />
                 </div>
               </div>
-
+ 
               <div>
-                <label htmlFor="new-password" className="block text-sm font-medium mb-1">New Password</label>
+                <label htmlFor="new-password" className="block text-sm font-semibold mb-1.5 text-[var(--text-primary)]">New Password</label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-tertiary)]" />
                   <input
                     id="new-password"
                     name="newPassword"
@@ -280,11 +281,11 @@ export default function LoginPage() {
                     required
                   />
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Min 8 chars · uppercase · lowercase · number · special character
+                <p className="text-[10px] text-[var(--text-tertiary)] mt-1.5 font-medium uppercase tracking-wider">
+                  Min 8 chars • uppercase • lowercase • number • special
                 </p>
               </div>
-
+ 
               <button
                 type="submit"
                 disabled={isLoading}
@@ -296,11 +297,11 @@ export default function LoginPage() {
                   'Reset Password'
                 )}
               </button>
-
+ 
               <button
                 type="button"
                 onClick={goBackToLogin}
-                className="flex items-center justify-center gap-1 w-full text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                className="flex items-center justify-center gap-2 w-full text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors py-2"
               >
                 <ArrowLeft className="w-4 h-4" />
                 Back to login
