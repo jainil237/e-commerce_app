@@ -123,25 +123,55 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next) => 
     let discount = 0
     if (validatedData.couponCode) {
       const coupon = await prisma.coupon.findUnique({
-        where: { code: validatedData.couponCode },
+        where: { code: validatedData.couponCode.toUpperCase() },
       })
 
-      if (coupon && coupon.isActive) {
-        if (coupon.expiresAt && coupon.expiresAt < new Date()) {
-          throw createError(400, 'Coupon has expired', 'COUPON_EXPIRED')
-        }
-        if (coupon.maxUsage && coupon.usedCount >= coupon.maxUsage) {
-          throw createError(400, 'Coupon usage limit reached', 'COUPON_LIMIT_REACHED')
-        }
-        if (coupon.minOrderValue && subtotal < Number(coupon.minOrderValue)) {
-          throw createError(400, `Minimum order value ₹${coupon.minOrderValue} required`, 'COUPON_MIN_ORDER')
-        }
+      if (!coupon || !coupon.isActive) {
+        throw createError(400, 'Invalid coupon code', 'INVALID_COUPON')
+      }
 
-        if (coupon.discountType === 'PERCENTAGE') {
-          discount = subtotal * (Number(coupon.discountValue) / 100)
-        } else {
-          discount = Number(coupon.discountValue)
-        }
+      // Check validFrom
+      if (coupon.validFrom && coupon.validFrom > new Date()) {
+        throw createError(400, 'Coupon is not yet valid', 'COUPON_NOT_YET_VALID')
+      }
+
+      // Check expiry
+      if (coupon.expiresAt && coupon.expiresAt < new Date()) {
+        throw createError(400, 'Coupon has expired', 'COUPON_EXPIRED')
+      }
+
+      // Check global usage limit
+      if (coupon.maxUsage && coupon.usedCount >= coupon.maxUsage) {
+        throw createError(400, 'Coupon usage limit reached', 'COUPON_LIMIT_REACHED')
+      }
+
+      // Check per-user usage limit
+      const usage = await prisma.couponUsage.findUnique({
+        where: {
+          couponId_userId: {
+            couponId: coupon.id,
+            userId: req.user!.id,
+          },
+        },
+      })
+
+      if (usage && coupon.perUserLimit && usage.usedCount >= coupon.perUserLimit) {
+        throw createError(400, 'You have reached the usage limit for this coupon', 'USER_COUPON_LIMIT_REACHED')
+      }
+
+      // Check minimum order value
+      if (coupon.minOrderValue && subtotal < Number(coupon.minOrderValue)) {
+        throw createError(
+          400,
+          `Minimum order value ₹${coupon.minOrderValue} required`,
+          'COUPON_MIN_ORDER'
+        )
+      }
+
+      if (coupon.discountType === 'PERCENTAGE') {
+        discount = subtotal * (Number(coupon.discountValue) / 100)
+      } else {
+        discount = Number(coupon.discountValue)
       }
     }
 
@@ -293,10 +323,35 @@ router.post('/verify-payment', authenticate, async (req: AuthRequest, res: Respo
 
     // Increment coupon usage
     if (order.couponCode) {
-      await prisma.coupon.update({
-        where: { code: order.couponCode },
-        data: { usedCount: { increment: 1 } },
+      const coupon = await prisma.coupon.findUnique({
+        where: { code: order.couponCode.toUpperCase() },
       })
+
+      if (coupon) {
+        // Global increment
+        await prisma.coupon.update({
+          where: { id: coupon.id },
+          data: { usedCount: { increment: 1 } },
+        })
+
+        // Per-user increment
+        await prisma.couponUsage.upsert({
+          where: {
+            couponId_userId: {
+              couponId: coupon.id,
+              userId: req.user!.id,
+            },
+          },
+          create: {
+            couponId: coupon.id,
+            userId: req.user!.id,
+            usedCount: 1,
+          },
+          update: {
+            usedCount: { increment: 1 },
+          },
+        })
+      }
     }
 
     if (!updatedOrder.user) {

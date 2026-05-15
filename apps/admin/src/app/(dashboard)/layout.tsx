@@ -1,7 +1,7 @@
 'use client'
 
 import { useAuth } from '@/components/providers'
-import { Sidebar } from '@/components/layout/sidebar'
+import { AdminHeader } from '@/components/layout/AdminHeader'
 import { Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'

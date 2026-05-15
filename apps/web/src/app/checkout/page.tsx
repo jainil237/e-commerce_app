@@ -43,6 +43,7 @@ export default function CheckoutPage() {
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null)
   const [couponCode, setCouponCode] = useState('')
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null)
+  const [availableCoupons, setAvailableCoupons] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [products, setProducts] = useState<Record<string, CartProduct>>({})
   const [checkoutValid, setCheckoutValid] = useState(true)
@@ -109,6 +110,21 @@ export default function CheckoutPage() {
     }
     fetchProducts()
   }, [items])
+
+  useEffect(() => {
+    async function fetchAvailableCoupons() {
+      try {
+        const res = await fetch(`/api/v1/coupons/available?orderValue=${subtotal}`, { credentials: 'include' })
+        const data = await res.json()
+        if (data.success) {
+          setAvailableCoupons(data.data)
+        }
+      } catch (err) {
+        console.error('Failed to fetch available coupons', err)
+      }
+    }
+    fetchAvailableCoupons()
+  }, [subtotal])
 
   const applyCoupon = async () => {
     if (!couponCode) return
@@ -329,22 +345,47 @@ export default function CheckoutPage() {
                   </button>
                 </div>
               ) : (
-                <div className={styles.couponInputWrapper}>
-                  <Input
-                    name="coupon"
-                    placeholder="Enter discount code"
-                    value={couponCode}
-                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                    className={styles.couponInput}
-                  />
-                  <Button
-                    onClick={applyCoupon}
-                    disabled={isLoading || !couponCode}
-                    variant="secondary"
-                    className="px-6"
-                  >
-                    Apply
-                  </Button>
+                <div className="space-y-4">
+                  <div className={styles.couponInputWrapper}>
+                    <Input
+                      name="coupon"
+                      placeholder="Enter discount code"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                      className={styles.couponInput}
+                    />
+                    <Button
+                      onClick={applyCoupon}
+                      disabled={isLoading || !couponCode}
+                      variant="secondary"
+                      className="px-6"
+                    >
+                      Apply
+                    </Button>
+                  </div>
+
+                  {availableCoupons.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-[var(--foreground-2)]">Available Offers</p>
+                      <div className="flex flex-wrap gap-2">
+                        {availableCoupons.map((coupon) => (
+                          <button
+                            key={coupon.id}
+                            onClick={() => {
+                              setCouponCode(coupon.code)
+                              // We could automatically apply it here or just fill the input
+                            }}
+                            className="flex flex-col items-start p-3 border border-dashed border-[var(--border-1)] rounded-lg hover:border-brand-primary transition-colors text-left"
+                          >
+                            <span className="text-sm font-bold text-brand-primary">{coupon.code}</span>
+                            <span className="text-xs text-[var(--foreground-3)]">
+                              {coupon.discountType === 'PERCENTAGE' ? `${coupon.discountValue}% OFF` : `₹${coupon.discountValue} OFF`}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

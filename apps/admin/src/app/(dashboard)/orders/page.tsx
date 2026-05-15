@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { Search, Eye, Truck } from 'lucide-react'
 import { useToast } from '@/components/providers'
+import { SharedTableActionCell, SharedTableActionIcon, SharedBadge } from '../../../../../../shared/components/UIPrimitives'
 
 interface Order {
   id: string
@@ -14,12 +16,14 @@ interface Order {
   user: { name: string; email: string }
 }
 
-const statusColors: Record<string, string> = {
-  PENDING: 'badge-warning',
-  PROCESSING: 'badge-info',
-  SHIPPED: 'badge-info',
-  DELIVERED: 'badge-success',
-  CANCELLED: 'badge-error',
+const statusVariants: Record<string, 'warning' | 'info' | 'success' | 'error' | 'gray'> = {
+  PENDING: 'warning',
+  CONFIRMED: 'info',
+  PROCESSING: 'info',
+  SHIPPED: 'info',
+  DELIVERED: 'success',
+  CANCELLED: 'error',
+  REFUNDED: 'error',
 }
 
 export default function OrdersPage() {
@@ -118,13 +122,13 @@ export default function OrdersPage() {
           <table className="table">
             <thead>
               <tr>
-                <th>Order</th>
-                <th>Customer</th>
-                <th>Total</th>
-                <th>Status</th>
-                <th>Payment</th>
-                <th>Date</th>
-                <th className="text-right">Actions</th>
+                <th className="w-[100px]">Order ID</th>
+                <th className="min-w-[180px]">Customer</th>
+                <th className="w-[100px]">Date</th>
+                <th className="w-[90px]">Total</th>
+                <th className="w-[110px]">Payment</th>
+                <th className="w-[110px]">Status</th>
+                <th className="w-[150px] text-center">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -144,39 +148,39 @@ export default function OrdersPage() {
                       <p className="text-[var(--text-tertiary)] text-xs">{order.user.email}</p>
                     </div>
                   </td>
-                  <td className="font-medium">₹{order.total}</td>
-                  <td>
-                    <span className={`badge ${statusColors[order.status] || 'badge-gray'}`}>
-                      {order.status}
-                    </span>
-                  </td>
-                  <td>
-                    <span className={`badge ${order.paymentStatus === 'PAID' ? 'badge-success' : 'badge-warning'}`}>
-                      {order.paymentStatus}
-                    </span>
-                  </td>
-                  <td className="text-[var(--text-secondary)]">
+                  <td className="text-[var(--text-secondary)] whitespace-nowrap text-xs">
                     {new Date(order.createdAt).toLocaleDateString('en-IN')}
                   </td>
+                  <td className="font-medium">₹{order.total}</td>
                   <td>
-                    <div className="flex items-center justify-end gap-2">
-                      <select
-                        value={order.status}
-                        onChange={(e) => updateStatus(order.id, e.target.value)}
-                        className="input text-sm py-1 px-2 w-32"
-                        aria-label={`Update status for order ${order.orderNumber}`}
-                      >
-                        <option value="PENDING">Pending</option>
-                        <option value="PROCESSING">Processing</option>
-                        <option value="SHIPPED">Shipped</option>
-                        <option value="DELIVERED">Delivered</option>
-                        <option value="CANCELLED">Cancelled</option>
-                      </select>
-                      <button className="p-2 hover:bg-[var(--surface-1)] rounded-lg" title="View Details">
-                        <Eye className="w-4 h-4 text-[var(--text-secondary)]" />
-                      </button>
-                    </div>
+                    <SharedBadge variant={order.paymentStatus === 'PAID' ? 'success' : 'warning'}>
+                      {order.paymentStatus}
+                    </SharedBadge>
                   </td>
+                  <td>
+                    <SharedBadge variant={statusVariants[order.status] || 'gray'}>
+                      {order.status}
+                    </SharedBadge>
+                  </td>
+                  <SharedTableActionCell>
+                    <select
+                      value={order.status}
+                      onChange={(e) => updateStatus(order.id, e.target.value)}
+                      className="input text-xs py-1 px-2 w-[100px] h-8"
+                      aria-label={`Update status for order ${order.orderNumber}`}
+                    >
+                      <option value="PENDING">Pending</option>
+                      <option value="PROCESSING">Processing</option>
+                      <option value="SHIPPED">Shipped</option>
+                      <option value="DELIVERED">Delivered</option>
+                      <option value="CANCELLED">Cancelled</option>
+                    </select>
+                    <SharedTableActionIcon 
+                      icon={<Eye />} 
+                      href={`/orders/${order.id}`}
+                      title="View Details"
+                    />
+                  </SharedTableActionCell>
                 </tr>
               ))}
             </tbody>

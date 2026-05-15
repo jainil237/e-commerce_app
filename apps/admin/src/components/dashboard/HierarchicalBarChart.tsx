@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState, useMemo } from 'react'
 import * as d3 from 'd3'
 
 interface HierarchyNode {
@@ -13,105 +13,141 @@ interface HierarchicalBarChartProps {
   data: HierarchyNode
 }
 
-function xTicks(maxValue: number) {
-  const tickCount = Math.min(5, Math.max(2, Math.ceil(maxValue)))
-  const ticks = d3.ticks(0, maxValue, tickCount).filter(Number.isInteger)
+/**
+ * Generates nice, readable tick values for the X-axis.
+ * Adapts to the available width to prevent overlapping.
+ */
+function generateTicks(maxValue: number, plotWidth: number) {
+  if (maxValue <= 0) return [0]
 
-  if (ticks[ticks.length - 1] !== maxValue) {
-    ticks.push(maxValue)
+  const x = d3.scaleLinear().domain([0, maxValue]).nice()
+  const niceMax = x.domain()[1]
+  
+  // Calculate target number of ticks (approx 1 every 80px)
+  const targetCount = Math.max(2, Math.floor(plotWidth / 80))
+  
+  // Use D3's tick generation for natural intervals (1, 2, 5, 10, etc.)
+  let ticks = x.ticks(targetCount)
+  
+  // Ensure the max value is included if it makes sense, or the nice max
+  if (ticks[ticks.length - 1] < niceMax) {
+    ticks.push(niceMax)
   }
 
-  return [...new Set(ticks)]
+  return ticks
 }
 
 export default function HierarchicalBarChart({ data }: HierarchicalBarChartProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [currentPath, setCurrentPath] = useState<string[]>(['root'])
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
 
+  // Resize listener for true responsiveness
   useEffect(() => {
-    if (!svgRef.current || !containerRef.current || !data) return
+    if (!containerRef.current) return
+    
+    const observer = new ResizeObserver((entries) => {
+      if (entries[0]) {
+        setDimensions({
+          width: entries[0].contentRect.width,
+          height: entries[0].contentRect.height || 400 // fallback
+        })
+      }
+    })
+    
+    observer.observe(containerRef.current)
+    return () => observer.disconnect()
+  }, [])
 
-    const containerWidth = containerRef.current.clientWidth
-    const margin = { top: 40, right: 60, bottom: 20, left: 140 }
-    const barStep = 32
-    const barPadding = 8
-    const valueLabelGutter = 38
-
+  // Process hierarchy and find current level rows
+  const rows = useMemo(() => {
+    if (!data) return []
     const root = d3.hierarchy(data)
-      .sum(d => Number(d.value) || 0)
+      .sum(d => d.value || 0)
       .sort((a, b) => (b.value || 0) - (a.value || 0))
 
-    // Find the node corresponding to currentPath
     let currentNode = root
-    for (let i = 1; i < currentPath.length; i++) {
-      const child = currentNode.children?.find(c => c.data.name === currentPath[i])
-      if (child) currentNode = child
+    for (const pathPart of currentPath) {
+      if (pathPart === 'root') continue
+      const found = currentNode.children?.find(c => c.data.name === pathPart)
+      if (found) currentNode = found
     }
+    return currentNode.children || []
+  }, [data, currentPath])
 
-    const rows = (currentNode.children || []).map(node => ({
-      ...node,
-      value: Number(node.value) || 0,
-    }))
-    const rowCount = Math.max(rows.length, 1)
-    const containerHeight = Math.max(280, margin.top + rowCount * barStep + margin.bottom)
-    const width = Math.max(0, containerWidth - margin.left - margin.right)
-    const plotWidth = Math.max(0, width - valueLabelGutter)
-    const maxValue = d3.max(rows, d => d.value) || 0
-    const domainMax = Math.max(1, maxValue)
-    const tickValues = domainMax <= 5
-      ? d3.range(0, domainMax + 1)
-      : xTicks(domainMax)
+  useEffect(() => {
+    if (!svgRef.current || dimensions.width === 0 || rows.length === 0) return
+
+    const containerWidth = dimensions.width
+    const isMobile = containerWidth < 640
+
+    // Layout configuration
+    const labelWidth = isMobile ? 80 : 140
+    const valueWidth = 50
+    const margin = { top: 30, right: 20, bottom: 20, left: 20 }
+    
+    const barStep = 44 // Balanced vertical rhythm
+    const barHeight = 28
+    const chartHeight = (rows.length * barStep) + margin.top + margin.bottom
+    const plotWidth = Math.max(0, containerWidth - margin.left - margin.right - labelWidth - valueWidth - 20)
+    
+    const maxValue = d3.max(rows, d => d.value) || 1
+    const tickValues = generateTicks(maxValue, plotWidth)
+    const domainMax = tickValues[tickValues.length - 1]
+
     const x = d3.scaleLinear()
       .domain([0, domainMax])
       .range([0, plotWidth])
-    const barWidth = (value?: number) => {
-      if (!value || value <= 0) return 0
-      return Math.min(plotWidth, Math.max(14, x(value)))
-    }
-    const valueLabelX = (value?: number) => Math.max(0, Math.min(barWidth(value) + 8, width - 4))
 
     const svg = d3.select(svgRef.current)
       .attr('width', containerWidth)
-      .attr('height', containerHeight)
-      .attr('viewBox', `0 0 ${containerWidth} ${containerHeight}`)
+      .attr('height', chartHeight)
+      .attr('viewBox', `0 0 ${containerWidth} ${chartHeight}`)
+      .style('overflow', 'visible')
 
     svg.selectAll('*').remove()
 
-    // Background for clicking back
-    svg.append('rect')
-      .attr('width', containerWidth)
-      .attr('height', containerHeight)
-      .attr('fill', 'none')
-      .attr('pointer-events', 'all')
-      .on('click', (event) => {
-        if (currentPath.length > 1) {
-          setCurrentPath(currentPath.slice(0, -1))
-        }
-      })
-
+    // Main group
     const g = svg.append('g')
       .attr('transform', `translate(${margin.left},${margin.top})`)
 
-    // X-axis (Top)
-    g.append('g')
+    // Draw X-Axis (Grid lines and labels)
+    const axisG = g.append('g')
       .attr('class', 'x-axis')
-      .attr('transform', `translate(0,-20)`)
-      .call(d3.axisTop(x).tickValues(tickValues).tickFormat(d3.format('d')).tickSize(0))
-      .attr('color', 'var(--text-tertiary)')
-      .selectAll('text')
+      .attr('transform', `translate(${labelWidth},0)`)
+
+    // Grid lines (subtle)
+    axisG.selectAll('line.grid')
+      .data(tickValues)
+      .enter().append('line')
+      .attr('class', 'grid')
+      .attr('x1', d => x(d))
+      .attr('x2', d => x(d))
+      .attr('y1', 0)
+      .attr('y2', rows.length * barStep)
+      .attr('stroke', 'var(--border-base)')
+      .attr('stroke-dasharray', '2,2')
+      .attr('opacity', 0.5)
+
+    // Axis Ticks
+    const axisLabels = axisG.selectAll('text.tick-label')
+      .data(tickValues)
+      .enter().append('text')
+      .attr('class', 'tick-label')
+      .attr('x', d => x(d))
+      .attr('y', -10)
+      .attr('text-anchor', 'middle')
+      .attr('fill', 'var(--text-tertiary)')
       .style('font-size', '10px')
+      .style('font-weight', '600')
+      .text(d => d.toLocaleString())
 
-    g.select('.domain').remove()
-    g.selectAll('.tick line').remove()
-
-    // Title handled in React component for better wrapping
-
-    // Render bars
-    const bars = g.selectAll('.bar-group')
+    // Row rendering
+    const rowG = g.selectAll('g.row')
       .data(rows, (d: any) => d.data.name)
       .enter().append('g')
-      .attr('class', 'bar-group')
+      .attr('class', 'row')
       .attr('transform', (d, i) => `translate(0,${i * barStep})`)
       .style('cursor', d => d.children && d.children.length > 0 ? 'pointer' : 'default')
       .on('click', (event, d) => {
@@ -121,72 +157,80 @@ export default function HierarchicalBarChart({ data }: HierarchicalBarChartProps
         }
       })
 
-    // Clickable background for the entire row (Full width of the chart area)
-    bars.append('rect')
-      .attr('class', 'click-bg')
+    // Hover background highlight
+    rowG.append('rect')
+      .attr('class', 'hover-bg')
       .attr('x', -margin.left)
-      .attr('y', 0)
+      .attr('y', -4)
       .attr('width', containerWidth)
       .attr('height', barStep)
-      .attr('fill', 'rgba(0,0,0,0)')
-      .attr('pointer-events', 'all')
+      .attr('fill', 'var(--brand-primary)')
+      .attr('opacity', 0)
+      .attr('rx', 4)
+      .style('transition', 'opacity 0.2s')
 
-    bars.append('rect')
-      .attr('class', 'main-bar')
-      .attr('fill', (d, i) => d.children && d.children.length > 0 ? '#3b82f6' : '#60a5fa')
-      .attr('width', d => barWidth(d.value))
-      .attr('height', barStep - barPadding)
-      .attr('rx', 6)
+    rowG.on('mouseenter', function() {
+      d3.select(this).select('.hover-bg').attr('opacity', 0.05)
+      d3.select(this).select('.bar-rect').attr('fill', 'var(--brand-primary)')
+    })
+    .on('mouseleave', function() {
+      d3.select(this).select('.hover-bg').attr('opacity', 0)
+      d3.select(this).select('.bar-rect').attr('fill', d => (d as any).children ? 'var(--brand-primary)' : '#60a5fa')
+    })
 
-    bars.append('text')
-      .attr('x', -15)
-      .attr('y', (barStep - barPadding) / 2)
+    // 1. Category Label (Column 1)
+    rowG.append('text')
+      .attr('class', 'category-label')
+      .attr('x', 0)
+      .attr('y', barHeight / 2)
       .attr('dy', '0.35em')
-      .attr('text-anchor', 'end')
       .attr('fill', 'var(--text-secondary)')
-      .style('font-size', '11px')
+      .style('font-size', isMobile ? '10px' : '11px')
       .style('font-weight', '600')
-      .text(d => d.data.name.length > 25 ? d.data.name.slice(0, 22) + '...' : d.data.name)
-      .style('opacity', 1)
+      .text(d => {
+        const name = d.data.name
+        const limit = isMobile ? 12 : 20
+        return name.length > limit ? name.slice(0, limit - 2) + '...' : name
+      })
 
-    bars.append('text')
-      .attr('class', 'value-label')
-      .attr('x', d => valueLabelX(d.value))
-      .attr('y', (barStep - barPadding) / 2)
+    // 2. Bar (Column 2)
+    const barGroup = rowG.append('g')
+      .attr('transform', `translate(${labelWidth},0)`)
+
+    barGroup.append('rect')
+      .attr('class', 'bar-rect')
+      .attr('x', 0)
+      .attr('y', 0)
+      .attr('width', 0) // Start at 0 for animation
+      .attr('height', barHeight)
+      .attr('rx', 4)
+      .attr('fill', d => d.children && d.children.length > 0 ? 'var(--brand-primary)' : '#60a5fa')
+      .transition()
+      .duration(600)
+      .attr('width', d => Math.max(4, x(d.value || 0)))
+
+    // 3. Value Label (Column 3)
+    rowG.append('text')
+      .attr('class', 'value-text')
+      .attr('x', labelWidth + plotWidth + 10)
+      .attr('y', barHeight / 2)
       .attr('dy', '0.35em')
+      .attr('text-anchor', 'start')
       .attr('fill', 'var(--brand-primary)')
       .style('font-size', '11px')
       .style('font-weight', '700')
-      .style('opacity', 1)
-      .text(d => d.value?.toLocaleString())
+      .text(d => (d.value || 0).toLocaleString())
 
-    // Hover effects
-    bars.on('mouseenter', function(event, d) {
-      d3.select(this).select('.main-bar')
-        .attr('fill', '#2563eb')
-      
-      d3.select(this).select('.value-label')
-        .attr('x', Math.min(barWidth(d.value) + 12, width - 4))
-    })
-    .on('mouseleave', function(event, d) {
-      d3.select(this).select('.main-bar')
-        .attr('fill', d.children ? '#3b82f6' : '#60a5fa')
-
-      d3.select(this).select('.value-label')
-        .attr('x', valueLabelX(d.value))
-    })
-
-    return () => {}
-  }, [data, currentPath])
+  }, [dimensions.width, rows, currentPath])
 
   return (
-    <div className="relative pt-4" ref={containerRef}>
+    <div className="relative pt-4 w-full" ref={containerRef}>
       <div className="flex items-center gap-3 mb-6 absolute -top-12 left-0 w-full justify-between pr-4 bg-[var(--surface-glass)] backdrop-blur-sm py-2 z-20">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 overflow-hidden">
           {currentPath.length > 1 && (
             <button 
               onClick={() => setCurrentPath(currentPath.slice(0, -1))}
-              className="group flex items-center gap-1 px-3 py-1 bg-[var(--surface-2)] text-[var(--text-primary)] rounded-full text-[10px] font-bold uppercase tracking-wider hover:bg-blue-600 hover:text-white transition-all duration-300"
+              className="flex-shrink-0 group flex items-center gap-1 px-3 py-1 bg-[var(--surface-2)] text-[var(--text-primary)] rounded-full text-[10px] font-bold uppercase tracking-wider hover:bg-blue-600 hover:text-white transition-all duration-300"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
@@ -194,12 +238,12 @@ export default function HierarchicalBarChart({ data }: HierarchicalBarChartProps
               Back
             </button>
           )}
-          <div className="flex items-center gap-1 flex-wrap">
+          <div className="flex items-center gap-1 flex-wrap overflow-hidden">
             {currentPath.map((path, i) => (
               <React.Fragment key={path}>
                 {i > 0 && <span className="text-[var(--border-base)]">/</span>}
-                <span className={`text-[11px] font-bold uppercase tracking-widest whitespace-nowrap ${i === currentPath.length - 1 ? 'text-blue-600' : 'text-[var(--text-tertiary)]'}`}>
-                  {path === 'root' ? 'All Categories' : path}
+                <span className={`text-[10px] sm:text-[11px] font-bold uppercase tracking-widest truncate max-w-[100px] ${i === currentPath.length - 1 ? 'text-blue-600' : 'text-[var(--text-tertiary)]'}`}>
+                  {path === 'root' ? 'All' : path}
                 </span>
               </React.Fragment>
             ))}
@@ -208,15 +252,20 @@ export default function HierarchicalBarChart({ data }: HierarchicalBarChartProps
       </div>
 
       <div className="mb-4 pr-10">
-        <h3 className="text-[13px] font-extrabold text-[var(--text-primary)] uppercase tracking-wide leading-tight break-words">
-          {currentPath.length === 1 ? 'Sales by Category' : `Top Selling Products in ${currentPath[currentPath.length - 1]}`}
+        <h3 className="text-[12px] sm:text-[13px] font-extrabold text-[var(--text-primary)] uppercase tracking-wide leading-tight">
+          {currentPath.length === 1 ? 'Sales by Category' : `Top Products in ${currentPath[currentPath.length - 1]}`}
         </h3>
       </div>
-      <svg ref={svgRef} className="block w-full overflow-visible"></svg>
+      
+      <div className="overflow-x-hidden min-h-[350px]">
+        <svg ref={svgRef} className="block w-full"></svg>
+      </div>
       
       {currentPath.length === 1 && (
-        <div className="absolute bottom-0 right-4 pointer-events-none">
-          <p className="text-[10px] text-[var(--text-tertiary)] italic bg-[var(--surface-glass)] px-2 py-1 rounded">Click any category to view products</p>
+        <div className="mt-4 flex justify-end">
+          <p className="text-[10px] text-[var(--text-tertiary)] italic bg-[var(--surface-glass)] px-2 py-1 rounded">
+            Click any category to view products
+          </p>
         </div>
       )}
     </div>

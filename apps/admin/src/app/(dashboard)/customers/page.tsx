@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { Search, Mail, Eye } from 'lucide-react'
 import { getFirstLetter } from '@/utils/initials'
+import { SharedTableActionCell, SharedTableActionIcon } from '../../../../../../shared/components/UIPrimitives'
 
 interface Customer {
   id: string
@@ -42,7 +44,7 @@ export default function CustomersPage() {
         phone: c.phone,
         createdAt: c.createdAt,
         orders: c.orderCount || 0,
-        totalSpent: '0',
+        totalSpent: c.totalSpent || '0',
       }))
       setCustomers(mapped)
     } catch {
@@ -83,12 +85,12 @@ export default function CustomersPage() {
           <table className="table">
             <thead>
               <tr>
-                <th>Customer</th>
-                <th>Phone</th>
-                <th>Orders</th>
-                <th>Total Spent</th>
-                <th>Joined</th>
-                <th className="text-right">Actions</th>
+                <th className="min-w-[200px]">Customer</th>
+                <th className="w-[150px]">Phone</th>
+                <th className="w-[100px]">Orders</th>
+                <th className="w-[120px]">Total Spent</th>
+                <th className="w-[120px]">Joined</th>
+                <th className="w-[120px] text-center">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -118,20 +120,18 @@ export default function CustomersPage() {
                   <td className="text-[var(--text-secondary)]">
                     {new Date(customer.createdAt).toLocaleDateString('en-IN')}
                   </td>
-                  <td>
-                    <div className="flex items-center justify-end gap-2">
-                      <a 
-                        href={`mailto:${customer.email}`}
-                        className="p-2 hover:bg-[var(--surface-1)] rounded-lg"
-                        title="Send Email"
-                      >
-                        <Mail className="w-4 h-4 text-[var(--text-secondary)]" />
-                      </a>
-                      <button className="p-2 hover:bg-[var(--surface-1)] rounded-lg" title="View Details">
-                        <Eye className="w-4 h-4 text-[var(--text-secondary)]" />
-                      </button>
-                    </div>
-                  </td>
+                  <SharedTableActionCell>
+                    <SharedTableActionIcon 
+                      icon={<Mail />} 
+                      href={`mailto:${customer.email}`}
+                      title="Send Email"
+                    />
+                    <SharedTableActionIcon 
+                      icon={<Eye />} 
+                      href={`/customers/${customer.id}`}
+                      title="View Details"
+                    />
+                  </SharedTableActionCell>
                 </tr>
               ))}
             </tbody>

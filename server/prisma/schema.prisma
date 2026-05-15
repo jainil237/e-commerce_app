@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,35 +8,36 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(uuid())
+  id            String         @id @default(uuid())
   name          String
-  email         String    @unique
-  phone         String    @unique
+  email         String         @unique
+  phone         String         @unique
   passwordHash  String
-  role          Role      @default(CUSTOMER)
+  role          Role           @default(CUSTOMER)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
   addresses     Address[]
   orders        Order[]
-  wishlists     Wishlist[]
   refreshTokens RefreshToken[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  wishlists     Wishlist[]
+  couponUsages  CouponUsage[]
 
   @@index([email])
   @@index([phone])
 }
 
 model Address {
-  id         String   @id @default(uuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  label      String   @default("Home")
-  line1      String
-  line2      String?
-  city       String
-  state      String
-  pincode    String
-  isDefault  Boolean  @default(false)
-  orders     Order[]
+  id        String  @id @default(uuid())
+  userId    String
+  label     String  @default("Home")
+  line1     String
+  line2     String?
+  city      String
+  state     String
+  pincode   String
+  isDefault Boolean @default(false)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders    Order[]
 
   @@index([userId])
 }
@@ -51,34 +49,34 @@ model Category {
   description String?
   imageUrl    String?
   isActive    Boolean   @default(true)
-  products    Product[]
   createdAt   DateTime  @default(now())
+  products    Product[]
 
   @@index([slug])
 }
 
 model Product {
-  id            String      @id @default(uuid())
-  name          String
-  slug          String      @unique
-  description   String      @db.Text
-  price         Decimal     @db.Decimal(10, 2)
-  mrp           Decimal     @db.Decimal(10, 2)
-  stock         Int         @default(0)
-  sku           String      @unique
-  categoryId    String
-  category      Category    @relation(fields: [categoryId], references: [id])
-  images        ProductImage[]
-  orderItems    OrderItem[]
-  wishlists     Wishlist[]
+  id                String             @id @default(uuid())
+  name              String
+  slug              String             @unique
+  description       String             @db.Text
+  price             Decimal            @db.Decimal(10, 2)
+  mrp               Decimal            @db.Decimal(10, 2)
+  stock             Int                @default(0)
+  sku               String             @unique
+  categoryId        String
+  isActive          Boolean            @default(true)
+  isFeatured        Boolean            @default(false)
+  weight            Float?
+  tags              String?
+  gstPercent        Float              @default(18)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  category          Category           @relation(fields: [categoryId], references: [id])
+  images            ProductImage[]
   stockReservations StockReservation[]
-  isActive      Boolean     @default(true)
-  isFeatured    Boolean     @default(false)
-  weight        Float?      // in grams, for shipping
-  tags          String?     // comma-separated
-  gstPercent    Float       @default(18)
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  wishlists         Wishlist[]
+  orderItems        OrderItem[]
 
   @@index([slug])
   @@index([categoryId])
@@ -87,102 +85,107 @@ model Product {
 }
 
 model ProductImage {
-  id         String   @id @default(uuid())
-  productId  String
-  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  url        String
-  altText    String?
-  sortOrder  Int      @default(0)
+  id        String  @id @default(uuid())
+  productId String
+  url       String
+  altText   String?
+  sortOrder Int     @default(0)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@index([productId])
 }
 
 model Order {
-  id              String        @id @default(uuid())
-  orderNumber     String        @unique
-  userId          String?
-  user            User?         @relation(fields: [userId], references: [id])
-  addressId       String
-  address         Address       @relation(fields: [addressId], references: [id])
-  items           OrderItem[]
-  subtotal        Decimal       @db.Decimal(10, 2)
-  shippingCharge  Decimal       @db.Decimal(10, 2)
-  discount        Decimal       @db.Decimal(10, 2) @default(0)
-  gstAmount       Decimal       @db.Decimal(10, 2)
-  total           Decimal       @db.Decimal(10, 2)
-  status          OrderStatus   @default(PENDING)
-  paymentStatus   PaymentStatus @default(PENDING)
-  razorpayOrderId String?
+  id                String        @id @default(uuid())
+  orderNumber       String        @unique
+  userId            String?
+  addressId         String
+  subtotal          Decimal       @db.Decimal(10, 2)
+  shippingCharge    Decimal       @db.Decimal(10, 2)
+  discount          Decimal       @default(0.00) @db.Decimal(10, 2)
+  gstAmount         Decimal       @db.Decimal(10, 2)
+  total             Decimal       @db.Decimal(10, 2)
+  status            OrderStatus   @default(PENDING)
+  paymentStatus     PaymentStatus @default(PENDING)
+  razorpayOrderId   String?
   razorpayPaymentId String?
-  couponCode      String?
-  notes           String?
-  shipping        Shipment?
-  invoiceUrl      String?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  couponCode        String?
+  notes             String?
+  invoiceUrl        String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  address           Address       @relation(fields: [addressId], references: [id])
+  user              User?         @relation(fields: [userId], references: [id])
+  shipping          Shipment?
+  items             OrderItem[]
 
   @@index([orderNumber])
   @@index([userId])
   @@index([status])
   @@index([paymentStatus])
   @@index([createdAt])
-}
-
-model OrderItem {
-  id         String   @id @default(uuid())
-  orderId    String
-  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId  String
-  product    Product  @relation(fields: [productId], references: [id])
-  quantity   Int
-  unitPrice  Decimal  @db.Decimal(10, 2)
-  gstPercent Float
-  subtotal   Decimal  @db.Decimal(10, 2)
-
-  @@index([orderId])
-  @@index([productId])
+  @@index([addressId], map: "Order_addressId_fkey")
 }
 
 model Shipment {
-  id              String         @id @default(uuid())
-  orderId         String         @unique
-  order           Order          @relation(fields: [orderId], references: [id])
-  courierPartner  String
-  awbNumber       String?
-  trackingUrl     String?
-  status          ShipmentStatus @default(PROCESSING)
-  dispatchedAt    DateTime?
-  expectedBy      DateTime?
-  deliveredAt     DateTime?
-  notes           String?
-  updatedAt       DateTime       @updatedAt
+  id             String         @id @default(uuid())
+  orderId        String         @unique
+  courierPartner String
+  awbNumber      String?
+  trackingUrl    String?
+  status         ShipmentStatus @default(PROCESSING)
+  dispatchedAt   DateTime?
+  expectedBy     DateTime?
+  deliveredAt    DateTime?
+  notes          String?
+  updatedAt      DateTime       @updatedAt
+  order          Order          @relation(fields: [orderId], references: [id])
 
   @@index([orderId])
   @@index([status])
 }
 
 model Coupon {
-  id             String      @id @default(uuid())
-  code           String      @unique
-  discountType   DiscountType
-  discountValue  Decimal     @db.Decimal(10, 2)
-  minOrderValue  Decimal?    @db.Decimal(10, 2)
-  maxUsage       Int?
-  usedCount      Int         @default(0)
-  expiresAt      DateTime?
-  isActive       Boolean     @default(true)
+  id            String       @id @default(uuid())
+  code          String       @unique
+  discountType  DiscountType
+  discountValue Decimal      @db.Decimal(10, 2)
+  minOrderValue Decimal?     @db.Decimal(10, 2)
+  maxUsage      Int?         // Global limit
+  perUserLimit  Int?         @default(1) // Limit per user
+  usedCount     Int          @default(0)
+  validFrom     DateTime?
+  expiresAt     DateTime?
+  isActive      Boolean      @default(true)
+  couponUsages  CouponUsage[]
 
   @@index([code])
   @@index([isActive])
 }
 
+model CouponUsage {
+  id        String   @id @default(uuid())
+  couponId  String
+  userId    String
+  usedCount Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  coupon    Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([couponId, userId])
+  @@index([couponId])
+  @@index([userId])
+}
+
 model RefreshToken {
   id        String   @id @default(uuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   token     String   @unique @db.VarChar(512)
   expiresAt DateTime
   createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([token])
@@ -191,13 +194,49 @@ model RefreshToken {
 model Wishlist {
   id        String   @id @default(uuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productId])
   @@index([userId])
+  @@index([productId], map: "Wishlist_productId_fkey")
+}
+
+model StockReservation {
+  id        String            @id @default(uuid())
+  productId String
+  userId    String?
+  sessionId String?
+  quantity  Int
+  expiresAt DateTime
+  status    ReservationStatus @default(ACTIVE)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  product   Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([userId])
+  @@index([sessionId])
+  @@index([expiresAt])
+  @@index([status])
+}
+
+model OrderItem {
+  id         String  @id @default(uuid())
+  orderId    String
+  productId  String
+  quantity   Int
+  unitPrice  Decimal @db.Decimal(10, 2)
+  gstPercent Float
+  subtotal   Decimal @db.Decimal(10, 2)
+  Order      Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product    Product @relation(fields: [productId], references: [id])
+
+  @@map("orderitem")
+  @@index([orderId])
+  @@index([productId])
 }
 
 enum Role {
@@ -235,25 +274,6 @@ enum ShipmentStatus {
 enum DiscountType {
   PERCENTAGE
   FLAT
-}
-
-model StockReservation {
-  id            String   @id @default(uuid())
-  productId     String
-  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  userId        String?  // null for guest sessions
-  sessionId     String?  // for guest users (cookie/session based)
-  quantity      Int
-  expiresAt     DateTime
-  status        ReservationStatus @default(ACTIVE)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  @@index([productId])
-  @@index([userId])
-  @@index([sessionId])
-  @@index([expiresAt])
-  @@index([status])
 }
 
 enum ReservationStatus {

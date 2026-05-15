@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Plus, Search, Edit2, Trash2, Eye, MoreVertical } from 'lucide-react'
 import { useToast } from '@/components/providers'
 import { FallbackImage } from '@/components/ui/fallback-image'
+import { SharedTableActionCell, SharedTableActionIcon, SharedBadge } from '../../../../../../shared/components/UIPrimitives'
 
 interface Product {
   id: string
@@ -99,12 +100,12 @@ export default function ProductsPage() {
           <table className="table">
             <thead>
               <tr>
-                <th>Product</th>
-                <th>Category</th>
-                <th>Price</th>
-                <th>Stock</th>
-                <th>Status</th>
-                <th className="text-right">Actions</th>
+                <th className="min-w-[200px]">Product</th>
+                <th className="w-[150px]">Category</th>
+                <th className="w-[120px]">Price</th>
+                <th className="w-[100px]">Stock</th>
+                <th className="w-[120px]">Status</th>
+                <th className="w-[120px] text-center">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -143,35 +144,28 @@ export default function ProductsPage() {
                     </span>
                   </td>
                   <td>
-                    <span className={`badge ${product.isActive ? 'badge-success' : 'badge-gray'}`}>
+                    <SharedBadge variant={product.isActive ? 'success' : 'gray'}>
                       {product.isActive ? 'Active' : 'Inactive'}
-                    </span>
+                    </SharedBadge>
                   </td>
-                  <td>
-                    <div className="flex items-center justify-end gap-2">
-                      <Link 
-                        href={`/products/${product.slug}`} 
-                        className="p-2 hover:bg-[var(--surface-1)] rounded-lg"
-                        title="View"
-                      >
-                        <Eye className="w-4 h-4 text-[var(--text-secondary)]" />
-                      </Link>
-                      <Link 
-                        href={`/products/edit/${product.id}`} 
-                        className="p-2 hover:bg-[var(--surface-1)] rounded-lg"
-                        title="Edit"
-                      >
-                        <Edit2 className="w-4 h-4 text-[var(--text-secondary)]" />
-                      </Link>
-                      <button 
-                        onClick={() => handleDelete(product.id)}
-                        className="p-2 hover:bg-[var(--surface-1)] rounded-lg"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-4 h-4 text-red-500" />
-                      </button>
-                    </div>
-                  </td>
+                  <SharedTableActionCell>
+                    <SharedTableActionIcon 
+                      icon={<Eye />} 
+                      href={`/products/${product.slug}`}
+                      title="View"
+                    />
+                    <SharedTableActionIcon 
+                      icon={<Edit2 />} 
+                      href={`/products/edit/${product.id}`}
+                      title="Edit"
+                    />
+                    <SharedTableActionIcon 
+                      icon={<Trash2 />} 
+                      onClick={() => handleDelete(product.id)}
+                      variant="danger"
+                      title="Delete"
+                    />
+                  </SharedTableActionCell>
                 </tr>
               ))}
             </tbody>

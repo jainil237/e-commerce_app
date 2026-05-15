@@ -11,8 +11,14 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Calendar,
+  X,
+  Check,
+  RotateCcw,
 } from 'lucide-react'
-import { useAuth } from '@/components/providers'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { useAuth, useToast } from '@/components/providers'
+import { SharedBadge, SharedButton } from '@shared/components/UIPrimitives'
 import RevenueWeeklyChart from '@/components/dashboard/RevenueWeeklyChart'
 import HierarchicalBarChart from '@/components/dashboard/HierarchicalBarChart'
 
@@ -39,9 +45,16 @@ interface HierarchyNode {
 
 export default function DashboardPage() {
   const { user } = useAuth()
+  const { showToast } = useToast()
+  const router = useRouter()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [fetchError, setFetchError] = useState<string | null>(null)
+
+  // Restock Modal State
+  const [isRestockModalOpen, setIsRestockModalOpen] = useState(false)
+  const [restockItems, setRestockItems] = useState<Array<{ productId: string; name: string; sku: string; quantity: number; currentStock: number; selected: boolean }>>([])
+  const [isRestocking, setIsRestocking] = useState(false)
   
   // Weekly revenue state
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
@@ -53,10 +66,15 @@ export default function DashboardPage() {
   // Hierarchical sales state
   const [hierarchicalSales, setHierarchicalSales] = useState<HierarchyNode | null>(null)
   const [isHierarchyLoading, setIsHierarchyLoading] = useState(false)
+  
+  // Low stock state
+  const [lowStock, setLowStock] = useState<Array<{ id: string; name: string; stock: number; sku: string }>>([])
+  const [isLowStockLoading, setIsLowStockLoading] = useState(false)
 
   useEffect(() => {
     fetchDashboard(selectedMonth, selectedYear)
     fetchHierarchicalSales(selectedMonth, selectedYear)
+    fetchLowStock()
   }, [selectedMonth, selectedYear])
 
   useEffect(() => {
@@ -103,6 +121,61 @@ export default function DashboardPage() {
       console.error('Failed to fetch hierarchical sales:', error)
     } finally {
       setIsHierarchyLoading(false)
+    }
+  }
+
+  const fetchLowStock = async () => {
+    setIsLowStockLoading(true)
+    try {
+      const res = await fetch('/api/v1/admin/dashboard/low-stock', { credentials: 'include' })
+      const data = await res.json()
+      if (data.success) {
+        setLowStock(data.data)
+        // Initialize restock items
+        setRestockItems(data.data.map((p: any) => ({
+          productId: p.id,
+          name: p.name,
+          sku: p.sku,
+          quantity: 10, // Default restock qty
+          currentStock: p.stock,
+          selected: true
+        })))
+      }
+    } catch (error) {
+      console.error('Failed to fetch low stock:', error)
+    } finally {
+      setIsLowStockLoading(false)
+    }
+  }
+
+  const handleRestock = async () => {
+    const itemsToRestock = restockItems.filter(item => item.selected && item.quantity > 0)
+    if (itemsToRestock.length === 0) {
+      showToast('info', 'Please select at least one product with quantity > 0')
+      return
+    }
+
+    setIsRestocking(true)
+    try {
+      const res = await fetch('/api/v1/admin/inventory/bulk-restock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: itemsToRestock }),
+        credentials: 'include'
+      })
+      const data = await res.json()
+      if (data.success) {
+        showToast('success', 'Inventory restocked successfully')
+        setIsRestockModalOpen(false)
+        fetchLowStock()
+        fetchDashboard(selectedMonth, selectedYear)
+      } else {
+        showToast('error', data.message || 'Failed to restock inventory')
+      }
+    } catch (error) {
+      showToast('error', 'An error occurred while restocking')
+    } finally {
+      setIsRestocking(false)
     }
   }
 
@@ -358,44 +431,51 @@ export default function DashboardPage() {
             <h2 className="text-xl font-bold text-[var(--text-primary)]">Recent Transactions</h2>
             <p className="text-sm text-gray-500">Monitor latest order activity</p>
           </div>
-          <button className="text-sm font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 transition-colors px-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-xl">View All Activity</button>
+          <Link 
+            href="/orders" 
+            className="text-sm font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all px-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-xl"
+          >
+            View All Activity
+          </Link>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
+        <div className="table-container">
+          <table className="table">
             <thead>
-              <tr className="bg-[var(--surface-1)]">
-                <th className="px-8 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Order ID</th>
-                <th className="px-8 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Customer</th>
-                <th className="px-8 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Amount</th>
-                <th className="px-8 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Status</th>
-                <th className="px-8 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Date</th>
+              <tr>
+                <th className="w-[100px]">Order ID</th>
+                <th className="min-w-[180px]">Customer</th>
+                <th className="w-[120px]">Date</th>
+                <th className="w-[100px]">Amount</th>
+                <th className="w-[110px]">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[var(--border-base)]">
+            <tbody>
               {(stats?.recentOrders?.length || 0) === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-8 py-12 text-center text-gray-400 italic">
+                  <td colSpan={5} className="text-center py-12 text-[var(--text-secondary)] italic">
                     No recent transactions detected
                   </td>
                 </tr>
               )}
               {stats?.recentOrders?.map((order) => (
-                <tr key={order.id} className="hover:bg-[var(--surface-1)] transition-colors">
-                  <td className="px-8 py-5 text-sm font-bold text-[var(--text-primary)]">{order.orderNumber}</td>
-                  <td className="px-8 py-5 text-sm text-[var(--text-secondary)] font-medium">{order.customer}</td>
-                  <td className="px-8 py-5 text-sm font-bold text-[var(--text-primary)]">₹{order.total}</td>
-                  <td className="px-8 py-5">
-                    <span className={`inline-flex px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                      order.status === 'DELIVERED' ? 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400' :
-                      order.status === 'SHIPPED' ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400' :
-                      order.status === 'PROCESSING' ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400' :
-                      order.status === 'CANCELLED' ? 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400' : 'bg-[var(--surface-1)] text-[var(--text-secondary)]'
-                    }`}>
-                      {order.status}
-                    </span>
-                  </td>
-                  <td className="px-8 py-5 text-sm text-gray-400 font-medium">
+                <tr key={order.id}>
+                  <td className="font-bold">{order.orderNumber}</td>
+                  <td className="text-[var(--text-secondary)] font-medium">{order.customer}</td>
+                  <td className="text-[var(--text-tertiary)] text-xs">
                     {new Date(order.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  </td>
+                  <td className="font-bold">₹{order.total}</td>
+                  <td>
+                    <SharedBadge 
+                      variant={
+                        order.status === 'DELIVERED' ? 'success' :
+                        order.status === 'SHIPPED' ? 'info' :
+                        order.status === 'PROCESSING' ? 'warning' :
+                        order.status === 'CANCELLED' ? 'error' : 'neutral'
+                      }
+                    >
+                      {order.status}
+                    </SharedBadge>
                   </td>
                 </tr>
               ))}
@@ -403,6 +483,173 @@ export default function DashboardPage() {
           </table>
         </div>
       </div>
+
+      {/* Low Stock Alerts */}
+      {lowStock.length > 0 && (
+        <div className="mt-10 bg-[var(--surface-0)] rounded-3xl shadow-sm border border-red-500/20 overflow-hidden">
+          <div className="p-8 border-b border-[var(--border-base)] flex items-center justify-between bg-red-500/5">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-red-500/20 text-red-600 rounded-lg">
+                <Package className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-[var(--text-primary)]">Inventory Alerts</h2>
+                <p className="text-sm text-red-500/70 font-medium">Critical stock levels detected ({"<"} 10 units)</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => setIsRestockModalOpen(true)}
+              className="text-sm font-bold text-red-600 hover:text-red-700 transition-colors px-4 py-2 bg-red-50 rounded-xl border border-red-200"
+            >
+              Restock All
+            </button>
+          </div>
+          <div className="table-container">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>SKU</th>
+                  <th>Current Stock</th>
+                  <th>Status</th>
+                  <th className="text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lowStock.map((product) => (
+                  <tr key={product.id}>
+                    <td className="font-bold">{product.name}</td>
+                    <td className="text-xs font-mono text-[var(--text-tertiary)]">{product.sku}</td>
+                    <td>
+                      <span className={`font-black ${product.stock === 0 ? 'text-red-600' : 'text-orange-600'}`}>
+                        {product.stock}
+                      </span>
+                    </td>
+                    <td>
+                      <SharedBadge variant={product.stock === 0 ? 'error' : 'warning'}>
+                        {product.stock === 0 ? 'Out of Stock' : 'Low Stock'}
+                      </SharedBadge>
+                    </td>
+                    <td className="text-right">
+                      <Link 
+                        href={`/products/edit/${product.id}`}
+                        className="text-xs font-black uppercase tracking-widest text-blue-600 hover:underline"
+                      >
+                        Manage
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Restock Modal */}
+      {isRestockModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsRestockModalOpen(false)}></div>
+          <div className="relative bg-[var(--surface-0)] w-full max-w-2xl rounded-3xl shadow-2xl border border-[var(--border-base)] overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-6 border-b border-[var(--border-base)] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-500/10 text-blue-600 rounded-lg">
+                  <RotateCcw className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-[var(--text-primary)]">Bulk Restock</h3>
+                  <p className="text-sm text-[var(--text-secondary)] font-medium">Update stock levels for selected products</p>
+                </div>
+              </div>
+              <button onClick={() => setIsRestockModalOpen(false)} className="p-2 hover:bg-[var(--surface-1)] rounded-xl transition-colors">
+                <X className="w-6 h-6 text-[var(--text-tertiary)]" />
+              </button>
+            </div>
+            
+            <div className="max-h-[60vh] overflow-y-auto">
+              <table className="w-full text-left">
+                <thead className="bg-[var(--surface-1)] sticky top-0 z-10">
+                  <tr className="text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)] border-b border-[var(--border-base)]">
+                    <th className="px-6 py-4 w-12">
+                      <input 
+                        type="checkbox" 
+                        checked={restockItems.every(i => i.selected)}
+                        onChange={(e) => setRestockItems(restockItems.map(i => ({ ...i, selected: e.target.checked })))}
+                        className="rounded border-[var(--border-base)] text-blue-600 focus:ring-blue-500"
+                      />
+                    </th>
+                    <th className="px-6 py-4">Product</th>
+                    <th className="px-6 py-4">Current</th>
+                    <th className="px-6 py-4 w-32 text-right">Add Stock</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border-base)]">
+                  {restockItems.map((item, idx) => (
+                    <tr key={item.productId} className={item.selected ? 'bg-blue-500/5' : 'opacity-60'}>
+                      <td className="px-6 py-4">
+                        <input 
+                          type="checkbox" 
+                          checked={item.selected}
+                          onChange={(e) => {
+                            const newItems = [...restockItems]
+                            newItems[idx].selected = e.target.checked
+                            setRestockItems(newItems)
+                          }}
+                          className="rounded border-[var(--border-base)] text-blue-600 focus:ring-blue-500"
+                        />
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="font-bold text-[var(--text-primary)] text-sm">{item.name}</p>
+                        <p className="text-[10px] font-mono text-[var(--text-tertiary)] mt-0.5">{item.sku}</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <SharedBadge variant={item.currentStock === 0 ? 'error' : 'warning'}>
+                          {item.currentStock}
+                        </SharedBadge>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <input 
+                          type="number"
+                          min="1"
+                          value={item.quantity}
+                          onChange={(e) => {
+                            const newItems = [...restockItems]
+                            newItems[idx].quantity = parseInt(e.target.value) || 0
+                            setRestockItems(newItems)
+                          }}
+                          className="w-20 px-3 py-1.5 bg-[var(--surface-1)] border border-[var(--border-base)] rounded-xl text-sm font-bold text-right outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="p-6 bg-[var(--surface-1)] border-t border-[var(--border-base)] flex items-center justify-between">
+              <p className="text-xs font-bold text-[var(--text-secondary)]">
+                {restockItems.filter(i => i.selected).length} products selected
+              </p>
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={() => setIsRestockModalOpen(false)}
+                  className="px-6 py-2.5 text-sm font-bold text-[var(--text-secondary)] hover:bg-[var(--surface-2)] rounded-2xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <SharedButton 
+                  onClick={handleRestock}
+                  isLoading={isRestocking}
+                  leftIcon={<Check className="w-4 h-4" />}
+                  className="rounded-2xl px-8"
+                >
+                  Confirm Restock
+                </SharedButton>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

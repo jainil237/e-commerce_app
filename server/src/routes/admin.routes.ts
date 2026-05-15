@@ -56,42 +56,42 @@ router.get('/dashboard/summary', async (req, res: Response, next) => {
     const [
       currentRevenue, 
       currentOrders, 
-      currentProducts, 
-      currentUsers,
+      totalProducts, 
+      totalUsers,
       prevRevenue,
       prevOrders,
-      prevProducts,
-      prevUsers
+      prevTotalProducts,
+      prevTotalUsers
     ] = await Promise.all([
-      // Current Period
+      // Current Period Revenue & Orders
       prisma.order.aggregate({
         where: { paymentStatus: 'PAID', createdAt: { gte: currentStart, lte: currentEnd } },
         _sum: { total: true },
       }),
       prisma.order.count({
-        where: { createdAt: { gte: currentStart, lte: currentEnd } },
+        where: { createdAt: { gte: currentStart, lte: currentEnd }, paymentStatus: 'PAID' },
       }),
-      prisma.orderItem.groupBy({
-        by: ['productId'],
-        where: { order: { createdAt: { gte: currentStart, lte: currentEnd }, paymentStatus: 'PAID' } },
+      // Aggregated Stats up to currentEnd
+      prisma.product.count({
+        where: { createdAt: { lte: currentEnd } }
       }),
       prisma.user.count({
-        where: { role: 'CUSTOMER', createdAt: { gte: currentStart, lte: currentEnd } },
+        where: { role: 'CUSTOMER', createdAt: { lte: currentEnd } }
       }),
-      // Previous Period
+      // Previous Period Revenue & Orders
       prisma.order.aggregate({
         where: { paymentStatus: 'PAID', createdAt: { gte: prevStart, lte: prevEnd } },
         _sum: { total: true },
       }),
       prisma.order.count({
-        where: { createdAt: { gte: prevStart, lte: prevEnd } },
+        where: { createdAt: { gte: prevStart, lte: prevEnd }, paymentStatus: 'PAID' },
       }),
-      prisma.orderItem.groupBy({
-        by: ['productId'],
-        where: { order: { createdAt: { gte: prevStart, lte: prevEnd }, paymentStatus: 'PAID' } },
+      // Aggregated Stats up to prevEnd for Change calculation
+      prisma.product.count({
+        where: { createdAt: { lte: prevEnd } }
       }),
       prisma.user.count({
-        where: { role: 'CUSTOMER', createdAt: { gte: prevStart, lte: prevEnd } },
+        where: { role: 'CUSTOMER', createdAt: { lte: prevEnd } }
       }),
     ])
 
@@ -115,12 +115,12 @@ router.get('/dashboard/summary', async (req, res: Response, next) => {
           change: calculateChange(currentOrders, prevOrders)
         },
         products: {
-          value: currentProducts.length,
-          change: calculateChange(currentProducts.length, prevProducts.length)
+          value: totalProducts,
+          change: calculateChange(totalProducts, prevTotalProducts)
         },
         customers: {
-          value: currentUsers,
-          change: calculateChange(currentUsers, prevUsers)
+          value: totalUsers,
+          change: calculateChange(totalUsers, prevTotalUsers)
         }
       },
     })
@@ -347,7 +347,7 @@ router.get('/dashboard/top-products', async (req, res: Response, next) => {
     const topProducts = await prisma.orderItem.groupBy({
       by: ['productId'],
       where: {
-        order: {
+        Order: {
           paymentStatus: 'PAID',
           createdAt: { gte: startDate, lte: endDate }
         }
@@ -371,6 +371,29 @@ router.get('/dashboard/top-products', async (req, res: Response, next) => {
     )
 
     res.json({ success: true, data: productDetails })
+  } catch (error) {
+    next(error)
+  }
+})
+
+router.get('/dashboard/low-stock', async (req, res: Response, next) => {
+  try {
+    const lowStockProducts = await prisma.product.findMany({
+      where: {
+        stock: { lt: 10 },
+        isActive: true
+      },
+      select: {
+        id: true,
+        name: true,
+        stock: true,
+        sku: true
+      },
+      orderBy: { stock: 'asc' },
+      take: 5
+    })
+
+    res.json({ success: true, data: lowStockProducts })
   } catch (error) {
     next(error)
   }
@@ -599,7 +622,34 @@ router.patch('/products/:id/toggle', async (req, res: Response, next) => {
   }
 })
 
+
+// ==================== Inventory ====================
+
+router.post('/inventory/bulk-restock', async (req, res: Response, next) => {
+  try {
+    const { items } = req.body // Array of { productId, quantity }
+
+    if (!Array.isArray(items) || items.length === 0) {
+      throw createError(400, 'Invalid items list', 'INVALID_ITEMS')
+    }
+
+    const updates = items.map((item: any) => 
+      prisma.product.update({
+        where: { id: item.productId },
+        data: { stock: { increment: parseInt(item.quantity) || 0 } }
+      })
+    )
+
+    await Promise.all(updates)
+
+    res.json({ success: true, message: 'Stock updated successfully' })
+  } catch (error) {
+    next(error)
+  }
+})
+
 // ==================== Categories ====================
+
 
 router.get('/categories', async (_req, res: Response, next) => {
   try {
@@ -1034,11 +1084,32 @@ router.get('/users', async (req, res: Response, next) => {
       prisma.user.count({ where }),
     ])
 
+    // Fetch totalSpent for each user in the current page
+    const userIds = users.map(u => u.id)
+    const totalSpentAggregation = await prisma.order.groupBy({
+      by: ['userId'],
+      where: {
+        userId: { in: userIds },
+        paymentStatus: 'PAID',
+      },
+      _sum: {
+        total: true,
+      },
+    })
+
+    const totalSpentMap = totalSpentAggregation.reduce((acc, curr) => {
+      if (curr.userId) {
+        acc[curr.userId] = curr._sum.total?.toString() || '0'
+      }
+      return acc
+    }, {} as Record<string, string>)
+
     res.json({
       success: true,
       data: users.map(u => ({
         ...u,
         orderCount: u._count.orders,
+        totalSpent: totalSpentMap[u.id] || '0',
       })),
       meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
     })
@@ -1078,10 +1149,16 @@ router.get('/users/:id', async (req, res: Response, next) => {
       throw createError(404, 'User not found', 'USER_NOT_FOUND')
     }
 
+    const totalSpent = await prisma.order.aggregate({
+      where: { userId: req.params.id, paymentStatus: 'PAID' },
+      _sum: { total: true },
+    })
+
     res.json({
       success: true,
       data: {
         ...user,
+        totalSpent: totalSpent._sum.total?.toString() || '0',
         orders: user.orders.map(o => ({
           ...o,
           total: o.total.toString(),
@@ -1114,7 +1191,7 @@ router.get('/coupons', async (_req, res: Response, next) => {
 
 router.post('/coupons', async (req, res: Response, next) => {
   try {
-    const { code, discountType, discountValue, minOrderValue, maxUsage, expiresAt } = req.body
+    const { code, discountType, discountValue, minOrderValue, maxUsage, perUserLimit, expiresAt, validFrom, isActive } = req.body
 
     const coupon = await prisma.coupon.create({
       data: {
@@ -1122,8 +1199,11 @@ router.post('/coupons', async (req, res: Response, next) => {
         discountType,
         discountValue: parseFloat(discountValue),
         minOrderValue: minOrderValue ? parseFloat(minOrderValue) : null,
-        maxUsage,
-        expiresAt: expiresAt ? new Date(expiresAt) : null,
+        maxUsage: maxUsage ? parseInt(maxUsage) : null,
+        perUserLimit: perUserLimit ? parseInt(perUserLimit) : 1,
+        validFrom: (validFrom && validFrom !== '') ? new Date(validFrom) : null,
+        expiresAt: (expiresAt && expiresAt !== '') ? new Date(expiresAt) : null,
+        isActive: isActive !== undefined ? isActive : true,
       },
     })
 
@@ -1142,7 +1222,7 @@ router.post('/coupons', async (req, res: Response, next) => {
 
 router.put('/coupons/:id', async (req, res: Response, next) => {
   try {
-    const { code, discountType, discountValue, minOrderValue, maxUsage, expiresAt, isActive } = req.body
+    const { code, discountType, discountValue, minOrderValue, maxUsage, perUserLimit, expiresAt, validFrom, isActive } = req.body
 
     const coupon = await prisma.coupon.update({
       where: { id: req.params.id },
@@ -1150,9 +1230,11 @@ router.put('/coupons/:id', async (req, res: Response, next) => {
         code: code?.toUpperCase(),
         discountType,
         discountValue: discountValue ? parseFloat(discountValue) : undefined,
-        minOrderValue: minOrderValue ? parseFloat(minOrderValue) : null,
-        maxUsage,
-        expiresAt: expiresAt ? new Date(expiresAt) : null,
+        minOrderValue: minOrderValue !== undefined ? (minOrderValue ? parseFloat(minOrderValue) : null) : undefined,
+        maxUsage: maxUsage !== undefined ? (maxUsage ? parseInt(maxUsage) : null) : undefined,
+        perUserLimit: perUserLimit !== undefined ? (perUserLimit ? parseInt(perUserLimit) : 1) : undefined,
+        validFrom: validFrom !== undefined ? (validFrom ? new Date(validFrom) : null) : undefined,
+        expiresAt: expiresAt !== undefined ? (expiresAt ? new Date(expiresAt) : null) : undefined,
         isActive,
       },
     })
