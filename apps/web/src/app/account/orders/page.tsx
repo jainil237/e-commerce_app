@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Package, ChevronRight, Loader2 } from 'lucide-react'
 import { useAuth } from '@/components/providers'
+import { Button } from '@/components/atoms/Button/Button'
 
 interface Order {
   id: string

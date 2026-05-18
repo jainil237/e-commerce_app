@@ -127,21 +127,6 @@ export default function AddressesPage() {
           )}
         </div>
 
-        {!showForm && (
-          <Button
-            variant="primary-brand"
-            className="w-full sm:hidden mb-6"
-            onClick={() => {
-              setEditingAddress(null)
-              setFormData({ label: '', line1: '', line2: '', city: '', state: '', pincode: '', isDefault: false })
-              setShowForm(true)
-            }}
-            leftIcon={<Plus className="w-4 h-4" />}
-          >
-            Add New Address
-          </Button>
-        )}
-
         {showForm && (
           <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-800 p-6 md:p-8 mb-8 animate-in fade-in slide-in-from-top-4 duration-300">
             <div className="mb-8 pb-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">

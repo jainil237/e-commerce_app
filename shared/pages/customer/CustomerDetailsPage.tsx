@@ -192,9 +192,8 @@ export const CustomerDetailsPage: React.FC<CustomerDetailsPageProps> = ({
                           <SharedTableActionIcon
                             onClick={() => onViewOrder(order.id)}
                             title="View Order"
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                          </SharedTableActionIcon>
+                            icon={<ExternalLink className="w-4 h-4" />}
+                          />
                         </SharedTableActionCell>
                       </tr>
                     ))

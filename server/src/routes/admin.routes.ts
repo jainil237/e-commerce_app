@@ -505,6 +505,8 @@ router.post('/products', upload.array('images', 5), async (req, res: Response, n
         tags: data.tags,
         gstPercent: parseFloat(data.gstPercent) || 18,
         isFeatured: data.isFeatured || false,
+        isReturnable: data.isReturnable !== false,
+        isReplaceable: data.isReplaceable !== false,
         isActive: data.isActive !== false,
         images: {
           create: uploadedImages.map((image, index) => ({
@@ -550,6 +552,8 @@ router.put('/products/:id', upload.array('images', 5), async (req, res: Response
       tags: data.tags,
       gstPercent: parseFloat(data.gstPercent) || 18,
       isFeatured: data.isFeatured || false,
+      isReturnable: data.isReturnable !== false,
+      isReplaceable: data.isReplaceable !== false,
       isActive: data.isActive !== false,
     }
 

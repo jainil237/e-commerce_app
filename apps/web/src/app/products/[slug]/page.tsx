@@ -95,7 +95,7 @@ export default function ProductDetailPage() {
   }
 
   const snapshot = product ? getSnapshot(product.id) : null
-  const effectiveStock = snapshot?.effectiveAvailableQty ?? product.stock
+  const effectiveStock = snapshot?.availableQty ?? product.stock
   const existingCartItem = cartItems.find(item => item.productId === product?.id)
   const existingCartQty = existingCartItem?.quantity || 0
   const remainingAddable = Math.max(0, effectiveStock - existingCartQty)

@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Filter, X } from 'lucide-react'
+import { Filter, X, Loader2 } from 'lucide-react'
 import { ProductCard } from '@/components/molecules/ProductCard/ProductCard'
 import { useStoreConfig } from '@/components/providers'
 import { Button } from '@/components/atoms/Button/Button'
@@ -28,7 +28,7 @@ interface Category {
   slug: string
 }
 
-export default function ProductsPage() {
+function ProductsContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const config = useStoreConfig()
@@ -367,5 +367,13 @@ export default function ProductsPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-[var(--brand-primary)]" /></div>}>
+      <ProductsContent />
+    </Suspense>
   )
 }

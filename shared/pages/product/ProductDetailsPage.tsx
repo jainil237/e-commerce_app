@@ -16,6 +16,7 @@ import {
 interface ProductDetailsPageProps {
   product: Product;
   viewer: ViewerContext;
+  onBack?: () => void;
   // Customer actions
   onAddToCart?: (quantity: number) => void;
   onWishlistToggle?: () => void;
@@ -32,6 +33,7 @@ interface ProductDetailsPageProps {
 export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
   product,
   viewer,
+  onBack,
   onAddToCart,
   onWishlistToggle,
   onShare,

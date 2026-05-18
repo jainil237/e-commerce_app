@@ -67,6 +67,8 @@ model Product {
   categoryId        String
   isActive          Boolean            @default(true)
   isFeatured        Boolean            @default(false)
+  isReturnable      Boolean            @default(true)
+  isReplaceable     Boolean            @default(true)
   weight            Float?
   tags              String?
   gstPercent        Float              @default(18)

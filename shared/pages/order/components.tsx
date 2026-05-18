@@ -1,9 +1,9 @@
 'use client';
 
 import React from 'react';
-import { CheckCircle, Package, MapPin, Truck, Phone, Mail } from 'lucide-react';
+import { CheckCircle, Package, MapPin, Truck, Phone, Mail, RotateCcw, RefreshCw } from 'lucide-react';
 import { FallbackImage } from '../../components/FallbackImage';
-import { SharedBadge } from '../../components/UIPrimitives';
+import { SharedBadge, SharedButton } from '../../components/UIPrimitives';
 import { Order, OrderItem, ViewerContext } from '../../types';
 import { formatCurrency, formatDate } from '../../utils';
 
@@ -82,7 +82,14 @@ export const OrderStatusTracker: React.FC<{ order: Order }> = ({ order }) => {
   );
 };
 
-export const OrderItemsList: React.FC<{ items: OrderItem[] }> = ({ items }) => {
+export const OrderItemsList: React.FC<{
+  items: OrderItem[];
+  viewer?: ViewerContext;
+  orderStatus?: string;
+  onReturn?: (item: OrderItem) => void;
+  onReplace?: (item: OrderItem) => void;
+  actionStates?: Record<string, { type: 'return' | 'replace'; status: string; reason: string }>;
+}> = ({ items, viewer = 'customer', orderStatus, onReturn, onReplace, actionStates = {} }) => {
   return (
     <div className="space-y-6">
       <h2 className="font-black text-xl text-[var(--text-primary)] flex items-center gap-2">
@@ -91,20 +98,80 @@ export const OrderItemsList: React.FC<{ items: OrderItem[] }> = ({ items }) => {
       </h2>
       <div className="space-y-4">
         {items.map((item) => (
-          <div key={item.id} className="flex gap-4 p-4 rounded-2xl bg-[var(--surface-0)] border border-[var(--border-subtle)] transition-colors hover:border-[var(--brand-primary)] shadow-sm">
-            <div className="relative w-20 h-20 bg-[var(--surface-0)] rounded-xl overflow-hidden flex-shrink-0 border border-[var(--border-subtle)]">
-              <FallbackImage src={item.product.images[0]?.url} alt={item.product.name} fill className="object-cover" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-[var(--text-primary)] truncate">{item.product.name}</h3>
-              <div className="flex items-center gap-4 mt-1 text-sm text-[var(--text-secondary)]">
-                <span>Qty: <span className="font-bold text-[var(--text-primary)]">{item.quantity}</span></span>
-                <span>Price: <span className="font-bold text-[var(--text-primary)]">{formatCurrency(item.unitPrice)}</span></span>
+          <div key={item.id} className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-2xl bg-[var(--surface-0)] border border-[var(--border-subtle)] transition-colors hover:border-[var(--brand-primary)] shadow-sm">
+            <div className="flex gap-4 flex-1 min-w-0">
+              <div className="relative w-20 h-20 bg-[var(--surface-0)] rounded-xl overflow-hidden flex-shrink-0 border border-[var(--border-subtle)]">
+                <FallbackImage src={item.product.images[0]?.url} alt={item.product.name} fill className="object-cover" />
               </div>
-              <p className="text-[10px] text-[var(--text-tertiary)] mt-1 uppercase font-bold tracking-tighter">GST: {item.gstPercent}% Included</p>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-[var(--text-primary)] truncate">{item.product.name}</h3>
+                <div className="flex items-center gap-4 mt-1 text-sm text-[var(--text-secondary)]">
+                  <span>Qty: <span className="font-bold text-[var(--text-primary)]">{item.quantity}</span></span>
+                  <span>Price: <span className="font-bold text-[var(--text-primary)]">{formatCurrency(item.unitPrice)}</span></span>
+                </div>
+                <p className="text-[10px] text-[var(--text-tertiary)] mt-1 uppercase font-bold tracking-tighter">GST: {item.gstPercent}% Included</p>
+              </div>
             </div>
-            <div className="text-right flex flex-col justify-center">
-              <p className="font-black text-[var(--text-primary)]">{formatCurrency(item.subtotal)}</p>
+            
+            <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-4 border-t sm:border-t-0 pt-3 sm:pt-0 border-[var(--border-subtle)] w-full sm:w-auto">
+              <div className="text-left sm:text-right">
+                <p className="font-black text-[var(--text-primary)]">{formatCurrency(item.subtotal)}</p>
+              </div>
+              
+              {/* Return / Replace buttons */}
+              {viewer === 'customer' && orderStatus === 'DELIVERED' && (
+                <div className="flex flex-col sm:flex-row gap-2 mt-2 sm:mt-0 items-center justify-end">
+                  {actionStates[item.id] ? (
+                    <div className="flex flex-col items-end gap-1">
+                      <SharedBadge variant={actionStates[item.id].type === 'return' ? 'error' : 'info'} className="font-black px-3 py-1 uppercase tracking-wider text-xs">
+                        {actionStates[item.id].type === 'return' ? 'Return Requested' : 'Replacement Requested'}
+                      </SharedBadge>
+                      <span className="text-[10px] text-[var(--text-tertiary)] italic max-w-[200px] truncate">
+                        Reason: {actionStates[item.id].reason}
+                      </span>
+                    </div>
+                  ) : (
+                    <>
+                      {item.product.isReturnable !== false && (
+                        <SharedButton
+                          variant="danger"
+                          size="sm"
+                          className="rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm"
+                          onClick={() => onReturn?.(item)}
+                          leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
+                        >
+                          Return Item
+                        </SharedButton>
+                      )}
+                      {item.product.isReplaceable !== false && (
+                        <SharedButton
+                          variant="secondary"
+                          size="sm"
+                          className="rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm"
+                          onClick={() => onReplace?.(item)}
+                          leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
+                        >
+                          Replace Item
+                        </SharedButton>
+                      )}
+                      {item.product.isReturnable === false && item.product.isReplaceable === false && (
+                        <span className="text-xs text-[var(--text-tertiary)] font-bold italic">Non-returnable & non-replaceable</span>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {viewer === 'admin' && actionStates[item.id] && (
+                <div className="flex flex-col items-end gap-1">
+                  <SharedBadge variant={actionStates[item.id].type === 'return' ? 'error' : 'info'} className="font-black px-3 py-1 uppercase tracking-wider text-xs">
+                    {actionStates[item.id].type === 'return' ? 'Return Requested' : 'Replacement Requested'}
+                  </SharedBadge>
+                  <span className="text-xs text-[var(--text-primary)] font-semibold">
+                    Reason: {actionStates[item.id].reason}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         ))}

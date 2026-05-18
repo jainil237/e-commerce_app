@@ -29,6 +29,8 @@ export interface OrderItem {
     name: string;
     slug: string;
     images: Array<{ url: string }>;
+    isReturnable?: boolean;
+    isReplaceable?: boolean;
   };
 }
 

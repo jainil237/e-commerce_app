@@ -41,6 +41,8 @@ export function ProductForm({ initialData, mode }: ProductFormProps) {
     tags: initialData?.tags || '',
     gstPercent: initialData?.gstPercent || '18',
     isFeatured: initialData?.isFeatured || false,
+    isReturnable: initialData?.isReturnable !== false,
+    isReplaceable: initialData?.isReplaceable !== false,
     isActive: initialData?.isActive !== false,
   })
 
@@ -417,7 +419,7 @@ export function ProductForm({ initialData, mode }: ProductFormProps) {
           </div>
         </div>
 
-        <div className="flex items-center gap-6 mt-4">
+        <div className="flex flex-wrap items-center gap-6 mt-4">
           <label htmlFor="isActive" className="flex items-center gap-2 cursor-pointer">
             <input 
               id="isActive"
@@ -440,6 +442,30 @@ export function ProductForm({ initialData, mode }: ProductFormProps) {
               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
             <span className="text-sm font-medium">Featured Product</span>
+          </label>
+
+          <label htmlFor="isReturnable" className="flex items-center gap-2 cursor-pointer">
+            <input 
+              id="isReturnable"
+              name="isReturnable"
+              type="checkbox" 
+              checked={formData.isReturnable}
+              onChange={e => setFormData({...formData, isReturnable: e.target.checked})}
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="text-sm font-medium">Returnable Product</span>
+          </label>
+
+          <label htmlFor="isReplaceable" className="flex items-center gap-2 cursor-pointer">
+            <input 
+              id="isReplaceable"
+              name="isReplaceable"
+              type="checkbox" 
+              checked={formData.isReplaceable}
+              onChange={e => setFormData({...formData, isReplaceable: e.target.checked})}
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="text-sm font-medium">Replaceable Product</span>
           </label>
         </div>
       </div>

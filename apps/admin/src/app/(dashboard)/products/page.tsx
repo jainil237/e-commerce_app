@@ -15,6 +15,8 @@ interface Product {
   mrp: string
   stock: number
   isActive: boolean
+  isReturnable?: boolean
+  isReplaceable?: boolean
   category: { name: string }
   images: Array<{ url: string }>
 }

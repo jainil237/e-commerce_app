@@ -603,6 +603,7 @@ router.post('/:id/cancel', authenticate, async (req: AuthRequest, res: Response,
       throw createError(400, 'Order cannot be cancelled', 'CANNOT_CANCEL')
     }
 
+
     // Update order status
     await prisma.order.update({
       where: { id },
