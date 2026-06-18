@@ -2,18 +2,18 @@
 slug: delivery-tracking-modal
 version: 1
 artifact: plan
-status: blocked-for-user
+status: ready-for-next-phase
 created: 2026-06-17
-updated: 2026-06-17
+updated: 2026-06-18
 manifest_ids: [R1, R2, R3, RI1, RI2, RI3, RI4]
 upstream:
   brief: .workflow/artifacts/briefs/delivery-tracking-modal-v1.md
 orchestration:
-  phase: plan
-  status: blocked-for-user
-  next_phase: build
+  phase: build
+  status: ready-for-next-phase
+  next_phase: review
   blockers: []
-  user_checkpoint: plan-review
+  user_checkpoint: none
 ---
 
 # Delivery Tracking Modal — Plan
