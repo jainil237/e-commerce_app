@@ -439,6 +439,22 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response, next) => {
   }
 })
 
+// Get courier config (public, no auth required) - must come before /:id route
+router.get('/courier-config', async (req, res: Response, next) => {
+  try {
+    const config = getStoreConfig()
+    res.json({
+      success: true,
+      data: {
+        partners: config.courier.partners,
+        trackingUrls: config.courier.trackingUrls,
+      },
+    })
+  } catch (error) {
+    next(error)
+  }
+})
+
 // Get order by ID
 router.get('/:id', authenticate, async (req: AuthRequest, res: Response, next) => {
   try {
@@ -459,6 +475,14 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response, next) =
         },
         address: true,
         shipping: true,
+        rmaRequests: {
+          include: {
+            items: true,
+            refund: true,
+            pickupShipment: true,
+            replacementShipment: true,
+          }
+        }
       },
     })
 
@@ -475,6 +499,11 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response, next) =
         discount: order.discount.toString(),
         gstAmount: order.gstAmount.toString(),
         total: order.total.toString(),
+        tracking: order.shipping && order.shipping.awbNumber ? {
+          courier: order.shipping.courierPartner,
+          trackingId: order.shipping.awbNumber,
+          trackingUrl: order.shipping.trackingUrl || '',
+        } : undefined,
       },
     })
   } catch (error) {
@@ -521,7 +550,21 @@ router.get('/:id/invoice', authenticate, async (req: AuthRequest, res: Response,
     }
 
     if (invoiceUrl.startsWith('http')) {
-      return res.redirect(invoiceUrl)
+      try {
+        const response = await fetch(invoiceUrl)
+        if (!response.ok) {
+          throw new Error(`Failed to fetch invoice from storage: ${response.statusText}`)
+        }
+        const arrayBuffer = await response.arrayBuffer()
+        const buffer = Buffer.from(arrayBuffer)
+        
+        res.setHeader('Content-Type', 'application/pdf')
+        res.setHeader('Content-Disposition', `attachment; filename="invoice-${order.orderNumber}.pdf"`)
+        return res.send(buffer)
+      } catch (err) {
+        console.error('Failed to proxy invoice download, redirecting instead:', err)
+        return res.redirect(invoiceUrl)
+      }
     }
 
     res.download(invoiceUrl, `invoice-${order.orderNumber}.pdf`)
