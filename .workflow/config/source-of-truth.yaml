@@ -11,14 +11,14 @@ source_of_truth:
       read: true
       update: false
       owner: user
-      location: https://app.notion.com/p/383ad9949bf48086b34eeb53690caf26
+      location: https://app.notion.com/p/E-comm-website-re-design-3863d3f7968b80e5a7f0e351fc4e2433?source=copy_link
     - id: notion-decisions
       type: notion
       enabled: true
       read: true
       update: false
       owner: user
-      location: https://app.notion.com/p/383ad9949bf48086b34eeb53690caf26
+      location: https://app.notion.com/p/E-comm-website-re-design-3863d3f7968b80e5a7f0e351fc4e2433?source=copy_link
 
 read_policy:
   read_when_user_provides_source: true
