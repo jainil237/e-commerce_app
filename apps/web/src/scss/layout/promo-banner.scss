@@ -1,0 +1,17 @@
+@use '../mixins' as m;
+@use '../variables' as v;
+
+.ms-promo-banner {
+  background: var(--brand-primary);
+  color: var(--text-inverse);
+  text-align: center;
+  padding: 0.5rem 1rem;
+
+  &__text {
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+
+    strong { font-weight: 700; }
+  }
+}

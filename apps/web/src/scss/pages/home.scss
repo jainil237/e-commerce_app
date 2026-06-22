@@ -1,0 +1,207 @@
+@use '../mixins' as m;
+@use '../variables' as v;
+
+// Section wrapper
+.ms-section {
+  padding: 4rem 1rem;
+
+  @include m.md { padding: 5rem 1.5rem; }
+  @include m.lg { padding: 6rem 2rem; }
+
+  &--surface-0 { background: var(--surface-0); }
+  &--surface-1 { background: var(--surface-1); }
+
+  &__container {
+    max-width: var(--container-max);
+    margin: 0 auto;
+  }
+}
+
+// Section header (title + "View All" link)
+.ms-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+
+  &__title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+
+    @include m.md { font-size: 1.875rem; }
+  }
+
+  &__link {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--brand-primary);
+    text-decoration: none;
+
+    @include m.motion {
+      transition: color v.$duration-fast ease;
+    }
+
+    &:hover { color: var(--brand-accent); }
+    &:focus-visible { @include m.focus-ring; border-radius: var(--radius-sm); }
+  }
+}
+
+// Hero
+.ms-hero {
+  padding: 6rem 2rem;
+  background: linear-gradient(135deg, var(--surface-2) 0%, var(--surface-1) 100%);
+  text-align: center;
+
+  &__inner {
+    max-width: 48rem;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  &__title {
+    font-size: clamp(2.25rem, 5vw, 3.75rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    line-height: 1.1;
+  }
+
+  &__sub {
+    font-size: clamp(1rem, 2vw, 1.125rem);
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+    max-width: 36rem;
+  }
+}
+
+// Category grid
+.ms-category-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+
+  @include m.md { grid-template-columns: repeat(3, 1fr); }
+  @include m.lg { grid-template-columns: repeat(4, 1fr); }
+}
+
+.ms-category-card {
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid var(--border-base);
+  box-shadow: var(--shadow-sm);
+  aspect-ratio: 1 / 1;
+  position: relative;
+  display: block;
+  text-decoration: none;
+
+  @include m.motion {
+    transition: box-shadow v.$duration-slow ease, transform v.$duration-slow ease;
+  }
+
+  &:hover {
+    box-shadow: var(--shadow-lg);
+  }
+
+  &__image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+
+    @include m.motion {
+      transition: transform v.$duration-slower ease;
+    }
+  }
+
+  &:hover &__image {
+    @include m.motion {
+      transform: scale(1.05);
+    }
+  }
+
+  &__fallback {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #DBEAFE, #BFDBFE);
+    font-size: 2.5rem;
+    font-weight: 900;
+    color: #93C5FD;
+  }
+
+  &__overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.6) 0%, transparent 50%);
+  }
+
+  &__label {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 0.75rem 1rem;
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.9375rem;
+  }
+
+  &__count {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.875rem;
+    display: block;
+    margin-top: 0.125rem;
+  }
+}
+
+// Trust badges grid
+.ms-trust-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.25rem;
+
+  @include m.lg { grid-template-columns: repeat(4, 1fr); }
+}
+
+.ms-trust-tile {
+  @include m.card-surface(var(--radius-xl));
+  padding: 1.5rem;
+  text-align: center;
+
+  @include m.motion {
+    transition: box-shadow v.$duration-slow ease;
+  }
+
+  &:hover { box-shadow: var(--shadow-md); }
+
+  &__icon {
+    width: 4rem;
+    height: 4rem;
+    background: var(--surface-2);
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+    color: var(--brand-primary);
+  }
+
+  &__title {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--text-primary);
+    margin-bottom: 0.375rem;
+  }
+
+  &__sub {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+  }
+}
