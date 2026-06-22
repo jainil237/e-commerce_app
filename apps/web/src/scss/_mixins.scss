@@ -1,0 +1,63 @@
+@use 'variables' as v;
+
+// Responsive breakpoints
+@mixin sm {
+  @media (min-width: v.$bp-sm) { @content; }
+}
+@mixin md {
+  @media (min-width: v.$bp-md) { @content; }
+}
+@mixin lg {
+  @media (min-width: v.$bp-lg) { @content; }
+}
+@mixin xl {
+  @media (min-width: v.$bp-xl) { @content; }
+}
+
+// Motion guard — all animations/transitions must live inside this mixin
+@mixin motion {
+  @media (prefers-reduced-motion: no-preference) { @content; }
+}
+
+// Glass surface (topbar, bottom-nav, dropdowns)
+@mixin glass {
+  background: var(--surface-glass);
+  backdrop-filter: var(--blur-glass);
+  -webkit-backdrop-filter: var(--blur-glass);
+}
+
+// Hide scrollbar cross-browser
+@mixin hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
+// Eyebrow label (uppercase, tracked, small, muted)
+@mixin eyebrow {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+// Card surface helper
+@mixin card-surface($radius: var(--radius-xl)) {
+  background: var(--surface-0);
+  border: 1px solid var(--border-base);
+  border-radius: $radius;
+  box-shadow: var(--shadow-sm);
+}
+
+// Tabular price text
+@mixin price-text {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+// Focus ring (matches globals.css :focus-visible)
+@mixin focus-ring {
+  outline: none;
+  box-shadow: var(--ring-brand);
+}

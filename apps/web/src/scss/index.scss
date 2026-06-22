@@ -1,0 +1,18 @@
+// MyStore SCSS barrel — loaded once in layout.tsx
+// Add new partials here as each page task is completed
+
+// Foundation (no output — vars/mixins only)
+@use 'variables';
+@use 'mixins';
+
+// Layout partials
+@use 'layout/promo-banner';
+@use 'layout/topbar';
+@use 'layout/bottom-nav';
+@use 'layout/footer';
+
+// Component partials
+@use 'components/product-card';
+
+// Page partials
+@use 'pages/home';
