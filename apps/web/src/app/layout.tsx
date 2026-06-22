@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import '@/scss/index.scss'
 import { Providers } from '@/components/providers'
 import { Topbar } from '@/components/organisms/Topbar/Topbar'
 import { Footer } from '@/components/layout/footer'

@@ -1,0 +1,102 @@
+@use '../../styles/mixins' as m;
+@use '../../styles/variables' as v;
+
+.ms-footer {
+  display: none;
+  background: var(--surface-inverse, #111827);
+  color: var(--text-inverse, #f9fafb);
+  margin-top: auto;
+
+  @include m.md { display: block; }
+
+  &__inner {
+    max-width: var(--container-max);
+    margin: 0 auto;
+    padding: 3rem 1.5rem;
+
+    @include m.lg { padding: 3rem 2rem; }
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+
+    @include m.md { grid-template-columns: repeat(4, 1fr); }
+  }
+
+  &__col-title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: inherit;
+  }
+
+  &__col-subtitle {
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 1rem;
+  }
+
+  &__contact {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  &__nav-heading {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: inherit;
+  }
+
+  &__nav-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  &__nav-link {
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.6);
+    text-decoration: none;
+
+    @include m.motion {
+      transition: color v.$duration-fast ease;
+    }
+
+    &:hover { color: #fff; }
+    &:focus-visible { @include m.focus-ring; border-radius: var(--radius-sm); }
+  }
+
+  &__trust {
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+  }
+
+  &__trust-item {
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  &__bottom {
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: center;
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.4);
+  }
+}

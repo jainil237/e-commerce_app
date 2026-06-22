@@ -1,4 +1,5 @@
 'use client'
+import './product-card.scss'
 
 import { useRef, useState, useEffect } from 'react'
 import Link from 'next/link'

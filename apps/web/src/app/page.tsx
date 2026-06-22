@@ -1,3 +1,4 @@
+import './home.scss'
 import Link from 'next/link'
 import { ArrowRight, Truck, ShieldCheck, RotateCcw, FileText } from 'lucide-react'
 import { ProductCard } from '@/components/molecules/ProductCard/ProductCard'

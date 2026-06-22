@@ -1,5 +1,5 @@
-@use '../mixins' as m;
-@use '../variables' as v;
+@use '../../../styles/mixins' as m;
+@use '../../../styles/variables' as v;
 
 .ms-topbar {
   position: sticky;
