@@ -1,24 +1,45 @@
-# Agentsmyth Workflow Gate (MANDATORY)
+# agentsmyth Workflow Gate — ecommerce-platform
 
-Before any implementation work — no exceptions:
+> **Domain:** ecommerce-platform | Full-stack e-commerce platform for selling physical goods online, comprising a customer-facing storefront (Next.js), admin dashboard (Next.js), and REST API backend (Express + Prisma + MySQL). Supports product browsing, cart, checkout, order management, returns, and replacements.
 
-1. **Check for `.agentsmyth/`** — if it exists, read `.agentsmyth/setup-bundle.md` and run the setup skill. Do not proceed to step 2 until setup is complete and `.agentsmyth/` is removed.
+## Mandatory — read before any task
 
-2. **Read `.workflow/router.md`** — this is the canonical entry point for all lifecycle work.
+1. `workflow/router.md` — routes all tasks through the lifecycle.
+2. `workflow/config/agent-behavior.yaml` — behavior invariants, task classes, evidence rules.
 
-3. **Load `.workflow/config/agent-behavior.yaml`** — classify the request:
-   - `trivial` → handle inline, no artifact required
-   - `standard` → full lifecycle required: think → plan → build → review → ship → reflect
-   - `complex` → all phases required including test; no phases may be skipped
+Never skip this gate. Never mark a phase complete without evidence.
 
-4. **Route using `.workflow/lifecycle.md`** — select the current phase. If resuming, use the `restore-context` skill first. Never resume from chat memory alone.
+## Branch policy
 
-5. **Write a brief artifact before any implementation** — for Standard or Complex work, create `.workflow/artifacts/briefs/<slug>-v1.md` using the Starter Block in `.workflow/skills/lifecycle-think/references/output-schema.md`. Do not write code before the brief is complete and the user has approved it.
+Default branch: `main`
+All changes via non-default branch required.
 
-6. **Gate every phase transition on artifact status** — do not proceed to the next phase unless the current artifact has `status: ready-for-next-phase`. Missing artifacts or wrong status are blockers, not warnings.
+## Protected paths
 
-7. **Require evidence for every claim** — command results, test output, and source references must appear in the artifact. Do not claim a check passed without showing output.
+- `.git/**` — repository metadata
+- `.env*` — potential secrets
+- `**/*secret*` — potential secrets
+- `server/prisma/schema.prisma` — database schema — changes affect all data models and require migration
+- `shared/types/**` — shared TypeScript types consumed by all apps — breaking changes propagate everywhere
+- `server/src/routes/webhook.routes.ts` — payment webhook handler — must never be modified without explicit approval
 
-**Bypass is not permitted.** If you cannot follow a phase (missing info, blocker, uncertainty), pause and surface the blocker. Do not skip ahead or work inline on Standard/Complex tasks.
+## Verification commands
 
-Preserve unrelated changes. Never stage changes outside approved scope.
+- `npm run build`
+- `npm run lint`
+- `npm run db:migrate`
+
+## Constraints
+
+- Do not introduce domain-specific behavior unless the user request or repo context requires it.
+- Treat compatibility, source authority, verification, and release impact as implicit requirements when material.
+- Do not modify payment or checkout logic (server/src/routes/webhook.routes.ts, checkout flows, Razorpay integration) without explicit user approval.
+- Do not expose secrets, credentials, private tokens, API keys, or sensitive local paths in lifecycle artifacts.
+- Do not perform destructive actions without explicit user approval.
+- Do not claim external state without evidence.
+- Do not include environment variable values, connection strings, or authentication material in any artifact section.
+- Do not run destructive database commands (DROP, DELETE on production tables, irreversible migrations) without explicit user approval.
+- Do not push directly to main — always use a feature branch and open a PR.
+- Do not expose .env file contents in any written artifact, log, or summary.
+- Do not make any source, ticketing, hosting, CI, package, or deployment provider mandatory by default.
+- Use configured providers only when this config, another workflow config, or the user request enables them.

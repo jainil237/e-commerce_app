@@ -18,7 +18,7 @@ ecommerce-platform/          # npm workspace monorepo
 ├── shared/                  # Shared types, components, hooks, pages, utils
 │   └── types/               # TypeScript type definitions — PROTECTED
 ├── docs/                    # Documentation (this file lives here)
-└── .workflow/               # agentsmyth lifecycle workflow configs and skills
+└── workflow/                # agentsmyth lifecycle workflow configs and skills
 ```
 
 ---
@@ -32,7 +32,7 @@ ecommerce-platform/          # npm workspace monorepo
 | `server/src` | Backend API source (routes, services, controllers, middleware) |
 | `shared/` | Shared components, hooks, types, pages, utils |
 | `server/prisma/schema.prisma` | Prisma database schema |
-| `.workflow/config/` | agentsmyth lifecycle configuration |
+| `workflow/config/` | agentsmyth lifecycle configuration |
 
 ---
 

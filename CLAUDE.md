@@ -4,7 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Workflow Gate
 
-Before any implementation work, follow the Agentsmyth Workflow Gate defined in `.claude/CLAUDE.md`. All Standard and Complex tasks require a brief artifact before any code is written.
+Before any implementation work, load the Agentsmyth v0.1.1 lifecycle workflow:
+
+1. `workflow/router.md` — classify the request (Trivial / Standard / Complex) and select the current phase.
+2. `workflow/config/agent-behavior.yaml` — task class definitions, artifact chain, evidence and waiver policy.
+3. `workflow/skills/lifecycle-orchestrator/SKILL.md` — primary routing skill for Standard and Complex work.
+
+Full lifecycle for Standard/Complex: **Think → Plan → Build → Review → Test → Ship → Reflect**. Every phase transition requires an artifact with `status: ready-for-next-phase`. See `.claude/CLAUDE.md` for protected paths, branch policy, verification commands, and constraints.
 
 ## Monorepo Structure
 
@@ -16,7 +22,7 @@ npm workspaces with three independently deployable packages:
 | `apps/admin` | 3001 | Admin dashboard (Next.js 14) |
 | `server` | 4000 | Express 5 REST API |
 
-`shared/` contains types (`shared/types/index.ts`), UI primitives (`shared/components/UIPrimitives.tsx`), page-level components (`shared/pages/`), hooks, and utilities consumed by both Next.js apps. It is **not** a workspace package — apps import from it via relative paths or tsconfig path aliases.
+`shared/` contains types (`shared/types/index.ts`), UI primitives (`shared/components/UIPrimitives.tsx`), page-level components (`shared/pages/`), hooks, and utilities (`shared/utils/index.ts` — `formatCurrency`, `formatDate`, `getDiscountPercentage`, `parseTags`) consumed by both Next.js apps. It is **not** a workspace package — apps import from it via relative paths or tsconfig path aliases.
 
 ## Commands
 
@@ -37,9 +43,10 @@ npm run lint
 
 # Database (runs in server/ workspace)
 npm run db:migrate      # prisma migrate dev
+npm run db:generate     # prisma generate (after schema changes without migration)
 npm run db:seed         # tsx scripts/seed.ts
 npm run db:studio       # prisma studio
-npm run db:reset        # prisma migrate reset --force
+npm run db:reset        # prisma migrate reset --force (server workspace only)
 
 # Run server alone (from repo root)
 npm run dev --workspace=server
@@ -52,15 +59,23 @@ No test suite is currently configured.
 **Express 5** app (`server/src/index.ts`) with:
 - All routes under `/api/v1/`
 - JWT auth via **httpOnly cookies** (not Authorization headers). Access token (15 min) + refresh token rotation. Custom cookie parser — no `cookie-parser` package.
-- Auth middleware: `server/src/middleware/auth.middleware.ts` — attaches `req.user` as `AuthRequest`
 - Rate limiting: 1000 req/15 min dev, 100 prod
 - Static file serving: `server/uploads/` exposed at `/uploads`
 
-**Route → no controller layer** for most routes: business logic lives directly in route handler files (e.g. `admin.routes.ts` is 36 KB). The `controllers/` directory only contains RMA controllers.
+**Auth middleware** (`server/src/middleware/auth.middleware.ts`) has three exports:
+- `authenticate` — requires valid session; attaches `req.user` as `AuthRequest`
+- `optionalAuth` — same as `authenticate` but continues without error if unauthenticated (used for guest checkout routes)
+- `authorizeAdmin` — stack after `authenticate`; rejects non-ADMIN roles with 403
+
+**API response shape**: all endpoints return `{ success: boolean, message: string, data?: any }`. Throw errors via `createError(statusCode, message, code)` from `error.middleware.ts`.
+
+**Route → no controller layer** for most routes: business logic lives directly in route handler files (e.g. `admin.routes.ts` is 36 KB). The `controllers/` directory only contains RMA controllers. **Validation** uses Zod schemas defined inline within each route file; the one exception is `server/src/validators/rma.validator.ts`.
 
 **Storage provider** (`server/src/services/storage.service.ts`): auto-selects at startup via env vars — Cloudflare R2 → Cloudinary → local disk fallback. Never hardcode a storage path.
 
-**Store config** (`Store.config.json` at repo root): loaded at runtime by `server/src/utils/config.ts`. Controls store name, features flags, courier partners, shipping thresholds, invoice settings, etc. Avoid hardcoding values that belong here.
+**Store config** (`Store.config.json` at repo root): loaded at runtime by `server/src/utils/config.ts`. Controls store name, feature flags, courier partners, shipping thresholds, invoice settings, etc. Avoid hardcoding values that belong here.
+
+**Email service** (`server/src/services/email.service.ts`): sends transactional emails (order confirmation, shipping updates, OTP) via Nodemailer. Silently no-ops if SMTP is not fully configured — dev environments work without email setup.
 
 ## Database
 
@@ -77,7 +92,9 @@ Payment: **Razorpay** (`razorpay` package). Webhook verification in `server/src/
 
 ## Frontend Architecture (apps/web)
 
-**Next.js 14 App Router**. Data fetching via **SWR** with a global fetcher (credentials: include). No Redux or Zustand.
+**Next.js 14 App Router**. Data fetching via **SWR** with a global fetcher (`credentials: 'include'`). No Redux or Zustand.
+
+**TypeScript path aliases** (defined in `tsconfig.json`): `@/*` → `./src/*`, `@shared/*` → `../../shared/*`, `@config/*` → `../../config/*`.
 
 State is managed through React Contexts (`apps/web/src/contexts/`), all exported from `@/contexts`:
 - `AuthContext` — current user, login/logout
@@ -91,11 +108,16 @@ Provider nesting order matters and is set in `apps/web/src/components/providers.
 
 **Component organization** follows atomic design: `atoms/` → `molecules/` (e.g. `ProductCard/`) → `organisms/` (e.g. `Topbar/`, `BottomNav/`). Shared cross-app UI goes in `shared/components/UIPrimitives.tsx` (`SharedBadge`, `SharedButton`, `SharedTableActionCell`).
 
-**Styling**: Tailwind CSS + CSS custom properties for theming (`--surface-1`, `--text-primary`, etc. defined in `globals.css`). Use `clsx` + `tailwind-merge` for conditional classes.
+**Styling** (`apps/web`): SCSS BEM — migrating away from Tailwind CSS and CSS Modules. All new and migrated components use co-located `.scss` files with `ms-*` BEM class names (storefront namespace). Shared foundation:
+- `apps/web/src/styles/_variables.scss` — compile-time breakpoints (`$bp-sm/md/lg/xl`), z-index scale, transition durations
+- `apps/web/src/styles/_mixins.scss` — `sm`/`md`/`lg`/`xl` breakpoint mixins, `motion` (reduced-motion guard), `glass`, `hide-scrollbar`, `eyebrow`, `card-surface`, `price-text`, `focus-ring`
+- `apps/web/src/app/globals.css` — design tokens as CSS custom properties (`--surface-*`, `--text-*`, `--border-*`, `--shadow-*`, `--radius-*`, `--blur-glass`, etc.)
+
+Rules: all transitions/animations must use `@include motion`. Do not mix Tailwind utilities and BEM classes within the same component. Unmigrated pages still use Tailwind — migrate to BEM when touching them. Use `clsx` for conditional class names.
 
 ## Admin App (apps/admin)
 
-Same stack as `apps/web`. Dashboard analytics use **D3.js** and **Recharts**. No shared context providers — admin manages its own auth state independently.
+Same stack and path aliases as `apps/web`. Dashboard analytics use **D3.js** and **Recharts**. Sections under `(dashboard)/`: products, orders, customers, coupons, settings. No shared context providers — admin manages its own auth state independently.
 
 ## Environment Variables
 
@@ -106,7 +128,7 @@ Server reads from `server/.env`. Minimum required:
 - `FRONTEND_URL` (default: `http://localhost:3000`), `ADMIN_URL` (default: `http://localhost:3001`)
 - `SERVER_BASE_URL` — used for local storage URL construction
 - Storage: `R2_*` vars for Cloudflare R2, or `CLOUDINARY_*` for Cloudinary (see respective service files)
-- `SMTP_*` for Nodemailer email
+- `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS` for Nodemailer email (optional — service no-ops if absent)
 
 ## Key Patterns
 
