@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
-import { useAuth, useToast } from '@/components/providers'
+import { useAuth, useToast } from '@/contexts'
 import { OrderDetailsPage } from '@shared/pages/order/OrderDetailsPage'
+import { TrackingModal } from '@/components/molecules/TrackingModal/TrackingModal'
 import { Order } from '@shared/types'
 
 export default function OrderDetailPage() {
@@ -17,6 +18,7 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<Order | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSendingInvoice, setIsSendingInvoice] = useState(false)
+  const [isTrackingOpen, setIsTrackingOpen] = useState(false)
 
   const orderId = params.id as string
   const isSuccess = searchParams.get('success') === 'true'
@@ -88,11 +90,28 @@ export default function OrderDetailPage() {
     )
   }
 
+  // Determine if track button should be shown
+  const canTrack = order && (
+    order.status === 'SHIPPED' ||
+    order.status === 'DELIVERED' ||
+    !!order.tracking
+  )
+
   return (
     <>
       {isSuccess && (
         <div className="bg-[var(--success)] text-white p-4 text-center font-bold">
           Order placed successfully! We've sent a confirmation email.
+        </div>
+      )}
+      {canTrack && (
+        <div className="bg-[var(--surface-2)] p-4 text-center border-b border-[var(--border-base)]">
+          <button
+            onClick={() => setIsTrackingOpen(true)}
+            className="px-6 py-2 bg-[var(--brand-primary)] text-[var(--brand-primary-fg)] font-semibold rounded-md hover:opacity-90 transition"
+          >
+            Track Delivery
+          </button>
         </div>
       )}
       <OrderDetailsPage
@@ -103,6 +122,13 @@ export default function OrderDetailPage() {
         onEmailInvoice={emailInvoice}
         isSendingInvoice={isSendingInvoice}
       />
+      {order && (
+        <TrackingModal
+          isOpen={isTrackingOpen}
+          onClose={() => setIsTrackingOpen(false)}
+          order={order}
+        />
+      )}
     </>
   )
 }

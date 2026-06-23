@@ -1,0 +1,100 @@
+@use '../../../styles/mixins' as m;
+@use '../../../styles/variables' as v;
+
+.ms-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: v.$z-dropdown;
+  height: 4rem;
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-inline: 0.5rem;
+  @include m.glass;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+
+  @include m.md { display: none; }
+
+  &__item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    height: 100%;
+    min-width: 4rem;
+    min-height: 2.75rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    border-radius: var(--radius-xl);
+    position: relative;
+
+    @include m.motion {
+      transition: color v.$duration-fast ease, background v.$duration-fast ease;
+    }
+
+    &:hover {
+      color: var(--text-primary);
+      background: var(--surface-2);
+    }
+
+    &:focus-visible { @include m.focus-ring; }
+
+    &--active {
+      color: var(--brand-primary);
+
+      &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        width: 2rem;
+        height: 0.25rem;
+        background: var(--brand-primary);
+        border-radius: 0 0 var(--radius-full) var(--radius-full);
+      }
+    }
+  }
+
+  &__icon {
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-top: 0.25rem;
+
+    @include m.motion {
+      transition: transform v.$duration-fast ease;
+    }
+  }
+
+  &__item--active &__icon {
+    @include m.motion { transform: scale(1.1); }
+  }
+
+  &__label {
+    font-size: 0.625rem;
+    font-weight: 500;
+    margin-top: 0.25rem;
+  }
+
+  &__item--active &__label { font-weight: 700; }
+
+  &__badge {
+    position: absolute;
+    top: 0.25rem;
+    right: calc(50% - 1.25rem);
+    width: 1rem;
+    height: 1rem;
+    background: #EF4444;
+    color: #fff;
+    font-size: 0.625rem;
+    font-weight: 700;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--surface-0);
+    line-height: 1;
+  }
+}

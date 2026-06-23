@@ -1,0 +1,22 @@
+// Compile-time variables — breakpoints, z-index, transitions
+// All color/shadow/radius tokens live in globals.css as CSS custom properties
+
+// Breakpoints
+$bp-sm:  640px;
+$bp-md:  768px;
+$bp-lg:  1024px;
+$bp-xl:  1280px;
+
+// Z-index scale
+$z-base:     0;
+$z-topbar:   40;
+$z-dropdown: 50;
+$z-modal:    60;
+$z-toast:    70;
+
+// Transitions
+$duration-fast:   0.15s;
+$duration-base:   0.2s;
+$duration-slow:   0.3s;
+$duration-slower: 0.5s;
+$ease-spring:     cubic-bezier(0.16, 1, 0.3, 1);

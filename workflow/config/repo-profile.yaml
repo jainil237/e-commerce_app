@@ -1,0 +1,71 @@
+version: 1
+kind: repo-profile
+
+repository:
+  mode: single-repository
+  root: .
+  default_branch: main
+  workflow_root: workflow
+  artifacts_root: workflow/artifacts
+  learnings_sessions_root: workflow/learnings/sessions
+
+branch_policy:
+  require_non_default_branch_for_changes: true
+  default_branch_commit_requires_user_approval: true
+  preserve_unrelated_changes: true
+  dirty_state_policy: record-and-preserve
+  stage_only_approved_scope: true
+  branch_name_pattern: <slug-or-phase>
+
+paths:
+  protected:
+    - pattern: .git/**
+      reason: repository metadata
+    - pattern: .env*
+      reason: potential secrets
+    - pattern: '**/*secret*'
+      reason: potential secrets
+    - pattern: server/prisma/schema.prisma
+      reason: database schema — changes affect all data models and require migration
+    - pattern: shared/types/**
+      reason: shared TypeScript types consumed by all apps — breaking changes propagate everywhere
+    - pattern: server/src/routes/webhook.routes.ts
+      reason: payment webhook handler — must never be modified without explicit approval
+  public_contracts:
+    - pattern: server/src/routes/**
+      reason: REST API surface — breaking changes require client update coordination
+  generated_outputs:
+    - path: apps/web/.next
+      source: apps/web/src
+      regeneration_command: npm run build --workspace=apps/web
+    - path: apps/admin/.next
+      source: apps/admin/src
+      regeneration_command: npm run build --workspace=apps/admin
+  test_roots: []
+  docs_roots:
+    - docs
+  source_roots:
+    - apps/web/src
+    - apps/admin/src
+    - server/src
+    - shared
+
+ownership:
+  default_owner: user
+  codeowners_file: null
+  path_owners: []
+
+commands:
+  discovery:
+    allow_repo_inspection: true
+    prefer_configured_verification_commands: true
+    do_not_invent_commands: true
+  package_managers:
+    - npm
+
+generated_output_policy:
+  require_source_mapping: true
+  require_regeneration_or_waiver_when_source_changes: true
+  manual_edits_allowed: only_when_configured
+
+extensions: {}

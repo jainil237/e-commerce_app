@@ -1,70 +1,63 @@
 'use client'
+import './footer.scss'
 
 import Link from 'next/link'
-import { useStoreConfig } from '@/components/providers'
+import { useStoreConfig } from '@/contexts/store-config.context'
 
 export function Footer() {
   const config = useStoreConfig()
 
   return (
-    <footer className="hidden md:block bg-gray-900 text-white mt-auto">
-      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          {/* Store Info */}
+    <footer className="ms-footer">
+      <div className="ms-footer__inner">
+        <div className="ms-footer__grid">
           <div>
-            <h3 className="text-lg font-bold mb-4">{config.store.name}</h3>
-            <p className="text-gray-400 text-sm mb-4">{config.store.tagline}</p>
-            <div className="text-sm text-gray-400 space-y-1">
-              <p>{config.store.contact.email}</p>
-              <p>{config.store.contact.phone}</p>
+            <h3 className="ms-footer__col-title">{config.store.name}</h3>
+            <p className="ms-footer__col-subtitle">{config.store.tagline}</p>
+            <div className="ms-footer__contact">
+              <span>{config.store.contact.email}</span>
+              <span>{config.store.contact.phone}</span>
             </div>
           </div>
 
-          {/* Quick Links */}
           <div>
-            <h4 className="font-semibold mb-4">Quick Links</h4>
-            <ul className="space-y-2 text-sm text-gray-400">
-              <li><Link href="/products" className="hover:text-white">All Products</Link></li>
-              <li><Link href="/orders" className="hover:text-white">Track Order</Link></li>
-              <li><Link href="/account" className="hover:text-white">My Account</Link></li>
-              <li><Link href="/wishlist" className="hover:text-white">Wishlist</Link></li>
+            <h4 className="ms-footer__nav-heading">Quick Links</h4>
+            <ul className="ms-footer__nav-list">
+              <li><Link href="/products" className="ms-footer__nav-link">All Products</Link></li>
+              <li><Link href="/orders" className="ms-footer__nav-link">Track Order</Link></li>
+              <li><Link href="/account" className="ms-footer__nav-link">My Account</Link></li>
+              <li><Link href="/wishlist" className="ms-footer__nav-link">Wishlist</Link></li>
             </ul>
           </div>
 
-          {/* Customer Service */}
           <div>
-            <h4 className="font-semibold mb-4">Customer Service</h4>
-            <ul className="space-y-2 text-sm text-gray-400">
-              <li><Link href="/contact" className="hover:text-white">Contact Us</Link></li>
-              <li><Link href="/faq" className="hover:text-white">FAQ</Link></li>
-              <li><Link href="/shipping" className="hover:text-white">Shipping Info</Link></li>
-              <li><Link href="/returns" className="hover:text-white">Returns & Refunds</Link></li>
+            <h4 className="ms-footer__nav-heading">Customer Service</h4>
+            <ul className="ms-footer__nav-list">
+              <li><Link href="/contact" className="ms-footer__nav-link">Contact Us</Link></li>
+              <li><Link href="/faq" className="ms-footer__nav-link">FAQ</Link></li>
+              <li><Link href="/shipping" className="ms-footer__nav-link">Shipping Info</Link></li>
+              <li><Link href="/returns" className="ms-footer__nav-link">Returns &amp; Refunds</Link></li>
             </ul>
           </div>
 
-          {/* Policies */}
           <div>
-            <h4 className="font-semibold mb-4">Policies</h4>
-            <ul className="space-y-2 text-sm text-gray-400">
-              <li><Link href="/privacy" className="hover:text-white">Privacy Policy</Link></li>
-              <li><Link href="/terms" className="hover:text-white">Terms of Service</Link></li>
-              <li><Link href="/cancellation" className="hover:text-white">Cancellation Policy</Link></li>
+            <h4 className="ms-footer__nav-heading">Policies</h4>
+            <ul className="ms-footer__nav-list">
+              <li><Link href="/privacy" className="ms-footer__nav-link">Privacy Policy</Link></li>
+              <li><Link href="/terms" className="ms-footer__nav-link">Terms of Service</Link></li>
+              <li><Link href="/cancellation" className="ms-footer__nav-link">Cancellation Policy</Link></li>
             </ul>
           </div>
         </div>
 
-        {/* Trust Row */}
-        <div className="mt-12 pt-8 border-t border-gray-800">
-          <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-gray-400">
-            <span>🚚 Free delivery above ₹{config.shipping.freeShippingAbove}</span>
-            <span>🔒 Secure Payments</span>
-            <span>📄 GST Invoice</span>
-            <span>↩️ Easy Returns</span>
-          </div>
+        <div className="ms-footer__trust">
+          <span className="ms-footer__trust-item">🚚 Free delivery above ₹{config.shipping.freeShippingAbove}</span>
+          <span className="ms-footer__trust-item">🔒 Secure Payments</span>
+          <span className="ms-footer__trust-item">📄 GST Invoice</span>
+          <span className="ms-footer__trust-item">↩️ Easy Returns</span>
         </div>
 
-        {/* Bottom */}
-        <div className="mt-8 pt-8 border-t border-gray-800 text-center text-sm text-gray-500">
+        <div className="ms-footer__bottom">
           <p>© {new Date().getFullYear()} {config.store.name}. All rights reserved.</p>
         </div>
       </div>
