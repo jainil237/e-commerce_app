@@ -17,3 +17,4 @@ security_performance_audit.md
 .agentsmyth
 uploads/
 dist/
+*.tsbuildinfo
