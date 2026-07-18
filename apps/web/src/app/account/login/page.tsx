@@ -4,9 +4,11 @@ import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Mail, Lock, Loader2 } from 'lucide-react'
-import { useAuth, useToast } from '@/components/providers'
+import { useAuth } from '@/contexts/auth.context'
+import { useToast } from '@/contexts/toast.context'
 import { Button } from '@/components/atoms/Button/Button'
 import { Input } from '@/components/atoms/Input/Input'
+import '../auth.scss'
 
 function LoginContent() {
   const router = useRouter()
@@ -40,15 +42,15 @@ function LoginContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--surface-1)] flex items-center justify-center py-12 px-4">
-      <div className="max-w-md w-full">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold tracking-tight text-[var(--text-primary)]">Welcome Back</h1>
-          <p className="text-[var(--text-secondary)] mt-2">Sign in to your account</p>
+    <div className="ms-auth">
+      <div className="ms-auth__wrapper">
+        <div className="ms-auth__header">
+          <h1 className="ms-auth__title">Welcome Back</h1>
+          <p className="ms-auth__subtitle">Sign in to your account</p>
         </div>
 
-        <div className="bg-[var(--surface-0)] p-8 rounded-2xl shadow-sm border border-[var(--border-subtle)]">
-          <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="ms-auth-card">
+          <form onSubmit={handleSubmit} className="ms-auth-card__form">
             <Input
               type="email"
               label="Email"
@@ -69,12 +71,12 @@ function LoginContent() {
               required
             />
 
-            <div className="flex items-center justify-between text-sm pt-2">
-              <label className="flex items-center gap-2 text-[var(--text-primary)] cursor-pointer">
-                <input type="checkbox" className="w-4 h-4 rounded border-[var(--border-base)] text-[var(--brand-primary)] focus:ring-[var(--brand-primary)] bg-[var(--surface-0)]" />
+            <div className="ms-auth-card__remember-row">
+              <label className="ms-auth-card__remember-label">
+                <input type="checkbox" className="ms-auth-card__checkbox" />
                 Remember me
               </label>
-              <Link href="/account/forgot-password" className="text-[var(--brand-primary)] font-medium hover:underline">
+              <Link href="/account/forgot-password" className="ms-auth-card__forgot-link">
                 Forgot password?
               </Link>
             </div>
@@ -83,7 +85,7 @@ function LoginContent() {
               type="submit"
               variant="primary"
               size="lg"
-              className="w-full mt-4"
+              className="ms-auth-card__submit"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -94,9 +96,9 @@ function LoginContent() {
             </Button>
           </form>
 
-          <div className="mt-8 text-center text-sm">
-            <span className="text-[var(--text-secondary)]">Don't have an account?</span>{' '}
-            <Link href="/account/register" className="text-[var(--brand-primary)] font-semibold hover:underline">
+          <div className="ms-auth-card__footer">
+            <span className="ms-auth-card__footer-text">Don't have an account?</span>{' '}
+            <Link href="/account/register" className="ms-auth-card__footer-link">
               Sign up
             </Link>
           </div>
@@ -108,7 +110,7 @@ function LoginContent() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[var(--surface-1)] flex items-center justify-center py-12 px-4"><Loader2 className="w-8 h-8 animate-spin mx-auto text-[var(--brand-primary)]" /></div>}>
+    <Suspense fallback={<div className="ms-auth"><Loader2 className="w-8 h-8 animate-spin mx-auto text-[var(--brand-primary)]" /></div>}>
       <LoginContent />
     </Suspense>
   )

@@ -3,10 +3,14 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Heart, Loader2, ShoppingCart, Trash2, ArrowRight } from 'lucide-react'
-import { useAuth, useWishlist, useCart, useToast } from '@/components/providers'
+import { useAuth } from '@/contexts/auth.context'
+import { useWishlist } from '@/contexts/wishlist.context'
+import { useCart } from '@/contexts/cart.context'
+import { useToast } from '@/contexts/toast.context'
 import { FallbackImage } from '@/components/ui/fallback-image'
 import { Button } from '@/components/atoms/Button/Button'
 import { Badge } from '@/components/atoms/Badge/Badge'
+import './wishlist.scss'
 
 interface WishlistProduct {
   id: string
@@ -75,8 +79,8 @@ export default function WishlistPage() {
 
   if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-[var(--surface-1)]">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-16 text-center">
+      <div className="ms-wishlist">
+        <div className="ms-wishlist__spinner-wrap">
           <Loader2 className="w-8 h-8 animate-spin mx-auto text-[var(--brand-primary)]" />
         </div>
       </div>
@@ -85,12 +89,12 @@ export default function WishlistPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[var(--surface-1)]">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-16 text-center">
-          <div className="bg-[var(--surface-0)] rounded-3xl border border-[var(--border-subtle)] p-12 max-w-md mx-auto">
-            <Heart className="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
-            <h1 className="text-2xl font-bold mb-2 text-[var(--text-primary)]">Sign in to view your wishlist</h1>
-            <p className="text-[var(--text-secondary)] mb-6">Save products you love for later</p>
+      <div className="ms-wishlist">
+        <div className="ms-wishlist__spinner-wrap">
+          <div className="ms-wishlist-gate">
+            <Heart className="ms-wishlist-gate__icon" />
+            <h1 className="ms-wishlist-gate__title">Sign in to view your wishlist</h1>
+            <p className="ms-wishlist-gate__text">Save products you love for later</p>
             <Link href="/account/login?redirect=/wishlist">
               <Button variant="primary" size="lg">Sign In</Button>
             </Link>
@@ -101,15 +105,12 @@ export default function WishlistPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--surface-1)]">
-      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+    <div className="ms-wishlist">
+      <div className="ms-wishlist__container">
+        <div className="ms-wishlist__header">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-[var(--text-primary)] tracking-tight">
-              My Wishlist
-            </h1>
-            <p className="text-[var(--text-secondary)] mt-1 font-medium">
+            <h1 className="ms-wishlist__title">My Wishlist</h1>
+            <p className="ms-wishlist__count">
               {products.length} {products.length === 1 ? 'item' : 'items'}
             </p>
           </div>
@@ -126,10 +127,10 @@ export default function WishlistPage() {
         </div>
 
         {products.length === 0 ? (
-          <div className="bg-[var(--surface-0)] rounded-3xl border border-[var(--border-subtle)] border-dashed p-12 text-center">
-            <Heart className="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
-            <h2 className="text-lg font-semibold mb-2 text-[var(--text-primary)]">Your wishlist is empty</h2>
-            <p className="text-[var(--text-secondary)] mb-6">Start adding products you love</p>
+          <div className="ms-wishlist-empty">
+            <Heart className="ms-wishlist-empty__icon" />
+            <h2 className="ms-wishlist-empty__title">Your wishlist is empty</h2>
+            <p className="ms-wishlist-empty__text">Start adding products you love</p>
             <Link href="/products">
               <Button variant="primary" leftIcon={<ArrowRight className="w-4 h-4" />}>
                 Browse Products
@@ -137,68 +138,52 @@ export default function WishlistPage() {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+          <div className="ms-wishlist-grid">
             {products.map((product) => {
               const discount = Math.round(
                 (1 - Number(product.price) / Number(product.mrp)) * 100
               )
 
               return (
-                <div
-                  key={product.id}
-                  className="bg-[var(--surface-0)] rounded-2xl border border-[var(--border-subtle)] overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 group"
-                >
-                  {/* Image */}
+                <div key={product.id} className="ms-wishlist-card">
                   <Link href={`/products/${product.slug}`}>
-                    <div className="relative aspect-[4/3] overflow-hidden bg-[var(--surface-2)]">
+                    <div className="ms-wishlist-card__image-wrap">
                       <FallbackImage
                         src={product.images[0]?.url}
                         alt={product.images[0]?.altText || product.name}
                         fill
-                        className="object-cover transition-transform duration-700 group-hover:scale-105"
+                        className="object-cover"
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
                       />
                       {discount > 0 && (
-                        <div className="absolute top-3 left-3">
+                        <div className="ms-wishlist-card__discount">
                           <Badge variant="success" size="sm">{discount}% OFF</Badge>
                         </div>
                       )}
                       {product.stock === 0 && (
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                          <span className="bg-white/90 text-gray-900 px-4 py-2 rounded-full font-semibold text-sm">
-                            Out of Stock
-                          </span>
+                        <div className="ms-wishlist-card__oos-overlay">
+                          <span className="ms-wishlist-card__oos-badge">Out of Stock</span>
                         </div>
                       )}
                     </div>
                   </Link>
 
-                  {/* Content */}
-                  <div className="p-5">
+                  <div className="ms-wishlist-card__body">
                     {product.category && (
-                      <p className="text-xs font-semibold tracking-wider text-[var(--text-secondary)] uppercase">
-                        {product.category.name}
-                      </p>
+                      <p className="ms-wishlist-card__category">{product.category.name}</p>
                     )}
                     <Link href={`/products/${product.slug}`}>
-                      <h3 className="font-semibold text-[var(--text-primary)] line-clamp-2 mt-1 group-hover:text-[var(--brand-primary)] transition-colors">
-                        {product.name}
-                      </h3>
+                      <h3 className="ms-wishlist-card__name">{product.name}</h3>
                     </Link>
 
-                    <div className="flex items-center gap-2 mt-3">
-                      <span className="text-lg font-bold text-[var(--text-primary)] tabular-nums">
-                        ₹{product.price}
-                      </span>
+                    <div className="ms-wishlist-card__price-row">
+                      <span className="ms-wishlist-card__price">₹{product.price}</span>
                       {Number(product.mrp) > Number(product.price) && (
-                        <span className="text-sm line-through text-[var(--text-tertiary)] tabular-nums">
-                          ₹{product.mrp}
-                        </span>
+                        <span className="ms-wishlist-card__mrp">₹{product.mrp}</span>
                       )}
                     </div>
 
-                    {/* Actions */}
-                    <div className="flex gap-2 mt-4 pt-3 border-t border-[var(--border-base)]">
+                    <div className="ms-wishlist-card__actions">
                       <Button
                         className="flex-1"
                         variant="primary-brand"
@@ -213,7 +198,7 @@ export default function WishlistPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleRemove(product)}
-                        className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950 px-3"
+                        className="ms-wishlist-card__remove"
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>

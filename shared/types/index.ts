@@ -66,6 +66,7 @@ export interface Order {
   };
   notes?: string | null;
   user?: User;
+  rmaRequests?: any[];
 }
 
 export interface User {

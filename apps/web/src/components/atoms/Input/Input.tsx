@@ -1,5 +1,6 @@
+'use client'
+import '@/styles/input.scss'
 import React, { InputHTMLAttributes, forwardRef, ReactNode } from 'react'
-import styles from './Input.module.css'
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string
@@ -10,46 +11,51 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   (
-    { 
-      className = '', 
-      label, 
-      error, 
-      leftIcon, 
-      rightIcon, 
-      id, 
-      ...props 
-    }, 
+    {
+      className = '',
+      label,
+      error,
+      leftIcon,
+      rightIcon,
+      id,
+      ...props
+    },
     ref
   ) => {
-    // Generate a unique ID if one isn't provided but we have a label
     const generatedId = React.useId()
     const inputId = id || generatedId
 
     const wrapperClass = [
-      styles.wrapper,
-      error ? styles.hasError : '',
-      className
+      'ms-field',
+      className,
+    ].filter(Boolean).join(' ')
+
+    const inputClass = [
+      'ms-input',
+      leftIcon ? 'ms-input--has-left' : '',
+      rightIcon ? 'ms-input--has-right' : '',
+      error ? 'ms-input--error' : '',
     ].filter(Boolean).join(' ')
 
     return (
       <div className={wrapperClass}>
         {label && (
-          <label htmlFor={inputId} className={styles.label}>
+          <label htmlFor={inputId} className="ms-field__label">
             {label}
           </label>
         )}
-        <div className={styles.inputContainer}>
-          {leftIcon && <div className={styles.iconLeft}>{leftIcon}</div>}
+        <div style={{ position: 'relative' }}>
+          {leftIcon && <div className="ms-field__icon--left">{leftIcon}</div>}
           <input
             id={inputId}
             ref={ref}
-            className={`${styles.input} ${leftIcon ? styles.withLeftIcon : ''} ${rightIcon ? styles.withRightIcon : ''}`}
+            className={inputClass}
             aria-invalid={!!error}
             {...props}
           />
-          {rightIcon && <div className={styles.iconRight}>{rightIcon}</div>}
+          {rightIcon && <div className="ms-field__icon--right">{rightIcon}</div>}
         </div>
-        {error && <span className={styles.errorMessage}>{error}</span>}
+        {error && <span className="ms-field__help ms-field__help--error">{error}</span>}
       </div>
     )
   }

@@ -1,5 +1,6 @@
+'use client'
+import './button.scss'
 import React, { ButtonHTMLAttributes, forwardRef } from 'react'
-import styles from './Button.module.css'
 import { Loader2 } from 'lucide-react'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -8,30 +9,34 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   isLoading?: boolean
   leftIcon?: React.ReactNode
   rightIcon?: React.ReactNode
+  full?: boolean
+  icon?: boolean
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   (
-    { 
-      className = '', 
-      variant = 'primary', 
-      size = 'md', 
-      isLoading = false, 
-      leftIcon, 
-      rightIcon, 
-      children, 
-      disabled, 
-      ...props 
-    }, 
+    {
+      className = '',
+      variant = 'primary',
+      size = 'md',
+      isLoading = false,
+      leftIcon,
+      rightIcon,
+      full = false,
+      icon = false,
+      children,
+      disabled,
+      ...props
+    },
     ref
   ) => {
-    
     const rootClass = [
-      styles.button,
-      styles[variant],
-      styles[`size-${size}`],
-      isLoading ? styles.loading : '',
-      className
+      'ms-btn',
+      `ms-btn--${variant}`,
+      `ms-btn--${size}`,
+      full ? 'ms-btn--full' : '',
+      icon ? 'ms-btn--icon' : '',
+      className,
     ].filter(Boolean).join(' ')
 
     return (
@@ -41,10 +46,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={disabled || isLoading}
         {...props}
       >
-        {isLoading && <Loader2 className={styles.spinner} />}
-        {!isLoading && leftIcon && leftIcon}
+        {isLoading && <Loader2 className="ms-btn__spinner" aria-hidden="true" />}
+        {!isLoading && leftIcon}
         {children}
-        {!isLoading && rightIcon && rightIcon}
+        {!isLoading && rightIcon}
       </button>
     )
   }

@@ -4,11 +4,11 @@ import React, { useState } from 'react';
 import { ShoppingCart, Heart, Share2, Info, Edit3, Package, Minus, Plus } from 'lucide-react';
 import { Product, ViewerContext } from '../../types';
 import { SharedButton } from '../../components/UIPrimitives';
-import { 
-  ProductBreadcrumbs, 
-  ProductGallery, 
-  ProductInfo, 
-  ProductPricing, 
+import {
+  ProductBreadcrumbs,
+  ProductGallery,
+  ProductInfo,
+  ProductPricing,
   ProductSpecifications,
   TrustBadges
 } from './components';
@@ -49,122 +49,114 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
   const isAdmin = viewer === 'admin';
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <ProductBreadcrumbs product={product} viewer={viewer} />
+    <div className="ms-pdp-layout">
+      {/* Left: Gallery */}
+      <div>
+        <ProductGallery product={product} />
+      </div>
 
-      <div className="grid lg:grid-cols-12 gap-12">
-        {/* Left: Gallery */}
-        <div className="lg:col-span-5 xl:col-span-7">
-          <ProductGallery product={product} />
-        </div>
+      {/* Right: Info & Actions */}
+      <div className="ms-pdp-info">
+        <ProductInfo product={product} viewer={viewer} />
 
-        {/* Right: Info & Actions */}
-        <div className="lg:col-span-7 xl:col-span-5 space-y-10 lg:pl-4">
-          <ProductInfo product={product} viewer={viewer} />
-          
-          <ProductPricing product={product} viewer={viewer} />
+        <ProductPricing product={product} viewer={viewer} />
 
-          {/* Customer Actions */}
-          {isCustomer && (
-            <div className="space-y-6 pt-4 border-t border-[var(--border-subtle)]">
-              {maxQuantityAllowed > 0 && !isAddToCartDisabled && (
-                <div className="flex items-center gap-6">
-                  <span className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wider">Quantity</span>
-                  <div className="flex items-center bg-[var(--surface-2)] rounded-xl p-1 border border-[var(--border-subtle)]">
-                    <button
-                      onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                      className="p-2 hover:bg-[var(--surface-1)] rounded-lg transition-colors text-[var(--text-primary)] disabled:opacity-20"
-                      disabled={quantity <= 1}
-                    >
-                      <Minus className="w-5 h-5" />
-                    </button>
-                    <span className="w-12 text-center font-bold text-lg">{quantity}</span>
-                    <button
-                      onClick={() => setQuantity(q => Math.min(maxQuantityAllowed, q + 1))}
-                      className="p-2 hover:bg-[var(--surface-1)] rounded-lg transition-colors text-[var(--text-primary)] disabled:opacity-20"
-                      disabled={quantity >= maxQuantityAllowed}
-                    >
-                      <Plus className="w-5 h-5" />
-                    </button>
-                  </div>
+        {/* Customer Actions */}
+        {isCustomer && (
+          <div className="ms-pdp-info__actions">
+            {maxQuantityAllowed > 0 && !isAddToCartDisabled && (
+              <div className="ms-pdp-info__qty-row">
+                <span className="ms-pdp-info__qty-label">Quantity</span>
+                <div className="ms-pdp-info__qty-ctrl">
+                  <button
+                    onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                    className="ms-pdp-info__qty-btn"
+                    disabled={quantity <= 1}
+                  >
+                    <Minus size={20} />
+                  </button>
+                  <span className="ms-pdp-info__qty-value">{quantity}</span>
+                  <button
+                    onClick={() => setQuantity(q => Math.min(maxQuantityAllowed, q + 1))}
+                    className="ms-pdp-info__qty-btn"
+                    disabled={quantity >= maxQuantityAllowed}
+                  >
+                    <Plus size={20} />
+                  </button>
                 </div>
-              )}
-
-              <div className="flex gap-4">
-                <SharedButton
-                  variant="primary"
-                  size="lg"
-                  className="flex-1 h-14 rounded-2xl text-lg font-black"
-                  onClick={() => onAddToCart?.(quantity)}
-                  disabled={isAddToCartDisabled}
-                  leftIcon={<ShoppingCart className="w-6 h-6" />}
-                >
-                  {isAddToCartDisabled ? 'Out of Stock' : 'Add to Cart'}
-                </SharedButton>
-                
-                <SharedButton
-                  variant="secondary"
-                  size="lg"
-                  className="w-14 h-14 p-0 rounded-2xl flex-shrink-0"
-                  onClick={onWishlistToggle}
-                  leftIcon={<Heart className={`w-6 h-6 ${isInWishlist ? 'fill-red-500 text-red-500' : ''}`} />}
-                />
-
-                <SharedButton
-                  variant="secondary"
-                  size="lg"
-                  className="w-14 h-14 p-0 rounded-2xl flex-shrink-0"
-                  onClick={onShare}
-                  leftIcon={<Share2 className="w-6 h-6" />}
-                />
               </div>
+            )}
 
-              <TrustBadges />
+            <div className="ms-pdp-info__cta-row">
+              <SharedButton
+                variant="primary"
+                size="lg"
+                className="ms-pdp-info__cta-main"
+                onClick={() => onAddToCart?.(quantity)}
+                disabled={isAddToCartDisabled}
+                leftIcon={<ShoppingCart size={22} />}
+              >
+                {isAddToCartDisabled ? 'Out of Stock' : 'Add to Cart'}
+              </SharedButton>
+
+              <SharedButton
+                variant="secondary"
+                size="lg"
+                className="ms-pdp-info__cta-icon"
+                onClick={onWishlistToggle}
+                leftIcon={<Heart size={22} style={isInWishlist ? { fill: 'var(--error)', color: 'var(--error)' } : undefined} />}
+              />
+
+              <SharedButton
+                variant="secondary"
+                size="lg"
+                className="ms-pdp-info__cta-icon"
+                onClick={onShare}
+                leftIcon={<Share2 size={22} />}
+              />
             </div>
-          )}
 
-          {/* Admin Actions */}
-          {isAdmin && (
-            <div className="pt-6 border-t border-[var(--border-subtle)] space-y-4">
-              <div className="flex items-center gap-2 text-[var(--text-secondary)] mb-4">
-                <Package className="w-5 h-5" />
-                <span className="text-sm font-medium">Inventory & Management</span>
-              </div>
-              <div className="flex gap-4">
-                <SharedButton
-                  variant="primary"
-                  size="lg"
-                  className="flex-1 rounded-2xl font-bold"
-                  onClick={onEdit}
-                  leftIcon={<Edit3 className="w-5 h-5" />}
-                >
-                  Edit Product Details
-                </SharedButton>
-                <SharedButton
-                  variant="secondary"
-                  size="lg"
-                  className={`flex-1 rounded-2xl font-bold ${product.isActive ? 'text-red-500 hover:bg-red-50' : 'text-green-500 hover:bg-green-50'}`}
-                  onClick={onToggleActive}
-                >
-                  {product.isActive ? 'Deactivate Product' : 'Activate Product'}
-                </SharedButton>
-              </div>
+            <TrustBadges />
+          </div>
+        )}
+
+        {/* Admin Actions */}
+        {isAdmin && (
+          <div className="ms-pdp-admin-actions">
+            <div className="ms-pdp-admin-actions__label">
+              <Package size={18} />
+              <span>Inventory &amp; Management</span>
             </div>
-          )}
-
-          {/* Description */}
-          <div className="space-y-4 pt-8">
-            <h2 className="text-xl font-black text-[var(--text-primary)] flex items-center gap-2">
-              <Info className="w-6 h-6 text-[var(--brand-primary)]" />
-              Product Description
-            </h2>
-            <div className="prose prose-sm max-w-none text-[var(--text-secondary)] leading-relaxed">
-              {product.description}
+            <div className="ms-pdp-admin-actions__row">
+              <SharedButton
+                variant="primary"
+                size="lg"
+                onClick={onEdit}
+                leftIcon={<Edit3 size={18} />}
+              >
+                Edit Product Details
+              </SharedButton>
+              <SharedButton
+                variant="secondary"
+                size="lg"
+                onClick={onToggleActive}
+              >
+                {product.isActive ? 'Deactivate Product' : 'Activate Product'}
+              </SharedButton>
             </div>
           </div>
+        )}
 
-          <ProductSpecifications product={product} />
+        {/* Description */}
+        <div className="ms-pdp-info__section">
+          <h2 className="ms-pdp-info__section-title">
+            <Info size={22} style={{ color: 'var(--brand-primary)' }} />
+            Product Description
+          </h2>
+          <p className="ms-pdp-info__description">{product.description}</p>
         </div>
+
+        <ProductSpecifications product={product} />
       </div>
     </div>
   );

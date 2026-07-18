@@ -1,0 +1,245 @@
+@use '../../styles/mixins' as m;
+@use '../../styles/variables' as v;
+
+.ms-account {
+  min-height: 100vh;
+  background: var(--surface-1);
+  padding-bottom: 3rem;
+
+  &__loading {
+    max-width: var(--container-max);
+    margin: 0 auto;
+    padding: 4rem 1rem;
+    text-align: center;
+    @include m.md { padding: 4rem 1.5rem; }
+    @include m.lg { padding: 4rem 2rem; }
+  }
+
+  &__container {
+    max-width: 56rem;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+    @include m.md { padding: 3rem 1.5rem; }
+    @include m.lg { padding: 3rem 2rem; }
+  }
+}
+
+// ─── Profile hero ──────────────────────────────────────────
+.ms-account-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-2xl);
+  background: var(--surface-0);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 2rem;
+
+  &__gradient {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 8rem;
+    background: linear-gradient(
+      to right,
+      color-mix(in srgb, var(--brand-primary) 20%, transparent),
+      color-mix(in srgb, var(--brand-accent) 20%, transparent),
+      color-mix(in srgb, var(--brand-primary) 20%, transparent)
+    );
+  }
+
+  &__body {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    text-align: center;
+    padding: 4rem 1.5rem 2rem;
+    @include m.sm {
+      flex-direction: row;
+      align-items: flex-end;
+      text-align: left;
+      padding: 5rem 2.5rem 2.5rem;
+    }
+  }
+
+  &__avatar {
+    width: 6rem;
+    height: 6rem;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 2.25rem;
+    font-weight: 700;
+    box-shadow: var(--shadow-xl);
+    border: 4px solid var(--surface-0);
+    background: linear-gradient(to bottom right, var(--brand-primary), var(--brand-accent));
+    flex-shrink: 0;
+    @include m.sm { width: 8rem; height: 8rem; font-size: 3rem; }
+  }
+
+  &__info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  &__name {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    color: var(--text-primary);
+    @include m.sm { font-size: 1.875rem; }
+  }
+
+  &__meta {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    @include m.sm { flex-direction: row; gap: 1rem; }
+  }
+
+  &__meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+
+  &__sep {
+    display: none;
+    color: var(--text-tertiary);
+    @include m.sm { display: inline; }
+  }
+
+  &__edit {
+    margin-top: 1rem;
+    padding: 0.625rem 1.5rem;
+    background: var(--surface-2);
+    color: var(--text-primary);
+    border-radius: var(--radius-full);
+    font-weight: 500;
+    @include m.motion { transition: background v.$duration-base ease; }
+    &:hover { background: color-mix(in srgb, var(--surface-2) 70%, var(--text-tertiary)); }
+    @include m.sm { margin-top: 0; }
+  }
+}
+
+// ─── Dashboard tiles ───────────────────────────────────────
+.ms-account-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  @include m.md { grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
+}
+
+.ms-account-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  background: var(--surface-0);
+  border-radius: var(--radius-2xl);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  @include m.motion {
+    transition: box-shadow v.$duration-slow ease, border-color v.$duration-slow ease;
+  }
+  &:hover {
+    box-shadow: var(--shadow-md);
+    border-color: color-mix(in srgb, var(--brand-primary) 30%, transparent);
+  }
+
+  &__sheen {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom right, color-mix(in srgb, var(--brand-primary) 5%, transparent), transparent);
+    opacity: 0;
+    @include m.motion { transition: opacity v.$duration-slower ease; }
+  }
+  &:hover &__sheen { opacity: 1; }
+
+  &__row {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+
+  &__icon-wrap {
+    width: 3rem;
+    height: 3rem;
+    border-radius: var(--radius-xl);
+    background: var(--surface-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    @include m.motion { transition: transform v.$duration-slow ease, background v.$duration-slow ease; }
+  }
+  &:hover &__icon-wrap {
+    transform: scale(1.1);
+    background: color-mix(in srgb, var(--brand-primary) 10%, transparent);
+  }
+
+  &__icon {
+    color: var(--text-secondary);
+    @include m.motion { transition: color v.$duration-base ease; }
+  }
+  &:hover &__icon { color: var(--brand-primary); }
+
+  &__chevron {
+    color: var(--text-tertiary);
+    @include m.motion { transition: color v.$duration-slow ease, transform v.$duration-slow ease; }
+  }
+  &:hover &__chevron { color: var(--brand-primary); transform: translateX(0.25rem); }
+
+  &__text {
+    position: relative;
+    margin-top: 1.5rem;
+  }
+
+  &__title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+    @include m.motion { transition: color v.$duration-base ease; }
+  }
+  &:hover &__title { color: var(--brand-primary); }
+
+  &__desc {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+  }
+}
+
+// ─── Logout ────────────────────────────────────────────────
+.ms-account-logout {
+  display: flex;
+  justify-content: center;
+
+  &__btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 2rem;
+    color: var(--error);
+    font-weight: 500;
+    border-radius: var(--radius-full);
+    @include m.motion { transition: background v.$duration-base ease; }
+    &:hover { background: color-mix(in srgb, var(--error) 8%, transparent); }
+  }
+
+  &__icon {
+    @include m.motion { transition: transform v.$duration-base ease; }
+  }
+  &__btn:hover &__icon { transform: translateX(-0.125rem); }
+}

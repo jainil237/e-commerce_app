@@ -3,10 +3,10 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Minus, Plus, Trash2, ShoppingBag, ArrowRight } from 'lucide-react'
-import { useCart, useToast, useStoreConfig } from '@/components/providers'
+import { useCart, useToast, useStoreConfig } from '@/contexts'
 import { FallbackImage } from '@/components/ui/fallback-image'
 import { Button } from '@/components/atoms/Button/Button'
-import styles from './cart.module.css'
+import './cart.scss'
 
 interface CartProduct {
   id: string
@@ -27,7 +27,6 @@ export default function CartPage() {
   const [products, setProducts] = useState<Record<string, CartProduct>>({})
   const [isLoading, setIsLoading] = useState(true)
 
-  // Fetch product details for display whenever items change
   useEffect(() => {
     if (!isHydrated) return
 
@@ -74,7 +73,6 @@ export default function CartPage() {
   const shipping = subtotal >= config.shipping.freeShippingAbove ? 0 : config.shipping.baseShippingCharge
   const total = subtotal + shipping
 
-  // Determine if any cart item exceeds available stock
   const hasStockErrors = items.some(item => {
     const product = products[item.productId]
     return product ? item.quantity > product.availableStock : false
@@ -82,23 +80,23 @@ export default function CartPage() {
 
   if (!isHydrated || isLoading) {
     return (
-      <div className={styles.wrapper}>
-        <div className={styles.container}>
-          <div className="skeleton h-10 w-48 mb-8 rounded-lg" />
-          <div className={styles.layoutGrid}>
-            <div className={styles.itemsColumn}>
+      <div className="ms-cart">
+        <div className="ms-cart__container">
+          <div className="ms-cart-skeleton__title" />
+          <div className="ms-cart-layout">
+            <div className="ms-cart-items">
               {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className={styles.itemCard}>
-                  <div className="skeleton w-24 h-24 sm:w-28 sm:h-28 rounded-xl" />
-                  <div className="flex-1 space-y-3 py-2">
-                    <div className="skeleton h-5 w-3/4 rounded" />
-                    <div className="skeleton h-4 w-1/4 rounded" />
-                    <div className="skeleton h-8 w-1/3 rounded mt-4" />
+                <div key={i} className="ms-cart-skeleton__item">
+                  <div className="ms-cart-skeleton__image" />
+                  <div className="ms-cart-skeleton__content">
+                    <div className="ms-cart-skeleton__line ms-cart-skeleton__line--lg" />
+                    <div className="ms-cart-skeleton__line ms-cart-skeleton__line--sm" />
+                    <div className="ms-cart-skeleton__line ms-cart-skeleton__line--md" />
                   </div>
                 </div>
               ))}
             </div>
-            <div className="skeleton h-[350px] rounded-2xl sticky top-24" />
+            <div className="ms-cart-skeleton__summary" />
           </div>
         </div>
       </div>
@@ -107,31 +105,31 @@ export default function CartPage() {
 
   if (items.length === 0) {
     return (
-      <div className={styles.wrapper}>
-        <div className={styles.emptyState}>
-          <div className={styles.emptyIconWrapper}>
-            <ShoppingBag className="w-10 h-10" />
+      <div className="ms-cart">
+        <div className="ms-cart__container">
+          <div className="ms-cart-empty">
+            <div className="ms-cart-empty__icon">
+              <ShoppingBag size={40} />
+            </div>
+            <h1 className="ms-cart-empty__title">Your cart is empty</h1>
+            <p className="ms-cart-empty__sub">Looks like you haven&apos;t added anything to your cart yet.</p>
+            <Link href="/products">
+              <Button size="lg" variant="primary">Start Shopping</Button>
+            </Link>
           </div>
-          <h1 className="text-2xl font-bold mb-3 text-gray-900 dark:text-white">Your cart is empty</h1>
-          <p className="text-gray-500 mb-8 dark:text-gray-400">Looks like you haven't added anything to your cart yet.</p>
-          <Link href="/products">
-            <Button size="lg" variant="primary">
-              Start Shopping
-            </Button>
-          </Link>
         </div>
       </div>
     )
   }
 
   return (
-    <div className={styles.wrapper}>
-      <div className={styles.container}>
-        <h1 className={styles.pageTitle}>Shopping Cart ({totalItems} items)</h1>
+    <div className="ms-cart">
+      <div className="ms-cart__container">
+        <h1 className="ms-cart__title">Shopping Cart ({totalItems} items)</h1>
 
-        <div className={styles.layoutGrid}>
+        <div className="ms-cart-layout">
           {/* Cart Items */}
-          <div className={styles.itemsColumn}>
+          <div className="ms-cart-items">
             {items.map(item => {
               const product = products[item.productId]
               const displayName = product?.name || item.name || 'Loading…'
@@ -142,70 +140,67 @@ export default function CartPage() {
               const discount = itemMrp - itemSubtotal
 
               return (
-                <div key={item.productId} className={styles.itemCard}>
-                  {/* Image */}
-                  <Link href={product ? `/products/${product.slug}` : '#'} className={styles.itemImageWrapper}>
+                <div key={item.productId} className="ms-cart-item">
+                  <Link href={product ? `/products/${product.slug}` : '#'} className="ms-cart-item__image">
                     <FallbackImage
                       src={product?.images?.[0]?.url}
                       alt={displayName}
                       fill
-                      className={styles.itemImage}
+                      className="object-cover"
                     />
                   </Link>
 
-                  {/* Content */}
-                  <div className={styles.itemContent}>
-                    
-                    <div className={styles.itemHeaderRow}>
+                  <div className="ms-cart-item__content">
+                    <div className="ms-cart-item__header">
                       <div>
                         <Link
                           href={product ? `/products/${product.slug}` : '#'}
-                          className={styles.itemTitle}
+                          className="ms-cart-item__name"
                           title={displayName}
                         >
                           {displayName}
                         </Link>
                         {product && (
-                          <p className={styles.itemMeta}>GST: {product.gstPercent}%</p>
+                          <p className="ms-cart-item__meta">GST: {product.gstPercent}%</p>
                         )}
                       </div>
-                      
-                      <div className={styles.priceBlock}>
-                        <p className={styles.itemTotal}>₹{itemSubtotal.toFixed(0)}</p>
+
+                      <div className="ms-cart-item__price-block">
+                        <p className="ms-cart-item__total">₹{itemSubtotal.toFixed(0)}</p>
                         {discount > 0 && (
-                          <p className={styles.itemDiscount}>Save ₹{discount.toFixed(0)}</p>
+                          <p className="ms-cart-item__discount">Save ₹{discount.toFixed(0)}</p>
                         )}
                       </div>
                     </div>
 
-                    <div className={styles.priceBreakdown}>
-                      <span className={styles.unitPrice}>₹{unitPrice.toFixed(0)}</span>
+                    <div className="ms-cart-item__breakdown">
+                      <span className="ms-cart-item__unit-price">₹{unitPrice.toFixed(0)}</span>
                       {discount > 0 && (
-                         <span className={styles.unitMrp}>₹{unitMrp.toFixed(0)}</span>
+                        <span className="ms-cart-item__unit-mrp">₹{unitMrp.toFixed(0)}</span>
                       )}
                     </div>
 
-                    <div className={styles.controlsRow}>
-                      <div className={styles.quantityCtrl}>
+                    <div className="ms-cart-item__controls">
+                      <div className="ms-cart-item__qty">
                         <button
                           onClick={() => updateQuantity(item.productId, item.quantity - 1)}
-                          className={styles.quantityBtn}
+                          className="ms-cart-item__qty-btn"
                           aria-label="Decrease quantity"
                         >
-                          <Minus className="w-4 h-4" />
+                          <Minus size={16} />
                         </button>
-                        <span className={styles.quantityValue}>{item.quantity}</span>
+                        <span className="ms-cart-item__qty-value">{item.quantity}</span>
                         <button
                           onClick={() => updateQuantity(item.productId, item.quantity + 1)}
-                          className={styles.quantityBtn}
+                          className="ms-cart-item__qty-btn"
                           disabled={product ? item.quantity >= product.availableStock : false}
                           aria-label="Increase quantity"
                         >
-                          <Plus className="w-4 h-4" />
+                          <Plus size={16} />
                         </button>
                       </div>
                       {product && item.quantity > product.availableStock && (
-                        <span className="text-xs text-red-600 dark:text-red-400 font-medium">
+                        <span className="ms-cart-item__stock-error">
                           Only {product.availableStock} available
                         </span>
                       )}
@@ -215,10 +210,10 @@ export default function CartPage() {
                           removeItem(item.productId)
                           showToast('info', 'Item removed from cart')
                         }}
-                        className={styles.removeBtn}
+                        className="ms-cart-item__remove"
                         aria-label="Remove item"
                       >
-                        <Trash2 className="w-5 h-5" />
+                        <Trash2 size={20} />
                       </button>
                     </div>
                   </div>
@@ -226,10 +221,10 @@ export default function CartPage() {
               )
             })}
 
-            <div className="mt-6 flex justify-center">
+            <div className="ms-cart-clear">
               <Button
                 variant="ghost"
-                className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
+                className="ms-btn--ghost-danger"
                 onClick={() => {
                   clearCart()
                   showToast('info', 'Cart cleared')
@@ -242,39 +237,39 @@ export default function CartPage() {
 
           {/* Order Summary */}
           <div>
-            <div className={styles.summaryCard}>
-              <h2 className={styles.summaryTitle}>Order Summary</h2>
+            <div className="ms-cart-summary">
+              <h2 className="ms-cart-summary__title">Order Summary</h2>
 
-              <div className="space-y-4">
-                <div className={styles.summaryRow}>
+              <div className="ms-cart-summary__rows">
+                <div className="ms-cart-summary__row">
                   <span>Subtotal</span>
-                  <span className={styles.summaryValue}>₹{subtotal.toFixed(2)}</span>
+                  <span className="ms-cart-summary__value">₹{subtotal.toFixed(2)}</span>
                 </div>
-                <div className={styles.summaryRow}>
+                <div className="ms-cart-summary__row">
                   <span>Shipping</span>
-                  <span className={styles.summaryValue}>{shipping === 0 ? 'FREE' : `₹${shipping}`}</span>
+                  <span className="ms-cart-summary__value">{shipping === 0 ? 'FREE' : `₹${shipping}`}</span>
                 </div>
-                
+
                 {shipping > 0 && subtotal > 0 && (
-                  <div className={styles.freeShippingNotice}>
+                  <div className="ms-cart-summary__shipping-notice">
                     Add ₹{(config.shipping.freeShippingAbove - subtotal).toFixed(2)} more for free delivery
                   </div>
                 )}
               </div>
 
-              <hr className={styles.divider} />
+              <hr className="ms-cart-summary__divider" />
 
               <div>
-                <div className={styles.totalRow}>
-                  <span className={styles.totalLabel}>Total</span>
-                  <span className={styles.totalValue}>₹{total.toFixed(2)}</span>
+                <div className="ms-cart-summary__total-row">
+                  <span className="ms-cart-summary__total-label">Total</span>
+                  <span className="ms-cart-summary__total-value">₹{total.toFixed(2)}</span>
                 </div>
-                <p className={styles.taxesNotice}>Inclusive of all taxes</p>
+                <p className="ms-cart-summary__tax">Inclusive of all taxes</p>
               </div>
 
-              <div className={styles.actions}>
+              <div className="ms-cart-summary__actions">
                 {hasStockErrors && (
-                  <p className="text-sm text-red-600 dark:text-red-400 mb-2">
+                  <p className="ms-cart-summary__stock-error">
                     Please adjust quantities to match available stock before checkout.
                   </p>
                 )}
@@ -284,7 +279,7 @@ export default function CartPage() {
                     size="lg"
                     className="w-full"
                     disabled={hasStockErrors}
-                    rightIcon={<ArrowRight className="w-5 h-5" />}
+                    rightIcon={<ArrowRight size={20} />}
                   >
                     Proceed to Checkout
                   </Button>

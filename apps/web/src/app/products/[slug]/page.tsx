@@ -4,10 +4,10 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { Package } from 'lucide-react'
-import { useCart, useToast, useStoreConfig, useAuth, useWishlist } from '@/components/providers'
+import { useCart, useToast, useStoreConfig, useAuth, useWishlist } from '@/contexts'
 import { refreshSnapshot, getSnapshot } from '@/lib/inventory-snapshot'
 import { Button } from '@/components/atoms/Button/Button'
-import styles from './product.module.css'
+import './pdp.scss'
 import { ProductDetailsPage } from '@shared/pages/product/ProductDetailsPage'
 
 interface Product {
@@ -60,16 +60,16 @@ export default function ProductDetailPage() {
 
   if (isLoading) {
     return (
-      <div className={styles.wrapper}>
-        <div className={styles.container}>
-          <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 mt-4">
-            <div className="lg:col-span-5 xl:col-span-6 skeleton aspect-[4/5] rounded-3xl" />
-            <div className="lg:col-span-7 xl:col-span-6 space-y-6 mt-4">
-              <div className="skeleton h-6 w-32" />
-              <div className="skeleton h-12 w-3/4" />
-              <div className="skeleton h-10 w-1/3" />
-              <div className="skeleton h-32 mt-8" />
-              <div className="skeleton h-16 mt-8" />
+      <div className="ms-pdp">
+        <div className="ms-pdp__container">
+          <div className="ms-pdp-skeleton">
+            <div className="ms-pdp-skeleton__image" />
+            <div className="ms-pdp-skeleton__lines">
+              <div className="ms-pdp-skeleton__line ms-pdp-skeleton__line--sm" />
+              <div className="ms-pdp-skeleton__line ms-pdp-skeleton__line--md" />
+              <div className="ms-pdp-skeleton__line ms-pdp-skeleton__line--lg" />
+              <div className="ms-pdp-skeleton__line ms-pdp-skeleton__line--xl" />
+              <div className="ms-pdp-skeleton__line ms-pdp-skeleton__line--cta" />
             </div>
           </div>
         </div>
@@ -79,16 +79,18 @@ export default function ProductDetailPage() {
 
   if (!product) {
     return (
-      <div className={styles.wrapper}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32 text-center flex flex-col items-center justify-center">
-          <div className="w-24 h-24 bg-[var(--surface-2)] rounded-full flex items-center justify-center mb-6">
-            <Package className="w-12 h-12 text-[var(--text-tertiary)]" />
+      <div className="ms-pdp">
+        <div className="ms-pdp__container">
+          <div className="ms-pdp-not-found">
+            <div className="ms-pdp-not-found__icon">
+              <Package size={48} />
+            </div>
+            <h1 className="ms-pdp-not-found__title">Product not found</h1>
+            <p className="ms-pdp-not-found__sub">The product you&apos;re looking for doesn&apos;t exist or has been removed.</p>
+            <Link href="/products">
+              <Button variant="primary" size="lg">Browse all products</Button>
+            </Link>
           </div>
-          <h1 className="text-3xl font-black mb-4 text-[var(--text-primary)]">Product not found</h1>
-          <p className="text-[var(--text-secondary)] mb-8 max-w-md">The product you're looking for doesn't exist or has been removed.</p>
-          <Link href="/products">
-            <Button variant="primary" size="lg">Browse all products</Button>
-          </Link>
         </div>
       </div>
     )
@@ -142,18 +144,20 @@ export default function ProductDetailPage() {
   }
 
   return (
-    <div className={styles.wrapper}>
-      <ProductDetailsPage
-        product={product as any}
-        viewer="customer"
-        onAddToCart={handleAddToCart}
-        onWishlistToggle={handleWishlistToggle}
-        onShare={handleShare}
-        isInWishlist={wishlisted}
-        isAddToCartDisabled={isAddToCartDisabled}
-        maxQuantityAllowed={maxQuantityAllowed}
-        cartQuantity={existingCartQty}
-      />
+    <div className="ms-pdp">
+      <div className="ms-pdp__container">
+        <ProductDetailsPage
+          product={product as any}
+          viewer="customer"
+          onAddToCart={handleAddToCart}
+          onWishlistToggle={handleWishlistToggle}
+          onShare={handleShare}
+          isInWishlist={wishlisted}
+          isAddToCartDisabled={isAddToCartDisabled}
+          maxQuantityAllowed={maxQuantityAllowed}
+          cartQuantity={existingCartQty}
+        />
+      </div>
     </div>
   )
 }

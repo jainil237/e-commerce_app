@@ -1,36 +1,35 @@
 'use client';
 
 import React from 'react';
-import { CheckCircle, Package, MapPin, Truck, Phone, Mail, RotateCcw, RefreshCw } from 'lucide-react';
+import { CheckCircle, Package, MapPin, Truck, RotateCcw, RefreshCw } from 'lucide-react';
 import { FallbackImage } from '../../components/FallbackImage';
 import { SharedBadge, SharedButton } from '../../components/UIPrimitives';
 import { Order, OrderItem, ViewerContext } from '../../types';
 import { formatCurrency, formatDate } from '../../utils';
+import clsx from 'clsx';
+import './order-details.scss';
 
 const statusSteps = ['CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED'];
 
 export const OrderHeader: React.FC<{ order: Order; viewer: ViewerContext }> = ({ order, viewer }) => {
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-8">
+    <div className="ms-order-header">
       <div>
-        <h1 className="text-2xl md:text-3xl font-black text-[var(--text-primary)]">Order #{order.orderNumber}</h1>
-        <p className="text-[var(--text-secondary)] mt-1">Placed on {formatDate(order.createdAt)}</p>
+        <h1 className="ms-order-header__title">Order #{order.orderNumber}</h1>
+        <p className="ms-order-header__date">Placed on {formatDate(order.createdAt)}</p>
       </div>
-      <div className="flex flex-col gap-3 items-end">
+      <div className="ms-order-header__meta">
         <SharedBadge variant={order.paymentStatus === 'PAID' ? 'success' : 'warning'} className="px-4 py-1 text-sm font-bold tracking-wider">
           {order.paymentStatus}
         </SharedBadge>
-        
+
         {viewer === 'admin' && order.user && (
-          <div className="flex flex-col items-end gap-1">
-            <p className="text-[10px] text-[var(--text-tertiary)] uppercase font-black tracking-widest">Customer</p>
-            <a 
-              href={`/customers/${order.user.id}`}
-              className="group flex flex-col items-end"
-            >
-              <span className="text-sm font-bold text-[var(--brand-primary)] group-hover:underline">{order.user.name}</span>
-              <span className="text-xs text-[var(--text-secondary)]">{order.user.email}</span>
-              <span className="text-xs text-[var(--text-secondary)]">{order.user.phone}</span>
+          <div className="ms-order-header__customer">
+            <p className="ms-order-header__customer-label">Customer</p>
+            <a href={`/customers/${order.user.id}`} className="ms-order-header__customer-link">
+              <span className="ms-order-header__customer-name">{order.user.name}</span>
+              <span className="ms-order-header__customer-contact">{order.user.email}</span>
+              <span className="ms-order-header__customer-contact">{order.user.phone}</span>
             </a>
           </div>
         )}
@@ -41,38 +40,31 @@ export const OrderHeader: React.FC<{ order: Order; viewer: ViewerContext }> = ({
 
 export const OrderStatusTracker: React.FC<{ order: Order }> = ({ order }) => {
   const currentStepIndex = order.status === 'PENDING' ? 0 : statusSteps.indexOf(order.status);
-  
+
   if (order.status === 'CANCELLED') {
     return (
-      <div className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30 rounded-2xl p-4 flex items-center gap-3 text-red-600 dark:text-red-400">
+      <div className="ms-order-tracker--cancelled">
         <CheckCircle className="w-6 h-6 rotate-45" />
-        <span className="font-bold">This order has been cancelled</span>
+        <span>This order has been cancelled</span>
       </div>
     );
   }
 
   return (
-    <div className="flex items-center justify-between py-4">
+    <div className="ms-order-tracker">
       {statusSteps.map((step, index) => {
         const isCompleted = index <= currentStepIndex;
         const isCurrent = index === currentStepIndex;
         return (
-          <div key={step} className="flex-1 flex flex-col items-center relative">
-            {/* Line */}
+          <div key={step} className="ms-order-tracker__step">
             {index < statusSteps.length - 1 && (
-              <div className={`absolute top-5 left-1/2 w-full h-0.5 ${
-                index < currentStepIndex ? 'bg-[var(--success)]' : 'bg-[var(--border-subtle)]'
-              }`} />
+              <div className={clsx('ms-order-tracker__line', index < currentStepIndex && 'ms-order-tracker__line--done')} />
             )}
-            
-            <div className={`relative z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all ${
-              isCompleted ? 'bg-[var(--success)] text-white' : 'bg-[var(--surface-2)] text-[var(--text-tertiary)]'
-            } ${isCurrent ? 'ring-4 ring-[var(--success)]/20 scale-110' : ''}`}>
-              {isCompleted ? <CheckCircle className="w-6 h-6" /> : <span className="font-bold">{index + 1}</span>}
+
+            <div className={clsx('ms-order-tracker__dot', isCompleted && 'ms-order-tracker__dot--done', isCurrent && 'ms-order-tracker__dot--current')}>
+              {isCompleted ? <CheckCircle className="w-6 h-6" /> : <span>{index + 1}</span>}
             </div>
-            <p className={`text-[10px] md:text-xs mt-3 font-bold uppercase tracking-wider ${
-              isCompleted ? 'text-[var(--success)]' : 'text-[var(--text-tertiary)]'
-            }`}>
+            <p className={clsx('ms-order-tracker__label', isCompleted && 'ms-order-tracker__label--done')}>
               {index === 0 && order.status === 'PENDING' ? 'PENDING' : step}
             </p>
           </div>
@@ -88,47 +80,57 @@ export const OrderItemsList: React.FC<{
   orderStatus?: string;
   onReturn?: (item: OrderItem) => void;
   onReplace?: (item: OrderItem) => void;
-  actionStates?: Record<string, { type: 'return' | 'replace'; status: string; reason: string }>;
+  actionStates?: Record<string, { type: 'return' | 'replace'; status: string; reason: string; pickupShipment?: any }>;
 }> = ({ items, viewer = 'customer', orderStatus, onReturn, onReplace, actionStates = {} }) => {
   return (
-    <div className="space-y-6">
-      <h2 className="font-black text-xl text-[var(--text-primary)] flex items-center gap-2">
-        <Package className="w-6 h-6 text-[var(--brand-primary)]" />
+    <div className="ms-order-items">
+      <h2 className="ms-order-items__title">
+        <Package className="ms-order-items__title-icon w-6 h-6" />
         Items ({items.length})
       </h2>
-      <div className="space-y-4">
+      <div className="ms-order-items__list">
         {items.map((item) => (
-          <div key={item.id} className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-2xl bg-[var(--surface-0)] border border-[var(--border-subtle)] transition-colors hover:border-[var(--brand-primary)] shadow-sm">
-            <div className="flex gap-4 flex-1 min-w-0">
-              <div className="relative w-20 h-20 bg-[var(--surface-0)] rounded-xl overflow-hidden flex-shrink-0 border border-[var(--border-subtle)]">
+          <div key={item.id} className="ms-order-items__item">
+            <div className="ms-order-items__main">
+              <div className="ms-order-items__media">
                 <FallbackImage src={item.product.images[0]?.url} alt={item.product.name} fill className="object-cover" />
               </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-[var(--text-primary)] truncate">{item.product.name}</h3>
-                <div className="flex items-center gap-4 mt-1 text-sm text-[var(--text-secondary)]">
-                  <span>Qty: <span className="font-bold text-[var(--text-primary)]">{item.quantity}</span></span>
-                  <span>Price: <span className="font-bold text-[var(--text-primary)]">{formatCurrency(item.unitPrice)}</span></span>
+              <div className="ms-order-items__info">
+                <h3 className="ms-order-items__name">{item.product.name}</h3>
+                <div className="ms-order-items__meta">
+                  <span>Qty: <span className="ms-order-items__meta-strong">{item.quantity}</span></span>
+                  <span>Price: <span className="ms-order-items__meta-strong">{formatCurrency(item.unitPrice)}</span></span>
                 </div>
-                <p className="text-[10px] text-[var(--text-tertiary)] mt-1 uppercase font-bold tracking-tighter">GST: {item.gstPercent}% Included</p>
+                <p className="ms-order-items__gst">GST: {item.gstPercent}% Included</p>
               </div>
             </div>
-            
-            <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-4 border-t sm:border-t-0 pt-3 sm:pt-0 border-[var(--border-subtle)] w-full sm:w-auto">
-              <div className="text-left sm:text-right">
-                <p className="font-black text-[var(--text-primary)]">{formatCurrency(item.subtotal)}</p>
+
+            <div className="ms-order-items__side">
+              <div>
+                <p className="ms-order-items__subtotal">{formatCurrency(item.subtotal)}</p>
               </div>
-              
+
               {/* Return / Replace buttons */}
               {viewer === 'customer' && orderStatus === 'DELIVERED' && (
-                <div className="flex flex-col sm:flex-row gap-2 mt-2 sm:mt-0 items-center justify-end">
+                <div className="ms-order-items__actions">
                   {actionStates[item.id] ? (
-                    <div className="flex flex-col items-end gap-1">
+                    <div className="ms-order-items__rma-state">
                       <SharedBadge variant={actionStates[item.id].type === 'return' ? 'error' : 'info'} className="font-black px-3 py-1 uppercase tracking-wider text-xs">
                         {actionStates[item.id].type === 'return' ? 'Return Requested' : 'Replacement Requested'}
                       </SharedBadge>
-                      <span className="text-[10px] text-[var(--text-tertiary)] italic max-w-[200px] truncate">
+                      <span className="ms-order-items__rma-reason">
                         Reason: {actionStates[item.id].reason}
                       </span>
+                      {actionStates[item.id].status === 'PICKUP_SCHEDULED' && actionStates[item.id].pickupShipment?.trackingUrl && (
+                        <a
+                          href={actionStates[item.id].pickupShipment.trackingUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="ms-order-items__rma-track"
+                        >
+                          <Truck className="w-3 h-3" /> Track Pickup
+                        </a>
+                      )}
                     </div>
                   ) : (
                     <>
@@ -155,7 +157,7 @@ export const OrderItemsList: React.FC<{
                         </SharedButton>
                       )}
                       {item.product.isReturnable === false && item.product.isReplaceable === false && (
-                        <span className="text-xs text-[var(--text-tertiary)] font-bold italic">Non-returnable & non-replaceable</span>
+                        <span className="ms-order-items__nonreturnable">Non-returnable & non-replaceable</span>
                       )}
                     </>
                   )}
@@ -163,11 +165,11 @@ export const OrderItemsList: React.FC<{
               )}
 
               {viewer === 'admin' && actionStates[item.id] && (
-                <div className="flex flex-col items-end gap-1">
+                <div className="ms-order-items__rma-state">
                   <SharedBadge variant={actionStates[item.id].type === 'return' ? 'error' : 'info'} className="font-black px-3 py-1 uppercase tracking-wider text-xs">
                     {actionStates[item.id].type === 'return' ? 'Return Requested' : 'Replacement Requested'}
                   </SharedBadge>
-                  <span className="text-xs text-[var(--text-primary)] font-semibold">
+                  <span className="ms-order-items__rma-reason ms-order-items__rma-reason--admin">
                     Reason: {actionStates[item.id].reason}
                   </span>
                 </div>
@@ -182,35 +184,35 @@ export const OrderItemsList: React.FC<{
 
 export const OrderSummaryCard: React.FC<{ order: Order }> = ({ order }) => {
   return (
-    <div className="bg-[var(--surface-2)] rounded-3xl p-6 border border-[var(--border-subtle)] space-y-4">
-      <h2 className="font-black text-xl text-[var(--text-primary)] mb-2">Order Summary</h2>
-      <div className="space-y-3 text-sm">
-        <div className="flex justify-between text-[var(--text-secondary)]">
+    <div className="ms-order-summary">
+      <h2 className="ms-order-summary__title">Order Summary</h2>
+      <div className="ms-order-summary__rows">
+        <div className="ms-order-summary__row">
           <span>Subtotal</span>
-          <span className="font-bold text-[var(--text-primary)]">{formatCurrency(order.subtotal)}</span>
+          <span className="ms-order-summary__value">{formatCurrency(order.subtotal)}</span>
         </div>
-        <div className="flex justify-between text-[var(--text-secondary)]">
+        <div className="ms-order-summary__row">
           <span>Shipping</span>
-          <span className={`font-bold ${Number(order.shippingCharge) === 0 ? 'text-[var(--success)]' : 'text-[var(--text-primary)]'}`}>
+          <span className={Number(order.shippingCharge) === 0 ? 'ms-order-summary__value--free' : 'ms-order-summary__value'}>
             {Number(order.shippingCharge) === 0 ? 'FREE' : formatCurrency(order.shippingCharge)}
           </span>
         </div>
         {Number(order.discount) > 0 && (
-          <div className="flex justify-between text-[var(--success)]">
-            <span className="font-bold">Discount</span>
-            <span className="font-bold">-{formatCurrency(order.discount)}</span>
+          <div className="ms-order-summary__row ms-order-summary__row--discount">
+            <span>Discount</span>
+            <span>-{formatCurrency(order.discount)}</span>
           </div>
         )}
-        <div className="flex justify-between text-[var(--text-secondary)] border-t border-[var(--border-subtle)] pt-3">
+        <div className="ms-order-summary__row ms-order-summary__row--tax">
           <span>Taxes (GST)</span>
-          <span className="font-bold text-[var(--text-primary)]">{formatCurrency(order.gstAmount)}</span>
+          <span className="ms-order-summary__value">{formatCurrency(order.gstAmount)}</span>
         </div>
       </div>
-      <div className="flex justify-between items-baseline pt-4 border-t-2 border-dashed border-[var(--border-subtle)]">
-        <span className="text-lg font-bold text-[var(--text-primary)]">Total Amount</span>
-        <span className="text-2xl font-black text-[var(--brand-primary)]">{formatCurrency(order.total)}</span>
+      <div className="ms-order-summary__total">
+        <span className="ms-order-summary__total-label">Total Amount</span>
+        <span className="ms-order-summary__total-value">{formatCurrency(order.total)}</span>
       </div>
-      <div className="bg-[var(--surface-1)] rounded-xl p-3 text-[10px] text-[var(--text-tertiary)] uppercase font-black tracking-widest text-center">
+      <div className="ms-order-summary__payment">
         Payment via {order.razorpayPaymentId ? 'Razorpay' : 'Prepaid'}
       </div>
     </div>
@@ -219,17 +221,17 @@ export const OrderSummaryCard: React.FC<{ order: Order }> = ({ order }) => {
 
 export const DeliveryAddressCard: React.FC<{ address: Order['address'] }> = ({ address }) => {
   return (
-    <div className="bg-[var(--surface-0)] rounded-3xl p-6 border border-[var(--border-subtle)] shadow-sm">
-      <h2 className="font-black text-xl text-[var(--text-primary)] mb-4 flex items-center gap-2">
-        <MapPin className="w-6 h-6 text-[var(--brand-primary)]" />
+    <div className="ms-order-address">
+      <h2 className="ms-order-address__title">
+        <MapPin className="ms-order-address__icon w-6 h-6" />
         Delivery Details
       </h2>
-      <div className="space-y-1">
-        <p className="font-black text-[var(--text-primary)] text-lg mb-2">{address.label}</p>
-        <p className="text-[var(--text-secondary)] font-medium leading-relaxed">
+      <div>
+        <p className="ms-order-address__label">{address.label}</p>
+        <p className="ms-order-address__text">
           {address.line1}
-          {address.line2 && <span className="block italic">{address.line2}</span>}
-          <span className="block text-[var(--text-primary)] font-bold mt-1">
+          {address.line2 && <span className="ms-order-address__line2">{address.line2}</span>}
+          <span className="ms-order-address__loc">
             {address.city}, {address.state} - {address.pincode}
           </span>
         </p>
@@ -242,25 +244,25 @@ export const TrackingCard: React.FC<{ tracking: Order['tracking'] }> = ({ tracki
   if (!tracking) return null;
 
   return (
-    <div className="bg-[var(--surface-0)] border-2 border-[var(--brand-primary)] rounded-3xl p-6 shadow-lg shadow-[var(--brand-primary)]/10">
-      <h2 className="font-black text-xl text-[var(--text-primary)] mb-4 flex items-center gap-2">
-        <Truck className="w-6 h-6 text-[var(--brand-primary)]" />
+    <div className="ms-order-tracking">
+      <h2 className="ms-order-tracking__title">
+        <Truck className="ms-order-tracking__icon w-6 h-6" />
         Live Tracking
       </h2>
-      <div className="space-y-3">
-        <div className="flex justify-between items-center text-sm">
-          <span className="text-[var(--text-tertiary)] font-bold uppercase tracking-widest">Partner</span>
-          <span className="font-black text-[var(--text-primary)]">{tracking.courier}</span>
+      <div className="ms-order-tracking__rows">
+        <div className="ms-order-tracking__row">
+          <span className="ms-order-tracking__row-label">Partner</span>
+          <span className="ms-order-tracking__row-value">{tracking.courier}</span>
         </div>
-        <div className="flex justify-between items-center text-sm">
-          <span className="text-[var(--text-tertiary)] font-bold uppercase tracking-widest">AWB ID</span>
-          <span className="font-mono font-bold text-[var(--brand-primary)]">{tracking.trackingId}</span>
+        <div className="ms-order-tracking__row">
+          <span className="ms-order-tracking__row-label">AWB ID</span>
+          <span className="ms-order-tracking__awb">{tracking.trackingId}</span>
         </div>
-        <a 
-          href={tracking.trackingUrl} 
-          target="_blank" 
+        <a
+          href={tracking.trackingUrl}
+          target="_blank"
           rel="noopener noreferrer"
-          className="block w-full text-center py-3 bg-[var(--brand-primary)] text-white font-black rounded-2xl hover:bg-[var(--brand-primary)]/90 transition-all mt-4"
+          className="ms-order-tracking__cta"
         >
           Track Shipment
         </a>

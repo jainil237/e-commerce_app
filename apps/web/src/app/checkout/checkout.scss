@@ -1,0 +1,419 @@
+@use '../../styles/mixins' as m;
+@use '../../styles/variables' as v;
+
+// ─── Page scaffold ────────────────────────────────────────────────────────────
+.ms-checkout {
+  min-height: 100vh;
+  background: var(--surface-1);
+
+  &--loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &__container {
+    max-width: var(--container-max);
+    margin: 0 auto;
+    padding: 2rem 1rem;
+    @include m.md { padding: 2rem 1.5rem; }
+    @include m.lg { padding: 2rem 2rem; }
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  &__back {
+    padding: 0.5rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    border-radius: var(--radius-xl);
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    @include m.motion { transition: background v.$duration-fast ease; }
+    &:hover { background: var(--surface-2); }
+  }
+
+  &__title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    color: var(--text-primary);
+    @include m.md { font-size: 1.875rem; }
+  }
+
+  &__main {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+}
+
+// ─── Layout grid: 1col → md: [2fr 1fr] ───────────────────────────────────────
+.ms-checkout-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  align-items: start;
+  @include m.md { grid-template-columns: 2fr 1fr; }
+}
+
+// ─── Section card (shared: address / coupon / review / summary) ───────────────
+.ms-checkout-section {
+  background: var(--surface-0);
+  padding: 1.5rem;
+  border-radius: var(--radius-2xl);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-sm);
+  flex-shrink: 0;
+
+  &--sticky {
+    position: sticky;
+    top: 6rem;
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: var(--text-primary);
+    margin-bottom: 1.25rem;
+  }
+
+  &__icon {
+    color: var(--text-tertiary);
+    width: 1.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+  }
+}
+
+// ─── Address ──────────────────────────────────────────────────────────────────
+.ms-checkout-address {
+  &--empty {
+    text-align: center;
+    padding: 2rem;
+    background: var(--surface-1);
+    border-radius: var(--radius-xl);
+    border: 1px dashed var(--border-base);
+  }
+
+  &__empty-text {
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+  }
+
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  &__item {
+    display: block;
+    padding: 1rem;
+    border: 1px solid var(--border-base);
+    border-radius: var(--radius-xl);
+    cursor: pointer;
+    background: var(--surface-0);
+    @include m.motion { transition: box-shadow v.$duration-fast ease, border-color v.$duration-fast ease; }
+    &:hover { box-shadow: var(--shadow-md); }
+
+    &--selected {
+      border-color: var(--brand-primary);
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand-primary) 20%, transparent);
+      background: color-mix(in srgb, var(--brand-primary) 5%, transparent);
+    }
+  }
+
+  &__info {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  &__radio {
+    margin-top: 0.25rem;
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--brand-primary);
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+
+  &__content { flex: 1; }
+
+  &__name {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+  }
+
+  &__line {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+
+  &__check {
+    width: 1.25rem;
+    height: 1.25rem;
+    color: var(--brand-primary);
+    flex-shrink: 0;
+  }
+
+  &__add-row {
+    padding-top: 0.75rem;
+  }
+}
+
+// ─── Coupon ───────────────────────────────────────────────────────────────────
+.ms-checkout-coupon {
+  &--applied {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    background: color-mix(in srgb, #22c55e 8%, transparent);
+    border: 1px solid color-mix(in srgb, #22c55e 30%, transparent);
+    border-radius: var(--radius-xl);
+  }
+
+  &__code {
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #16a34a;
+  }
+
+  &__remove {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--error);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0 0.5rem;
+    @include m.motion { transition: color v.$duration-fast ease; }
+    &:hover { color: color-mix(in srgb, var(--error) 70%, black); }
+  }
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  &__input-row {
+    display: flex;
+    gap: 0.75rem;
+
+    & > *:first-child { flex: 1; }
+
+    // Force uppercase on the actual <input> inside the Input atom
+    input {
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+  }
+
+  &__offers-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+  }
+
+  &__offers-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  &__offer {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 0.75rem;
+    border: 1px dashed var(--border-base);
+    border-radius: var(--radius-lg);
+    background: none;
+    cursor: pointer;
+    text-align: left;
+    @include m.motion { transition: border-color v.$duration-fast ease; }
+    &:hover { border-color: var(--brand-primary); }
+  }
+
+  &__offer-code {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--brand-primary);
+  }
+
+  &__offer-desc {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+  }
+}
+
+// ─── Order review items ───────────────────────────────────────────────────────
+.ms-checkout-items {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ms-checkout-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem;
+  border-radius: var(--radius-xl);
+  @include m.motion { transition: background v.$duration-fast ease; }
+  &:hover { background: var(--surface-1); }
+
+  &__image {
+    position: relative;
+    width: 3.5rem;
+    height: 3.5rem;
+    background: var(--surface-2);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    flex-shrink: 0;
+    border: 1px solid var(--border-subtle);
+  }
+
+  &__info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-bottom: 0.125rem;
+  }
+
+  &__qty {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+
+  &__error {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--error);
+  }
+
+  &__total {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    @include m.price-text;
+  }
+}
+
+// ─── Order summary sidebar ────────────────────────────────────────────────────
+.ms-checkout-summary {
+  &__rows {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 1.25rem;
+  }
+
+  &__row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.875rem;
+    margin-bottom: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  &__value {
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+
+    &--free {
+      color: #16a34a;
+      font-weight: 600;
+    }
+  }
+
+  &__discount {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-bottom: 0.75rem;
+    color: var(--success);
+  }
+
+  &__divider {
+    border: none;
+    border-top: 1px solid var(--border-subtle);
+    margin: 1.25rem 0;
+  }
+
+  &__total-block {
+    margin-bottom: 1.5rem;
+  }
+
+  &__total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 0.25rem;
+  }
+
+  &__total-label {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  &__total-value {
+    font-size: 1.5rem;
+    font-weight: 900;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+    @include m.price-text;
+  }
+
+  &__tax {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    font-weight: 500;
+  }
+
+  &__secure {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-align: center;
+    margin-top: 1.25rem;
+  }
+}

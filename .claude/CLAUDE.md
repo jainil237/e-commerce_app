@@ -9,6 +9,11 @@
 
 Never skip this gate. Never mark a phase complete without evidence.
 
+
+## Workflow Gate
+
+This repo uses the **agentsmyth** lifecycle for non-trivial work. Entry point: `workflow/router.md`. Use `/think`, `/plan`, `/build`, `/review`, `/test`, `/ship`, `/reflect` slash commands for structured lifecycle phases. Artifacts go in `workflow/artifacts/briefs/`. The `.claude/CLAUDE.md` and `.claude/rules/` files carry detailed coding rules per domain — they are auto-loaded by Claude Code.
+
 ## Branch policy
 
 Default branch: `main`

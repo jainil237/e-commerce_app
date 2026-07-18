@@ -8,19 +8,21 @@ datasource db {
 }
 
 model User {
-  id            String         @id @default(uuid())
+  id            String          @id @default(uuid())
   name          String
-  email         String         @unique
-  phone         String         @unique
+  email         String          @unique
+  phone         String          @unique
   passwordHash  String
-  role          Role           @default(CUSTOMER)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  role          Role            @default(CUSTOMER)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
   addresses     Address[]
   orders        Order[]
   refreshTokens RefreshToken[]
   wishlists     Wishlist[]
   couponUsages  CouponUsage[]
+  rmaRequests   RMARequest[]
+  auditLogs     OrderAuditLog[]
 
   @@index([email])
   @@index([phone])
@@ -69,6 +71,7 @@ model Product {
   isFeatured        Boolean            @default(false)
   isReturnable      Boolean            @default(true)
   isReplaceable     Boolean            @default(true)
+  returnWindow      Int                @default(7)
   weight            Float?
   tags              String?
   gstPercent        Float              @default(18)
@@ -98,28 +101,30 @@ model ProductImage {
 }
 
 model Order {
-  id                String        @id @default(uuid())
-  orderNumber       String        @unique
+  id                String          @id @default(uuid())
+  orderNumber       String          @unique
   userId            String?
   addressId         String
-  subtotal          Decimal       @db.Decimal(10, 2)
-  shippingCharge    Decimal       @db.Decimal(10, 2)
-  discount          Decimal       @default(0.00) @db.Decimal(10, 2)
-  gstAmount         Decimal       @db.Decimal(10, 2)
-  total             Decimal       @db.Decimal(10, 2)
-  status            OrderStatus   @default(PENDING)
-  paymentStatus     PaymentStatus @default(PENDING)
+  subtotal          Decimal         @db.Decimal(10, 2)
+  shippingCharge    Decimal         @db.Decimal(10, 2)
+  discount          Decimal         @default(0.00) @db.Decimal(10, 2)
+  gstAmount         Decimal         @db.Decimal(10, 2)
+  total             Decimal         @db.Decimal(10, 2)
+  status            OrderStatus     @default(PENDING)
+  paymentStatus     PaymentStatus   @default(PENDING)
   razorpayOrderId   String?
   razorpayPaymentId String?
   couponCode        String?
   notes             String?
   invoiceUrl        String?
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
-  address           Address       @relation(fields: [addressId], references: [id])
-  user              User?         @relation(fields: [userId], references: [id])
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  address           Address         @relation(fields: [addressId], references: [id])
+  user              User?           @relation(fields: [userId], references: [id])
   shipping          Shipment?
   items             OrderItem[]
+  rmaRequests       RMARequest[]
+  auditLogs         OrderAuditLog[]
 
   @@index([orderNumber])
   @@index([userId])
@@ -130,35 +135,40 @@ model Order {
 }
 
 model Shipment {
-  id             String         @id @default(uuid())
-  orderId        String         @unique
-  courierPartner String
-  awbNumber      String?
-  trackingUrl    String?
-  status         ShipmentStatus @default(PROCESSING)
-  dispatchedAt   DateTime?
-  expectedBy     DateTime?
-  deliveredAt    DateTime?
-  notes          String?
-  updatedAt      DateTime       @updatedAt
-  order          Order          @relation(fields: [orderId], references: [id])
+  id               String         @id @default(uuid())
+  orderId          String         @unique
+  courierPartner   String
+  awbNumber        String?
+  trackingUrl      String?
+  status           ShipmentStatus @default(PROCESSING)
+  type             ShipmentType   @default(FORWARD)
+  rmaPickupId      String?        @unique
+  rmaReplacementId String?        @unique
+  dispatchedAt     DateTime?
+  expectedBy       DateTime?
+  deliveredAt      DateTime?
+  notes            String?
+  updatedAt        DateTime       @updatedAt
+  order            Order          @relation(fields: [orderId], references: [id])
+  rmaPickup        RMARequest?    @relation("PickupShipment", fields: [rmaPickupId], references: [id])
+  rmaReplacement   RMARequest?    @relation("ReplacementShipment", fields: [rmaReplacementId], references: [id])
 
   @@index([orderId])
   @@index([status])
 }
 
 model Coupon {
-  id            String       @id @default(uuid())
-  code          String       @unique
+  id            String        @id @default(uuid())
+  code          String        @unique
   discountType  DiscountType
-  discountValue Decimal      @db.Decimal(10, 2)
-  minOrderValue Decimal?     @db.Decimal(10, 2)
-  maxUsage      Int?         // Global limit
-  perUserLimit  Int?         @default(1) // Limit per user
-  usedCount     Int          @default(0)
+  discountValue Decimal       @db.Decimal(10, 2)
+  minOrderValue Decimal?      @db.Decimal(10, 2)
+  maxUsage      Int? // Global limit
+  perUserLimit  Int?          @default(1) // Limit per user
+  usedCount     Int           @default(0)
   validFrom     DateTime?
   expiresAt     DateTime?
-  isActive      Boolean      @default(true)
+  isActive      Boolean       @default(true)
   couponUsages  CouponUsage[]
 
   @@index([code])
@@ -173,8 +183,8 @@ model CouponUsage {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  coupon    Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coupon Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([couponId, userId])
   @@index([couponId])
@@ -226,19 +236,20 @@ model StockReservation {
 }
 
 model OrderItem {
-  id         String  @id @default(uuid())
+  id         String    @id @default(uuid())
   orderId    String
   productId  String
   quantity   Int
-  unitPrice  Decimal @db.Decimal(10, 2)
+  unitPrice  Decimal   @db.Decimal(10, 2)
   gstPercent Float
-  subtotal   Decimal @db.Decimal(10, 2)
-  Order      Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product    Product @relation(fields: [productId], references: [id])
+  subtotal   Decimal   @db.Decimal(10, 2)
+  Order      Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product    Product   @relation(fields: [productId], references: [id])
+  rmaItems   RMAItem[]
 
-  @@map("orderitem")
   @@index([orderId])
   @@index([productId])
+  @@map("orderitem")
 }
 
 enum Role {
@@ -283,4 +294,124 @@ enum ReservationStatus {
   CONVERTED
   EXPIRED
   RELEASED
+}
+
+enum RMARequestType {
+  RETURN
+  REPLACEMENT
+}
+
+enum RMARequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PICKUP_SCHEDULED
+  ITEM_RECEIVED
+  REFUND_INITIATED
+  REFUND_COMPLETED
+  REPLACEMENT_SHIPPED
+  COMPLETED
+  CANCELLED
+}
+
+enum ReturnReason {
+  DAMAGED
+  WRONG_ITEM
+  SIZE_ISSUE
+  QUALITY_ISSUE
+  NOT_AS_DESCRIBED
+  OTHER
+}
+
+enum RefundMode {
+  ORIGINAL_PAYMENT_METHOD
+  BANK_ACCOUNT
+  UPI
+}
+
+enum ShipmentType {
+  FORWARD
+  REVERSE
+  REPLACEMENT
+}
+
+model RMARequest {
+  id           String           @id @default(uuid())
+  rmaNumber    String           @unique
+  orderId      String
+  userId       String
+  type         RMARequestType
+  status       RMARequestStatus @default(PENDING)
+  reason       ReturnReason
+  customerNote String?          @db.Text
+  adminNote    String?          @db.Text
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  order               Order      @relation(fields: [orderId], references: [id])
+  user                User       @relation(fields: [userId], references: [id])
+  images              RMAImage[]
+  items               RMAItem[]
+  refund              Refund?
+  pickupShipment      Shipment?  @relation("PickupShipment")
+  replacementShipment Shipment?  @relation("ReplacementShipment")
+
+  @@index([orderId])
+  @@index([userId])
+  @@index([status])
+}
+
+model RMAItem {
+  id           String @id @default(uuid())
+  rmaRequestId String
+  orderItemId  String
+  quantity     Int
+
+  rmaRequest RMARequest @relation(fields: [rmaRequestId], references: [id], onDelete: Cascade)
+  orderItem  OrderItem  @relation(fields: [orderItemId], references: [id])
+
+  @@index([rmaRequestId])
+  @@index([orderItemId])
+}
+
+model RMAImage {
+  id           String @id @default(uuid())
+  rmaRequestId String
+  url          String
+
+  rmaRequest RMARequest @relation(fields: [rmaRequestId], references: [id], onDelete: Cascade)
+
+  @@index([rmaRequestId])
+}
+
+model Refund {
+  id           String        @id @default(uuid())
+  rmaRequestId String        @unique
+  amount       Decimal       @db.Decimal(10, 2)
+  mode         RefundMode
+  paymentId    String?
+  status       PaymentStatus @default(PENDING)
+  bankDetails  String?       @db.Text
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  rmaRequest RMARequest @relation(fields: [rmaRequestId], references: [id], onDelete: Cascade)
+}
+
+model OrderAuditLog {
+  id        String   @id @default(uuid())
+  orderId   String
+  userId    String?
+  action    String
+  fromState String?
+  toState   String?
+  metadata  Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user  User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([userId])
 }

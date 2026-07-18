@@ -3,8 +3,10 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Package, ChevronRight, Loader2 } from 'lucide-react'
-import { useAuth } from '@/components/providers'
+import clsx from 'clsx'
+import { useAuth } from '@/contexts/auth.context'
 import { Button } from '@/components/atoms/Button/Button'
+import './orders.scss'
 
 interface Order {
   id: string
@@ -47,7 +49,7 @@ export default function OrdersPage() {
 
   if (authLoading || isLoading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-16 text-center">
+      <div className="ms-orders__loading">
         <Loader2 className="w-8 h-8 animate-spin mx-auto text-[var(--brand-primary)]" />
       </div>
     )
@@ -55,8 +57,8 @@ export default function OrdersPage() {
 
   if (!user) {
     return (
-      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-16 text-center">
-        <p className="text-[var(--text-secondary)]">Please login to view your orders</p>
+      <div className="ms-orders__gate">
+        <p className="ms-orders__gate-text">Please login to view your orders</p>
         <Link href="/account/login" className="btn btn-primary btn-sm mt-4">
           Login
         </Link>
@@ -65,37 +67,37 @@ export default function OrdersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--surface-1)]">
-      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-8 md:py-12">
-        <div className="mb-8">
-          <h1 className="text-2xl md:text-3xl font-bold text-[var(--text-primary)]">My Orders</h1>
-          <p className="text-[var(--text-secondary)] mt-1">Track and manage your recent purchases</p>
+    <div className="ms-orders">
+      <div className="ms-orders__container">
+        <div className="ms-orders__header">
+          <h1 className="ms-orders__title">My Orders</h1>
+          <p className="ms-orders__subtitle">Track and manage your recent purchases</p>
         </div>
 
         {orders.length === 0 ? (
-          <div className="card p-16 text-center border-dashed">
-            <div className="w-20 h-20 bg-[var(--surface-2)] rounded-full flex items-center justify-center mx-auto mb-6">
-              <Package className="w-10 h-10 text-[var(--text-tertiary)]" />
+          <div className="ms-orders-empty">
+            <div className="ms-orders-empty__icon-wrap">
+              <Package className="ms-orders-empty__icon w-10 h-10" />
             </div>
-            <h2 className="text-xl font-bold text-[var(--text-primary)] mb-2">No orders yet</h2>
-            <p className="text-[var(--text-secondary)] mb-8 max-w-sm mx-auto">Start shopping to see your orders here</p>
+            <h2 className="ms-orders-empty__title">No orders yet</h2>
+            <p className="ms-orders-empty__text">Start shopping to see your orders here</p>
             <Link href="/products">
               <Button variant="primary-brand" size="lg">Browse Products</Button>
             </Link>
           </div>
         ) : (
-          <div className="grid gap-6">
+          <div className="ms-orders-list">
             {orders.map((order) => (
-              <Link key={order.id} href={`/orders/${order.id}`} className="block group">
-                <div className="card card-hover p-6 md:p-8">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-[var(--surface-2)] flex items-center justify-center">
-                        <Package className="w-6 h-6 text-[var(--brand-primary)]" />
+              <Link key={order.id} href={`/orders/${order.id}`} className="block">
+                <div className="ms-orders-card">
+                  <div className="ms-orders-card__top">
+                    <div className="ms-orders-card__id-row">
+                      <div className="ms-orders-card__icon-wrap">
+                        <Package className="ms-orders-card__icon w-6 h-6" />
                       </div>
                       <div>
-                        <p className="font-bold text-[var(--text-primary)] text-lg">Order #{order.orderNumber}</p>
-                        <p className="text-sm text-[var(--text-secondary)]">
+                        <p className="ms-orders-card__number">Order #{order.orderNumber}</p>
+                        <p className="ms-orders-card__date">
                           Placed on {new Date(order.createdAt).toLocaleDateString('en-IN', {
                             day: 'numeric',
                             month: 'long',
@@ -104,24 +106,24 @@ export default function OrdersPage() {
                         </p>
                       </div>
                     </div>
-                    <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider ${statusColors[order.status] || 'badge-neutral'}`}>
+                    <span className={clsx('ms-orders-card__status', statusColors[order.status] || 'badge-neutral')}>
                       {order.status}
                     </span>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-x-8 gap-y-4 pt-6 border-t border-[var(--border-subtle)]">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-xs uppercase tracking-widest text-[var(--text-tertiary)] font-bold">Items</span>
-                      <span className="text-sm font-semibold text-[var(--text-primary)]">
+                  <div className="ms-orders-card__footer">
+                    <div className="ms-orders-card__stat">
+                      <span className="ms-orders-card__stat-label">Items</span>
+                      <span className="ms-orders-card__stat-value">
                         {order.items.length} item{order.items.length > 1 ? 's' : ''}
                       </span>
                     </div>
-                    <div className="flex flex-col gap-1">
-                      <span className="text-xs uppercase tracking-widest text-[var(--text-tertiary)] font-bold">Total Amount</span>
-                      <span className="text-sm font-bold text-[var(--brand-primary)]">₹{order.total}</span>
+                    <div className="ms-orders-card__stat">
+                      <span className="ms-orders-card__stat-label">Total Amount</span>
+                      <span className="ms-orders-card__total">₹{order.total}</span>
                     </div>
-                    
-                    <div className="ml-auto flex items-center text-sm font-bold text-[var(--brand-primary)] group-hover:translate-x-1 transition-transform">
+
+                    <div className="ms-orders-card__view">
                       View Details
                       <ChevronRight className="w-4 h-4 ml-1" />
                     </div>

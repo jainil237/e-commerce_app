@@ -188,20 +188,21 @@ export function Topbar() {
         {/* Action buttons */}
         <div className="ms-topbar__actions">
           <button
-            className="ms-topbar__action-btn"
+            className="ms-btn ms-btn--ghost ms-btn--icon ms-btn--sm"
             onClick={toggleTheme}
             aria-label="Toggle theme"
           >
             {theme === 'dark' ? <Moon width={20} height={20} /> : <Sun width={20} height={20} />}
           </button>
 
-          <Link href="/wishlist" className="ms-topbar__action-btn" aria-label="Wishlist">
+          <Link href="/wishlist" className="ms-btn ms-btn--ghost ms-btn--icon ms-btn--sm" aria-label="Wishlist">
             <Heart width={20} height={20} />
           </Link>
 
           <Link
             href="/cart"
-            className="ms-topbar__action-btn"
+            className="ms-btn ms-btn--ghost ms-btn--icon ms-btn--sm"
+            style={{ position: 'relative' }}
             aria-label={`Cart, ${totalItems} item${totalItems !== 1 ? 's' : ''}`}
           >
             <ShoppingCart width={20} height={20} />
@@ -210,7 +211,7 @@ export function Topbar() {
             )}
           </Link>
 
-          <Link href="/account" className="ms-topbar__action-btn" aria-label="Account">
+          <Link href="/account" className="ms-btn ms-btn--ghost ms-btn--icon ms-btn--sm" aria-label="Account">
             <User width={20} height={20} />
           </Link>
 
