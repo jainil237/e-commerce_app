@@ -44,6 +44,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   })
 
   useEffect(() => {
+    // SWR reports both data and error as undefined while the request is in flight.
+    // Falling through here would briefly publish { user: null, isLoading: false } —
+    // indistinguishable from a real logout — and CartProvider reacts to that by
+    // clearing the cart. Stay in the loading state until /auth/me actually settles.
+    if (data === undefined && error === undefined) return
+
     if (data?.data) {
       setUser(data.data)
     } else {
