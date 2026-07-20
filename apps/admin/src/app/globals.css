@@ -4,7 +4,7 @@
 
 :root {
   /* Brand — injected from store.config.json */
-  --brand-primary: #1D4ED8;
+  --brand-primary: #1E40AF;
   --brand-accent: #F59E0B;
   --brand-primary-fg: #FFFFFF;
 
@@ -33,8 +33,8 @@
 
   /* Text */
   --text-primary: #18181B;
-  --text-secondary: #71717A;
-  --text-tertiary: #A1A1AA;
+  --text-secondary: #52525B;
+  --text-tertiary: #52525B;
   --text-inverse: #FFFFFF;
 
   /* UI Borders */
@@ -62,7 +62,7 @@
 
 .dark {
   /* Brand */
-  --brand-primary: #3B82F6;
+  --brand-primary: #88B7FB;
   --brand-accent: #FBBF24;
   --brand-primary-fg: #18181B;
 
@@ -85,8 +85,8 @@
 
   /* Text */
   --text-primary: #FAFAFA;
-  --text-secondary: #A1A1AA;
-  --text-tertiary: #71717A;
+  --text-secondary: #B4B4BC;
+  --text-tertiary: #B4B4BC;
   --text-inverse: #18181B;
 
   /* UI Borders */
@@ -147,7 +147,7 @@
     @apply min-w-full divide-y divide-[var(--border-subtle)] table-auto;
   }
   .table th {
-    @apply bg-[var(--surface-1)] px-3 py-3.5 text-left text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-widest whitespace-nowrap sticky top-0 z-10;
+    @apply bg-[var(--surface-1)] px-3 py-3.5 text-left text-xs font-black text-[var(--text-tertiary)] uppercase tracking-widest whitespace-nowrap sticky top-0 z-10;
   }
   .table td {
     @apply px-3 py-3 text-sm text-[var(--text-primary)] border-b border-[var(--border-subtle)] align-middle;
@@ -178,27 +178,27 @@
 
 /* Status badges */
 .badge {
-  @apply inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all duration-200 border;
+  @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-black uppercase tracking-widest transition-all duration-200 border;
 }
 
 .badge-success {
-  @apply bg-emerald-500/10 text-emerald-600 border-emerald-500/20 shadow-sm;
+  @apply bg-emerald-500/10 text-[#035D41] dark:text-[#6EC2A8] border-emerald-500/20 shadow-sm;
 }
 
 .badge-warning {
-  @apply bg-amber-500/10 text-amber-600 border-amber-500/20 shadow-sm;
+  @apply bg-amber-500/10 text-[#7C4403] dark:text-[#E6A75D] border-amber-500/20 shadow-sm;
 }
 
 .badge-error {
-  @apply bg-red-500/10 text-red-600 border-red-500/20 shadow-sm;
+  @apply bg-red-500/10 text-[#9A1B1B] dark:text-[#EE9797] border-red-500/20 shadow-sm;
 }
 
 .badge-info {
-  @apply bg-blue-500/10 text-blue-600 border-blue-500/20 shadow-sm;
+  @apply bg-blue-500/10 text-[#1B48AC] dark:text-[#90AFF5] border-blue-500/20 shadow-sm;
 }
 
 .badge-neutral, .badge-gray {
-  @apply bg-slate-500/10 text-slate-600 border-slate-500/20;
+  @apply bg-slate-500/10 text-[#3B4654] dark:text-[#AEB9C7] border-slate-500/20;
 }
 
 @keyframes fadeIn {
