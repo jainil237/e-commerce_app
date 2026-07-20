@@ -49,11 +49,14 @@ export function ProductCard({ product }: ProductCardProps) {
   const discount = Math.round((1 - Number(product.price) / Number(product.mrp)) * 100)
   const wishlisted = isInWishlist(product.id)
 
-  const handleAddToCart = (e: React.MouseEvent) => {
+  const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    addItem(product.id, 1, { price: Number(product.price), name: product.name })
-    showToast('success', 'Added to cart')
+    // W-14: this used to fire the success toast unconditionally, so a failed
+    // stock validation showed "Added to cart" while the cart was unchanged.
+    // addItem raises its own error toast, so only the success case is ours.
+    const added = await addItem(product.id, 1, { price: Number(product.price), name: product.name })
+    if (added) showToast('success', 'Added to cart')
   }
 
   const handleWishlistToggle = async (e: React.MouseEvent) => {

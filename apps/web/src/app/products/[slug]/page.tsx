@@ -104,10 +104,10 @@ export default function ProductDetailPage() {
   const isAddToCartDisabled = remainingAddable <= 0
   const maxQuantityAllowed = Math.max(1, remainingAddable)
 
-  const handleAddToCart = (quantity: number) => {
+  const handleAddToCart = async (quantity: number) => {
     if (isAddToCartDisabled) return
-    addItem(product.id, quantity, { price: Number(product.price), name: product.name })
-    showToast('success', `Added ${quantity} item${quantity > 1 ? 's' : ''} to cart`)
+    const added = await addItem(product.id, quantity, { price: Number(product.price), name: product.name })
+    if (added) showToast('success', `Added ${quantity} item${quantity > 1 ? 's' : ''} to cart`)
   }
 
   const wishlisted = isInWishlist(product.id)

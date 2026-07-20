@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import clsx from 'clsx'
@@ -52,10 +52,17 @@ export default function CheckoutPage() {
   const [products, setProducts] = useState<Record<string, CartProduct>>({})
   const [checkoutValid, setCheckoutValid] = useState(true)
   const [checkoutErrors, setCheckoutErrors] = useState<Record<string, string>>({})
+  // W-07: validate-checkout returns server-confirmed prices. This used to be
+  // computed and thrown away while the summary and the coupon call both used
+  // the localStorage-derived subtotal, so the price shown was not the price
+  // charged. One source now feeds the summary, the coupon call and the guard.
+  const [serverSubtotal, setServerSubtotal] = useState<number | null>(null)
+  const orderInFlight = useRef(false)
 
-  const shipping = subtotal >= config.shipping.freeShippingAbove ? 0 : config.shipping.baseShippingCharge
+  const effectiveSubtotal = serverSubtotal ?? subtotal
+  const shipping = effectiveSubtotal >= config.shipping.freeShippingAbove ? 0 : config.shipping.baseShippingCharge
   const discount = appliedCoupon?.discount || 0
-  const total = subtotal + shipping - discount
+  const total = Math.max(0, effectiveSubtotal + shipping - discount)
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -74,6 +81,11 @@ export default function CheckoutPage() {
     }
     fetchAddresses()
   }, [user])
+
+  const cartKey = useMemo(
+    () => items.map(i => `${i.productId}:${i.quantity}`).join(','),
+    [items]
+  )
 
   useEffect(() => {
     async function loadCheckoutData() {
@@ -111,6 +123,7 @@ export default function CheckoutPage() {
         setProducts(productMap)
         setCheckoutValid(allValid)
         setCheckoutErrors(errorMap)
+        setServerSubtotal(freshSubtotal > 0 ? freshSubtotal : null)
       } catch (err) {
         console.error('Failed to validate cart for checkout', err)
         setCheckoutValid(false)
@@ -130,7 +143,11 @@ export default function CheckoutPage() {
       }
     }
     loadCheckoutData()
-  }, [items, subtotal])
+    // W-03: depending on `items` re-ran this on every CartProvider render,
+    // and the body's setState calls produced a new render — an unbounded
+    // request loop. The key changes only when the cart contents actually do.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartKey])
 
   const applyCoupon = async (codeOverride?: string) => {
     const code = codeOverride ?? couponCode
@@ -141,7 +158,7 @@ export default function CheckoutPage() {
       const res = await fetch('/api/v1/coupons/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, orderValue: subtotal }),
+        body: JSON.stringify({ code, orderValue: effectiveSubtotal }),
       })
       const data = await res.json()
       if (data.success) {
@@ -164,6 +181,12 @@ export default function CheckoutPage() {
       showToast('error', 'Please select a delivery address')
       return
     }
+
+    // W-04: a ref, not state. setIsLoading does not apply until the next
+    // render, so two clicks in the same tick both passed a state-based guard
+    // and created two orders against one cart.
+    if (orderInFlight.current) return
+    orderInFlight.current = true
 
     setIsLoading(true)
     try {
@@ -205,7 +228,12 @@ export default function CheckoutPage() {
             clearCart()
             router.push(`/orders/${data.data.order.id}?success=true`)
           } else {
+            // W-05: the order exists server-side even when verification fails
+            // here, so releasing the cart and the guard lets the user re-order
+            // the same basket. Send them to the order to see its real state.
             showToast('error', verifyData.message || 'Payment verification failed')
+            orderInFlight.current = false
+            setIsLoading(false)
           }
         }
 
@@ -239,19 +267,38 @@ export default function CheckoutPage() {
               theme: {
                 color: config.store.primaryColor,
               },
+              modal: {
+                // Without this the guard never releases when the user closes
+                // the modal, leaving the pay button disabled forever.
+                ondismiss: () => {
+                  orderInFlight.current = false
+                  setIsLoading(false)
+                },
+              },
             }
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             new (window as any).Razorpay(options).open()
+          }
+          script.onerror = () => {
+            showToast('error', 'Could not load the payment gateway')
+            orderInFlight.current = false
+            setIsLoading(false)
           }
           document.body.appendChild(script)
         }
       } else {
         showToast('error', data.message || 'Failed to create order')
+        orderInFlight.current = false
+        setIsLoading(false)
       }
     } catch {
       showToast('error', 'Failed to create order')
+      orderInFlight.current = false
+      setIsLoading(false)
     }
-    setIsLoading(false)
+    // W-04: deliberately no setIsLoading(false) here. The payment flow is still
+    // pending at this point — the Razorpay modal has not been dismissed and the
+    // handler has not run. Clearing it here re-enabled the pay button mid-payment.
   }
 
   if (authLoading || items.length === 0) {

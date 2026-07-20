@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef, ReactNode } from 'react'
 
 export interface Toast {
   id: string
@@ -16,17 +16,35 @@ const ToastContext = createContext<{
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
+  const timers = useRef<Set<ReturnType<typeof setTimeout>>>(new Set())
 
-  const showToast = (type: 'success' | 'error' | 'info', message: string) => {
+  // showToast must be identity-stable: it sits in the dependency arrays of
+  // cart's addItem and updateQuantity, so an unstable reference rebuilds those
+  // on every toast render, which is what makes the checkout refetch loop cheap
+  // to retrigger. Uses the setState updater form so it needs no dependencies.
+  const showToast = useCallback((type: 'success' | 'error' | 'info', message: string) => {
     const id = `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
     setToasts(prev => [...prev, { id, type, message }])
-    setTimeout(() => {
+    const timer = setTimeout(() => {
+      timers.current.delete(timer)
       setToasts(prev => prev.filter(t => t.id !== id))
     }, 3000)
-  }
+    timers.current.add(timer)
+  }, [])
+
+  // W-17: pending removal timers outlived the provider.
+  useEffect(() => {
+    const pending = timers.current
+    return () => {
+      pending.forEach(clearTimeout)
+      pending.clear()
+    }
+  }, [])
+
+  const value = useMemo(() => ({ showToast }), [showToast])
 
   return (
-    <ToastContext.Provider value={{ showToast }}>
+    <ToastContext.Provider value={value}>
       {children}
       {/*
         Two live regions rather than one: errors interrupt (assertive), everything
