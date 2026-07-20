@@ -1,5 +1,9 @@
 {
   "name": "@ecom/shared",
   "version": "1.0.0",
-  "private": true
+  "private": true,
+  "dependencies": {
+    "@reduxjs/toolkit": "^2.12.0",
+    "react-redux": "^9.3.0"
+  }
 }

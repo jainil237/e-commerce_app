@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { StoreProvider } from '@shared/state/StoreProvider'
 import { useRouter } from 'next/navigation'
 import type { User } from '@shared/types'
 
@@ -199,12 +200,14 @@ function AuthProvider({ children }: { children: ReactNode }) {
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
-    <ThemeProvider>
-      <ToastProvider>
-        <AuthProvider>
-          {children}
-        </AuthProvider>
-      </ToastProvider>
-    </ThemeProvider>
+    <StoreProvider>
+      <ThemeProvider>
+        <ToastProvider>
+          <AuthProvider>
+            {children}
+          </AuthProvider>
+        </ToastProvider>
+      </ThemeProvider>
+    </StoreProvider>
   )
 }
