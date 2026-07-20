@@ -11,6 +11,7 @@ on:
       - 'apps/**'
       - 'shared/**'
       - 'scripts/verify-contrast.mjs'
+      - 'scripts/verify-no-tailwind-with-scss.mjs'
       - '.github/workflows/frontend-ci.yml'
 
 jobs:
@@ -35,6 +36,9 @@ jobs:
 
       - name: WCAG contrast gate
         run: node scripts/verify-contrast.mjs
+
+      - name: Tailwind/.scss mix ratchet
+        run: node scripts/verify-no-tailwind-with-scss.mjs
 
       - name: Build web
         run: npm run build --workspace=apps/web

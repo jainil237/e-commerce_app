@@ -21,6 +21,16 @@ if (process.env.R2_PUBLIC_URL) {
 const nextConfig = {
   reactStrictMode: true,
   images: { remotePatterns },
+  eslint: {
+    // No .eslintrc existed before this chain added one for the W-08/W-12
+    // gates, so `next build`'s built-in lint step was previously a no-op.
+    // Enforcing it now would fail production builds on pre-existing,
+    // unrelated errors (react/no-unescaped-entities, a stale
+    // @typescript-eslint/no-explicit-any disable comment) — a regression
+    // this change must not introduce. Lint stays real and visible via
+    // `next lint` / CI; it just does not gate the build.
+    ignoreDuringBuilds: true,
+  },
   async rewrites() {
     return [
       {

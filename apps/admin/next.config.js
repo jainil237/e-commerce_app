@@ -21,6 +21,11 @@ if (process.env.R2_PUBLIC_URL) {
 const nextConfig = {
   reactStrictMode: true,
   images: { remotePatterns },
+  eslint: {
+    // Same policy as apps/web: lint stays real via `next lint` / CI, but
+    // does not gate the build. See apps/web/next.config.js for why.
+    ignoreDuringBuilds: true,
+  },
   async rewrites() {
     return [
       {

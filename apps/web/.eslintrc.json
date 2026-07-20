@@ -1,0 +1,12 @@
+{
+  "extends": "next/core-web-vitals",
+  "rules": {
+    "no-restricted-syntax": [
+      "warn",
+      {
+        "selector": "CallExpression[callee.name='fetch']",
+        "message": "W-08: use the shared RTK Query API (@shared/api) instead of a bare fetch(). Still a warning, not an error — roughly five dozen call sites remain unmigrated. See workflow/artifacts/tasks/frontend-security-a11y-v1.md before deciding this can be escalated to error."
+      }
+    ]
+  }
+}
