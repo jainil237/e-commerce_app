@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { Package } from 'lucide-react'
@@ -9,22 +9,7 @@ import { refreshSnapshot, getSnapshot } from '@/lib/inventory-snapshot'
 import { Button } from '@/components/atoms/Button/Button'
 import './pdp.scss'
 import { ProductDetailsPage } from '@shared/pages/product/ProductDetailsPage'
-
-interface Product {
-  id: string
-  slug: string
-  name: string
-  description: string
-  price: string
-  mrp: string
-  stock: number
-  sku: string
-  gstPercent: number
-  weight?: number
-  tags?: string[]
-  images: Array<{ url: string; altText?: string; sortOrder: number }>
-  category: { id: string; name: string; slug: string }
-}
+import { useGetProductBySlugQuery } from '@shared/api/productsApi'
 
 export default function ProductDetailPage() {
   const params = useParams()
@@ -35,28 +20,22 @@ export default function ProductDetailPage() {
   const { user } = useAuth()
   const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist()
 
-  const [product, setProduct] = useState<Product | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const { data, isLoading } = useGetProductBySlugQuery(slug)
+  const product = data?.data ?? null
 
+  // The stock-reservation snapshot cache (W-13's territory) is unrelated to
+  // this page's own data fetching and stays as-is here — it is consumed by
+  // cart.context's addItem/updateQuantity validation, which this phase does
+  // not touch. Only the product fetch itself moves to RTK Query.
+  const productId = product?.id
   useEffect(() => {
-    async function fetchProduct() {
-      setIsLoading(true)
-      try {
-        const res = await fetch(`/api/v1/products/${slug}`)
-        const data = await res.json()
-        const fetchedProduct = data.data || null
-        setProduct(fetchedProduct)
-        if (fetchedProduct) {
-          refreshSnapshot(fetchedProduct.id).catch(() => {})
-        }
-      } catch (error) {
-        console.error("Failed to fetch product", error)
-      } finally {
-        setIsLoading(false)
-      }
+    // Keyed on the id, not the `product` object: RTK Query gives that object a
+    // new identity on every background refetch, and this must only fire when
+    // the actual product changes — matching the old effect's [slug] keying.
+    if (productId) {
+      refreshSnapshot(productId).catch(() => {})
     }
-    fetchProduct()
-  }, [slug])
+  }, [productId])
 
   if (isLoading) {
     return (

@@ -34,6 +34,7 @@ export default function CheckoutPage() {
   const config = useStoreConfig()
 
   const [addresses, setAddresses] = useState<Address[]>([])
+  const [addressLoadFailed, setAddressLoadFailed] = useState(false)
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null)
   const [couponCode, setCouponCode] = useState('')
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null)
@@ -63,11 +64,20 @@ export default function CheckoutPage() {
   useEffect(() => {
     async function fetchAddresses() {
       if (!user) return
-      const res = await fetch('/api/v1/addresses', { credentials: 'include' })
-      const data = await res.json()
-      setAddresses(data.data || [])
-      const defaultAddr = data.data?.find((a: Address) => a.isDefault)
-      if (defaultAddr) setSelectedAddress(defaultAddr.id)
+      // W-09: this had no try/catch at all — a 500 became an unhandled
+      // rejection and the UI showed "No saved addresses found", indistinguishable
+      // from a genuinely empty list at the highest-stakes point in the funnel.
+      try {
+        const res = await fetch('/api/v1/addresses', { credentials: 'include' })
+        if (!res.ok) throw new Error('Failed to load addresses')
+        const data = await res.json()
+        setAddresses(data.data || [])
+        const defaultAddr = data.data?.find((a: Address) => a.isDefault)
+        if (defaultAddr) setSelectedAddress(defaultAddr.id)
+        setAddressLoadFailed(false)
+      } catch {
+        setAddressLoadFailed(true)
+      }
     }
     fetchAddresses()
   }, [user])
@@ -322,7 +332,16 @@ export default function CheckoutPage() {
                 Delivery Address
               </h2>
 
-              {addresses.length === 0 ? (
+              {addressLoadFailed ? (
+                <div className="ms-checkout-address--empty" role="alert">
+                  <p className="ms-checkout-address__empty-text">
+                    Couldn&apos;t load your addresses. Check your connection and try again.
+                  </p>
+                  <Button variant="secondary" size="sm" onClick={() => window.location.reload()}>
+                    Retry
+                  </Button>
+                </div>
+              ) : addresses.length === 0 ? (
                 <div className="ms-checkout-address--empty">
                   <p className="ms-checkout-address__empty-text">No saved addresses found</p>
                   <Link href="/account/addresses">

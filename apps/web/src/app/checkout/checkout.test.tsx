@@ -53,7 +53,17 @@ function mockFetch() {
     return json({ success: true, data: {} })
   })
 }
-const json = (body: unknown) => ({ ok: true, json: async () => body }) as Response
+const json = (body: unknown, ok = true) => ({ ok, json: async () => body }) as Response
+
+function mockFetchWithFailingAddresses() {
+  return vi.fn(async (url: string) => {
+    const u = String(url)
+    if (u.includes('/addresses')) return json({ success: false }, false)
+    if (u.includes('validate-checkout')) return json(validateResponse)
+    if (u.includes('coupons/available')) return json({ success: true, data: [] })
+    return json({ success: true, data: {} })
+  })
+}
 
 describe('Checkout (W-03, W-04, W-07)', () => {
   beforeEach(() => {
@@ -107,5 +117,17 @@ describe('Checkout (W-03, W-04, W-07)', () => {
 
     await waitFor(() => expect(orderCalls).toBeGreaterThan(0))
     expect(orderCalls).toBe(1)
+  })
+
+  it('W-09: a failed address fetch renders a distinct error, not the empty state', async () => {
+    vi.stubGlobal('fetch', mockFetchWithFailingAddresses())
+    render(<CheckoutPage />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(/couldn.t load/i)
+    })
+    // The pre-fix behaviour: an unhandled rejection left the UI showing this
+    // exact empty-list copy, indistinguishable from a genuinely empty address book.
+    expect(screen.queryByText(/no saved addresses found/i)).not.toBeInTheDocument()
   })
 })
