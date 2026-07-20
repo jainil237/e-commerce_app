@@ -33,7 +33,12 @@ export default function CartPage() {
 
       try {
         const sessionId = typeof window !== 'undefined' ? localStorage.getItem('cartSessionId') || undefined : undefined
-        const res = await fetch('/api/v1/cart/validate', {
+        // Found during 320px reflow QA: this pointed at /cart/validate, which
+        // does not exist on the server (cart.routes.ts only has /snapshot and
+        // /validate-checkout). Every request 404'd, silently — the catch below
+        // only logs — so the cart page has never actually enriched items with
+        // live price/stock/images; every stock-limit UI element was inert.
+        const res = await fetch('/api/v1/cart/validate-checkout', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
