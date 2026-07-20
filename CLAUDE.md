@@ -26,7 +26,7 @@ npm workspaces with three independently deployable packages:
 | `apps/admin` | 3001 | Admin dashboard (Next.js 14) |
 | `server` | 4000 | Express 5 REST API |
 
-`shared/` contains types (`shared/types/index.ts`), UI primitives (`shared/components/UIPrimitives.tsx`), page-level components (`shared/pages/`), hooks, and utilities (`shared/utils/index.ts` — `formatCurrency`, `formatDate`, `getDiscountPercentage`, `parseTags`) consumed by both Next.js apps. It is **not** a workspace package — apps import from it via relative paths or tsconfig path aliases.
+`shared/` contains types (`shared/types/index.ts`), UI primitives (`shared/components/UIPrimitives.tsx`), page-level components (`shared/pages/`), hooks, and utilities (`shared/utils/index.ts` — `formatCurrency`, `formatDate`, `getDiscountPercentage`, `parseTags`) consumed by both Next.js apps. It is a real workspace package (`@ecom/shared`, listed in the root `workspaces` array); apps still import from it via the `@shared/*` tsconfig alias rather than the `@ecom/shared` package name, since both resolve to the same files and rewriting every call site bought nothing.
 
 ## Commands
 
@@ -56,7 +56,7 @@ npm run db:reset        # prisma migrate reset --force (server workspace only)
 npm run dev --workspace=server
 ```
 
-No test suite is currently configured.
+`apps/web` has a Vitest + Testing Library suite (`npm run test --workspace=apps/web`). `apps/admin` and `server` have no test suite yet.
 
 ## Server Architecture
 
@@ -117,7 +117,7 @@ Provider nesting order matters and is set in `apps/web/src/components/providers.
 - `apps/web/src/styles/_mixins.scss` — `sm`/`md`/`lg`/`xl` breakpoint mixins, `motion` (reduced-motion guard), `glass`, `hide-scrollbar`, `eyebrow`, `card-surface`, `price-text`, `focus-ring`
 - `apps/web/src/app/globals.css` — design tokens as CSS custom properties (`--surface-*`, `--text-*`, `--border-*`, `--shadow-*`, `--radius-*`, `--blur-glass`, etc.)
 
-Rules: all transitions/animations must use `@include motion`. Do not mix Tailwind utilities and BEM classes within the same component. Unmigrated pages still use Tailwind — migrate to BEM when touching them. Use `clsx` for conditional class names.
+Rules: all transitions/animations must use `@include motion`. Do not mix Tailwind utilities and BEM classes within the same component — enforced by `scripts/verify-no-tailwind-with-scss.mjs`, ratcheted against a recorded baseline of pre-existing violations so it fails only on new ones. Unmigrated pages still use Tailwind — migrate to BEM when touching them. Use `clsx` for conditional class names.
 
 ## Admin App (apps/admin)
 
