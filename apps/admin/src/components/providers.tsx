@@ -147,10 +147,11 @@ function AuthProvider({ children }: { children: ReactNode }) {
       const res = await fetch(`/api/v1/auth/me`, {
         credentials: 'include',
       })
-      if (res.ok) {
-        const data = await res.json()
-        setUser(data.data)
-      }
+      // The role test has to happen here as well as on the login path: a session
+      // restored from a cookie never goes through login(). A failed check clears
+      // the user rather than leaving the previous value in place.
+      const data = res.ok ? await res.json() : null
+      setUser(data?.data?.role === 'ADMIN' ? data.data : null)
     } catch {
       setUser(null)
     }

@@ -44,13 +44,18 @@ const getCookie = (req: Request, key: string): string | undefined => {
   return undefined
 }
 
-const verifyAccessToken = (token: string) => jwt.verify(token, process.env.JWT_SECRET!) as {
+// Pinned so a token can never be validated under an algorithm we did not sign
+// with. Issuer/audience are deliberately not pinned here: nothing signs with
+// them today, so verifying them would reject every token already in circulation.
+export const JWT_VERIFY_OPTIONS: jwt.VerifyOptions = { algorithms: ['HS256'] }
+
+const verifyAccessToken = (token: string) => jwt.verify(token, process.env.JWT_SECRET!, JWT_VERIFY_OPTIONS) as {
   id: string
   email: string
   role: string
 }
 
-const verifyRefreshToken = (token: string) => jwt.verify(token, process.env.JWT_REFRESH_SECRET!) as {
+const verifyRefreshToken = (token: string) => jwt.verify(token, process.env.JWT_REFRESH_SECRET!, JWT_VERIFY_OPTIONS) as {
   id: string
   email: string
   role: string

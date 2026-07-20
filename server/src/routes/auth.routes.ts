@@ -3,7 +3,7 @@ import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import { v4 as uuidv4 } from 'uuid'
 import { prisma } from '../utils/prisma'
-import { authenticate, AuthRequest } from '../middleware/auth.middleware'
+import { authenticate, AuthRequest, JWT_VERIFY_OPTIONS } from '../middleware/auth.middleware'
 import { createError } from '../middleware/error.middleware'
 import { z } from 'zod'
 import NodeCache from 'node-cache'
@@ -326,7 +326,7 @@ router.post('/refresh', async (req, res: Response, next) => {
     }
 
     // Verify refresh token
-    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET!) as {
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET!, JWT_VERIFY_OPTIONS) as {
       id: string
       email: string
       role: string
