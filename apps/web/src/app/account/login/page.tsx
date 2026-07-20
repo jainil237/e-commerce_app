@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/auth.context'
 import { useToast } from '@/contexts/toast.context'
 import { Button } from '@/components/atoms/Button/Button'
 import { Input } from '@/components/atoms/Input/Input'
+import { safeRedirect } from '@/lib/safe-redirect'
 import '../auth.scss'
 
 function LoginContent() {
@@ -20,7 +21,7 @@ function LoginContent() {
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
-  const redirect = searchParams.get('redirect') || '/account'
+  const redirect = safeRedirect(searchParams.get('redirect'))
 
   if (user) {
     router.push(redirect)

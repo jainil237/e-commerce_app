@@ -57,7 +57,7 @@ export const TrackingModal: React.FC<TrackingModalProps> = ({ isOpen, onClose, o
       return
     }
 
-    const url = template.replace('{awb}', awb.trim())
+    const url = template.replace('{awb}', encodeURIComponent(awb.trim()))
     setTrackingUrl(url)
     setLoadError(false)
   }
@@ -154,11 +154,15 @@ export const TrackingModal: React.FC<TrackingModalProps> = ({ isOpen, onClose, o
                   </a>
                 </div>
               ) : (
+                /* allow-scripts + allow-same-origin together let the framed page
+                   remove its own sandbox. Courier pages are third-party today, but a
+                   Store.config.json template pointing at our own origin would then
+                   escape into the session, so allow-same-origin stays out. */
                 <iframe
                   src={trackingUrl}
                   onError={() => setLoadError(true)}
                   className="w-full h-[500px] border border-[var(--border-base)] rounded-md"
-                  sandbox="allow-scripts allow-same-origin allow-forms"
+                  sandbox="allow-scripts allow-forms"
                   title="Courier Tracking Page"
                 />
               )}
