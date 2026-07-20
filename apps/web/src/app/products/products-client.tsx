@@ -135,7 +135,7 @@ export function ProductsClient({ initialProductsData, categories }: ProductsClie
   const FilterContent = () => (
     <>
       <div className="ms-filter-sidebar__section">
-        <h3 className="ms-filter-sidebar__heading">Categories</h3>
+        <h2 className="ms-filter-sidebar__heading">Categories</h2>
         <Link
           href="/products"
           className={`ms-filter-sidebar__radio-item${!category ? ' ms-filter-sidebar__radio-item--active' : ''}`}
@@ -169,7 +169,7 @@ export function ProductsClient({ initialProductsData, categories }: ProductsClie
       <hr className="ms-filter-sidebar__divider" />
 
       <div className="ms-filter-sidebar__section">
-        <h3 className="ms-filter-sidebar__heading">Price Range</h3>
+        <h2 className="ms-filter-sidebar__heading">Price Range</h2>
         <div className="ms-filter-sidebar__price-row">
           <Input
             type="number"
@@ -279,7 +279,7 @@ export function ProductsClient({ initialProductsData, categories }: ProductsClie
             <div className={`ms-filter-drawer__panel${showFilters ? ' ms-filter-drawer__panel--open' : ''}`}>
               <div className="ms-filter-drawer__handle" />
               <div className="ms-filter-drawer__header">
-                <h3 className="ms-filter-drawer__title">Filters</h3>
+                <h2 className="ms-filter-drawer__title">Filters</h2>
                 <button
                   onClick={() => setShowFilters(false)}
                   className="ms-btn ms-btn--ghost ms-btn--icon ms-btn--sm"

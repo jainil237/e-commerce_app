@@ -102,6 +102,13 @@
 }
 
 @layer base {
+  /* Ported from apps/web: admin had no global focus-visible backstop, so any
+     rule doing `outline: none` left the control with no visible focus at all. */
+  *:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--surface-0), 0 0 0 4px var(--brand-primary);
+  }
+
   body {
     @apply min-h-screen bg-[var(--surface-1)] text-[var(--text-primary)] antialiased transition-colors duration-300;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -217,4 +224,16 @@
 
 .animate-scale-in {
   animation: scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* A-11: the `motion` SCSS mixin guards all 104 SCSS transitions, but Tailwind
+   utilities and the keyframe helpers below sit outside it. This catches them,
+   and anything added later, without needing a per-rule guard. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

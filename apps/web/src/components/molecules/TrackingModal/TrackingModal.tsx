@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { X } from 'lucide-react'
+import { useEffect, useId, useState } from 'react'
 import { Order } from '@shared/types'
+import { SharedModal } from '@shared/components/UIPrimitives'
 
 interface TrackingModalProps {
   isOpen: boolean
@@ -18,6 +18,8 @@ export const TrackingModal: React.FC<TrackingModalProps> = ({ isOpen, onClose, o
   const [trackingUrl, setTrackingUrl] = useState<string | null>(null)
   const [loadError, setLoadError] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const courierId = useId()
+  const awbId = useId()
 
   // Fetch courier config on mount
   useEffect(() => {
@@ -75,30 +77,17 @@ export const TrackingModal: React.FC<TrackingModalProps> = ({ isOpen, onClose, o
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-[var(--surface-0)] rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-[var(--border-base)]">
-          <h2 className="text-xl font-bold text-[var(--text-primary)]">Track Your Delivery</h2>
-          <button
-            onClick={handleClose}
-            className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition"
-            aria-label="Close modal"
-          >
-            <X size={24} />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+    <SharedModal isOpen={isOpen} onClose={handleClose} title="Track Your Delivery" size="2xl">
+      <div className="max-h-[75vh] overflow-y-auto">
           {!trackingUrl ? (
             <div className="space-y-4">
               {/* Courier Dropdown */}
               <div>
-                <label className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
+                <label htmlFor={courierId} className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
                   Courier Partner
                 </label>
                 <select
+                  id={courierId}
                   value={selectedCourier}
                   onChange={(e) => setSelectedCourier(e.target.value)}
                   disabled={isLoading}
@@ -115,10 +104,11 @@ export const TrackingModal: React.FC<TrackingModalProps> = ({ isOpen, onClose, o
 
               {/* AWB Input */}
               <div>
-                <label className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
+                <label htmlFor={awbId} className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
                   AWB / Tracking Number
                 </label>
                 <input
+                  id={awbId}
                   type="text"
                   value={awb}
                   onChange={(e) => setAwb(e.target.value)}
@@ -179,8 +169,7 @@ export const TrackingModal: React.FC<TrackingModalProps> = ({ isOpen, onClose, o
               </button>
             </div>
           )}
-        </div>
       </div>
-    </div>
+    </SharedModal>
   )
 }

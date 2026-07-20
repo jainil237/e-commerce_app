@@ -266,3 +266,15 @@
 .animate-scale-in {
   animation: scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* A-11: the `motion` SCSS mixin guards all 104 SCSS transitions, but Tailwind
+   utilities and the keyframe helpers sit outside it. This catches them, and
+   anything added later, without needing a per-rule guard. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -51,7 +51,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
         )}
       </div>
 
-      <nav className="ms-sidebar__nav">
+      <nav className="ms-sidebar__nav" aria-label="Main">
         {navigation.map((item) => {
           const isActive = pathname === item.href ||
             (item.href !== '/' && pathname.startsWith(item.href))
