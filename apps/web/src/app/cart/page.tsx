@@ -6,25 +6,19 @@ import { Minus, Plus, Trash2, ShoppingBag, ArrowRight } from 'lucide-react'
 import { useCart, useToast, useStoreConfig } from '@/contexts'
 import { FallbackImage } from '@/components/ui/fallback-image'
 import { Button } from '@/components/atoms/Button/Button'
+import { CartProduct } from '@shared/types'
 import './cart.scss'
 
-interface CartProduct {
-  id: string
-  name: string
-  slug: string
-  price: string
-  mrp: string
-  stock: number
-  availableStock: number
-  gstPercent: number
-  images: Array<{ url: string }>
-}
+// This page's own /cart/validate response always includes availableStock,
+// unlike checkout's — the shared type leaves it optional because checkout's
+// validate-checkout endpoint doesn't return it.
+type CartPageProduct = CartProduct & { availableStock: number }
 
 export default function CartPage() {
   const { items, removeItem, updateQuantity, clearCart, subtotal, totalItems, isHydrated } = useCart()
   const { showToast } = useToast()
   const config = useStoreConfig()
-  const [products, setProducts] = useState<Record<string, CartProduct>>({})
+  const [products, setProducts] = useState<Record<string, CartPageProduct>>({})
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -50,7 +44,7 @@ export default function CartPage() {
         })
         const data = await res.json()
 
-        const productMap: Record<string, CartProduct> = {}
+        const productMap: Record<string, CartPageProduct> = {}
         if (data.data?.items) {
           for (const item of data.data.items) {
             if (item.product) {

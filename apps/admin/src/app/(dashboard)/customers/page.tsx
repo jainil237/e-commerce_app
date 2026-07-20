@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Search, Mail, Eye } from 'lucide-react'
 import { getFirstLetter } from '@/utils/initials'
-import { SharedTableActionCell, SharedTableActionIcon } from '../../../../../../shared/components/UIPrimitives'
+import { SharedTableActionCell, SharedTableActionIcon } from '@shared/components/UIPrimitives'
 
 interface Customer {
   id: string

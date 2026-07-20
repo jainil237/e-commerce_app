@@ -12,6 +12,7 @@ import { useStoreConfig } from '@/contexts/store-config.context'
 import { FallbackImage } from '@/components/ui/fallback-image'
 import { Button } from '@/components/atoms/Button/Button'
 import { Input } from '@/components/atoms/Input/Input'
+import { CartProduct } from '@shared/types'
 import './checkout.scss'
 
 interface Address {
@@ -23,17 +24,6 @@ interface Address {
   state: string
   pincode: string
   isDefault: boolean
-}
-
-interface CartProduct {
-  id: string
-  name: string
-  slug: string
-  price: string
-  mrp: string
-  stock: number
-  gstPercent: number
-  images: Array<{ url: string }>
 }
 
 export default function CheckoutPage() {

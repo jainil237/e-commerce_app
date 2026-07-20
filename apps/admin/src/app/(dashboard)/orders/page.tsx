@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Search, Eye, Truck, X } from 'lucide-react'
 import { useToast } from '@/components/providers'
-import { SharedTableActionCell, SharedTableActionIcon, SharedBadge, SharedModal } from '../../../../../../shared/components/UIPrimitives'
+import { SharedTableActionCell, SharedTableActionIcon, SharedBadge, SharedModal } from '@shared/components/UIPrimitives'
 
 interface Order {
   id: string

@@ -2,16 +2,10 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
-
-interface AdminUser {
-  id: string
-  email: string
-  name: string
-  role: string
-}
+import type { User } from '@shared/types'
 
 interface AuthContextType {
-  user: AdminUser | null
+  user: User | null
   isLoading: boolean
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
@@ -151,7 +145,7 @@ function ToastProvider({ children }: { children: ReactNode }) {
 
 function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
-  const [user, setUser] = useState<AdminUser | null>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
