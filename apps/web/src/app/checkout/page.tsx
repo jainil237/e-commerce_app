@@ -276,8 +276,21 @@ export default function CheckoutPage() {
                 },
               },
             }
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            new (window as any).Razorpay(options).open()
+            // Review finding: the blanket setIsLoading(false) this phase removed
+            // (to fix W-04) was, before that fix, what quietly absorbed a throw
+            // here — it ran unconditionally right after appendChild, before
+            // onload could even fire. Without it, an exception in this callback
+            // (malformed options, the SDK failing to initialize) would leave
+            // orderInFlight and isLoading stuck true with no error shown and no
+            // way to retry short of a reload.
+            try {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              new (window as any).Razorpay(options).open()
+            } catch {
+              showToast('error', 'Could not open the payment gateway')
+              orderInFlight.current = false
+              setIsLoading(false)
+            }
           }
           script.onerror = () => {
             showToast('error', 'Could not load the payment gateway')

@@ -53,6 +53,24 @@ function mockFetch() {
     return json({ success: true, data: {} })
   })
 }
+
+/** A real-looking key takes the Razorpay script branch instead of mock mode. */
+function mockFetchWithRealKey() {
+  return vi.fn(async (url: string, init?: RequestInit) => {
+    const u = String(url)
+    if (u.includes('/addresses')) {
+      return json({ success: true, data: [{ id: 'a1', isDefault: true, name: 'Home', line1: 'X', city: 'Y', state: 'Z', pincode: '1', phone: '2' }] })
+    }
+    if (u.includes('validate-checkout')) return json(validateResponse)
+    if (u.includes('coupons/available')) return json({ success: true, data: [] })
+    if (u.includes('/orders') && init?.method === 'POST') {
+      orderCalls++
+      return json({ success: true, data: { order: { id: 'o1' }, razorpay: { key: 'rzp_live_abc123', orderId: 'ro1', amount: 1, currency: 'INR' } } })
+    }
+    return json({ success: true, data: {} })
+  })
+}
+
 const json = (body: unknown, ok = true) => ({ ok, json: async () => body }) as Response
 
 function mockFetchWithFailingAddresses() {
@@ -129,5 +147,39 @@ describe('Checkout (W-03, W-04, W-07)', () => {
     // The pre-fix behaviour: an unhandled rejection left the UI showing this
     // exact empty-list copy, indistinguishable from a genuinely empty address book.
     expect(screen.queryByText(/no saved addresses found/i)).not.toBeInTheDocument()
+  })
+
+  it('Review finding: releases the guard if the Razorpay SDK throws on open()', async () => {
+    vi.stubGlobal('fetch', mockFetchWithRealKey())
+
+    // jsdom does not execute injected <script> tags, so script.onload never
+    // fires on its own — intercept the element to drive it deterministically
+    // and stand in for the SDK constructor throwing.
+    let scriptEl: HTMLScriptElement | undefined
+    const realCreateElement = document.createElement.bind(document)
+    vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+      const el = realCreateElement(tag)
+      if (tag === 'script') scriptEl = el as HTMLScriptElement
+      return el
+    })
+    ;(window as unknown as { Razorpay: unknown }).Razorpay = class {
+      constructor() {
+        throw new Error('SDK failed to initialize')
+      }
+    }
+
+    const user = userEvent.setup()
+    render(<CheckoutPage />)
+
+    await waitFor(() => expect(screen.getByRole('button', { name: /place order|pay/i })).toBeEnabled())
+    await user.click(screen.getByRole('button', { name: /place order|pay/i }))
+
+    await waitFor(() => expect(scriptEl).toBeDefined())
+    scriptEl!.onload?.(new Event('load'))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /place order|pay/i })).toBeEnabled()
+    })
+    expect(showToast).toHaveBeenCalledWith('error', expect.stringMatching(/payment gateway/i))
   })
 })
