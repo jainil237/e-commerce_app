@@ -1,0 +1,39 @@
+---
+description: agentsmyth workflow gate for <!-- TODO: see pending-setup.yaml -->
+globs: ["**/*"]
+alwaysApply: true
+---
+
+# agentsmyth Workflow Gate — <!-- TODO: see pending-setup.yaml -->
+
+> **Domain:** <!-- TODO: see pending-setup.yaml --> | <!-- TODO: see pending-setup.yaml -->
+
+Read `workflow/router.md` before any task (if absent, read `definitions_root` from
+`workflow/config/repo-profile.yaml` and load `<definitions_root>/router.md` instead — this
+repo is linked to a global install). Load `workflow/agent-behavior.yaml` the same way.
+
+Never skip this gate. Never mark a phase complete without evidence.
+
+Default branch: `main` | All changes via non-default branch required.
+
+**Protected:** - `.git/**` — repository metadata
+- `.env*` — potential secrets
+- `**/*secret*` — potential secrets
+- `server/prisma/schema.prisma` — database schema — changes affect all data models and require migration
+- `shared/types/**` — shared TypeScript types consumed by all apps — breaking changes propagate everywhere
+- `server/src/routes/webhook.routes.ts` — payment webhook handler — must never be modified without explicit approval
+
+**Verify:** - `npm run build`
+- `npm run lint`
+- `npm run db:migrate`
+
+**Constraints:** - Do not introduce domain-specific behavior unless the user request or repo context requires it.
+- Treat compatibility, source authority, verification, and release impact as implicit requirements when material.
+- Do not modify payment or checkout logic (server/src/routes/webhook.routes.ts, checkout flows, Razorpay integration) without explicit user approval.
+- Do not expose secrets, credentials, private tokens, API keys, or sensitive local paths in lifecycle artifacts.
+- Do not perform destructive actions without explicit user approval.
+- Do not claim external state without evidence.
+- Do not include environment variable values, connection strings, or authentication material in any artifact section.
+- Do not run destructive database commands (DROP, DELETE on production tables, irreversible migrations) without explicit user approval.
+- Do not push directly to main — always use a feature branch and open a PR.
+- Do not expose .env file contents in any written artifact, log, or summary.
