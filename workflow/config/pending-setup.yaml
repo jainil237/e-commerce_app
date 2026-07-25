@@ -9,16 +9,22 @@ items:
     field: "domain.name"
     question: "What is the name of the domain or product this repo serves?"
     hint: "Check README.md or package.json description"
-    status: open
+    status: resolved
+    resolved_by: inspect
+    resolution: "ecommerce-platform"
   - id: PS-2
     config: domain.yaml
     field: "domain.summary"
     question: "Describe the domain in one sentence for lifecycle artifacts."
     hint: "Check README.md"
-    status: open
+    status: resolved
+    resolved_by: inspect
+    resolution: "Full-stack e-commerce platform for selling physical goods online, comprising a customer-facing storefront (Next.js), admin dashboard (Next.js), and REST API backend (Express + Prisma + MySQL). Supports product browsing, cart, checkout, order management, returns, and replacements."
   - id: PS-3
     config: verification.yaml
     field: "commands[0].command"
     question: "What command confirms the repo is healthy (build, test, lint)?"
     hint: "Check Makefile, package.json scripts, or CI config"
-    status: open
+    status: resolved
+    resolved_by: inspect
+    resolution: "npm run build (already configured as commands[0], required:true, phases: build/ship); npm run lint also configured as commands[1]"
