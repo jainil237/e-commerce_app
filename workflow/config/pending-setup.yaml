@@ -28,3 +28,27 @@ items:
     status: resolved
     resolved_by: inspect
     resolution: "npm run build (already configured as commands[0], required:true, phases: build/ship); npm run lint also configured as commands[1]"
+  - id: PS-6
+    config: source-of-truth.yaml
+    field: "source_of_truth.providers[0].type / source_of_truth.providers[0].location"
+    question: "Where are requirements or decisions tracked for this repo, if anywhere (issue tracker, ADR folder, wiki, Notion, etc.)? 'Nowhere formal' is a valid answer — resolve by reverting providers to an empty list."
+    hint: "Check README.md/CONTRIBUTING.md for a linked project management tool, or a docs/adr/ or docs/decisions/ folder."
+    status: resolved
+    resolved_by: inspect
+    resolution: "Notion — requirements and decisions tracked at the linked 'E-comm website re-design' Notion page (source-of-truth.yaml providers: notion-requirements, notion-decisions)"
+  - id: PS-7
+    config: release.yaml
+    field: "release.required"
+    question: "Does this repo have a formal release process — versioned publish, tagged deploy, etc.? 'No formal process' is valid and common."
+    hint: "Check package.json version/publish scripts, CHANGELOG.md, or tagged releases (git tag -l)."
+    status: resolved
+    resolved_by: inspect
+    resolution: "No formal release process — no CHANGELOG.md, no git tags, no publish scripts found. release.required: false"
+  - id: PS-8
+    config: domain.yaml
+    field: "constraints.product[] / constraints.safety[]"
+    question: "Anything specific the AI agent should never do in this repo, beyond the generic defaults already listed? 'No additional constraints' is a valid answer."
+    hint: "Consider sensitive modules, migrations, payment/auth code, or anything requiring human review before automated changes."
+    status: resolved
+    resolved_by: inspect
+    resolution: "Already captured in domain.yaml constraints.product/safety: no payment/checkout/webhook changes without approval, no destructive DB commands, no direct pushes to main, no secrets in artifacts."
