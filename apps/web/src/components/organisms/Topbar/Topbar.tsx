@@ -159,7 +159,7 @@ export function Topbar() {
   )
 
   return (
-    <header className="ms-topbar" aria-label="Main navigation">
+    <header className="ms-topbar">
       {/* Main row */}
       <div className="ms-topbar__inner">
         <Link href="/" className="ms-topbar__wordmark" aria-label={config.store.name}>

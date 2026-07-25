@@ -1,0 +1,47 @@
+# Frontend CI.
+#
+# Deliberately a separate file from the server CI the arb-remediation chain
+# authors: the two chains run in parallel and a shared file would conflict.
+# Merge them once both have landed.
+name: Frontend CI
+
+on:
+  pull_request:
+    paths:
+      - 'apps/**'
+      - 'shared/**'
+      - 'scripts/verify-contrast.mjs'
+      - 'scripts/verify-no-tailwind-with-scss.mjs'
+      - '.github/workflows/frontend-ci.yml'
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+
+      - name: Typecheck web
+        run: npx tsc --noEmit -p apps/web/tsconfig.json
+
+      - name: Typecheck admin
+        run: npx tsc --noEmit -p apps/admin/tsconfig.json
+
+      - name: Unit tests (web)
+        run: npx vitest run --root apps/web
+
+      - name: WCAG contrast gate
+        run: node scripts/verify-contrast.mjs
+
+      - name: Tailwind/.scss mix ratchet
+        run: node scripts/verify-no-tailwind-with-scss.mjs
+
+      - name: Build web
+        run: npm run build --workspace=apps/web
+
+      - name: Build admin
+        run: npm run build --workspace=apps/admin

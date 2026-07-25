@@ -11,7 +11,13 @@ export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
   ({ className = '', label, error, helperText, options, id, ...props }, ref) => {
-    const selectId = id || label?.toLowerCase().replace(/\s+/g, '-')
+    // Was derived from the label text, which produced colliding ids for two
+    // selects sharing a label and no id at all when the label was omitted.
+    const generatedId = React.useId()
+    const selectId = id || generatedId
+    const errorId = `${selectId}-error`
+    const helperId = `${selectId}-helper`
+    const describedBy = error ? errorId : helperText ? helperId : undefined
 
     return (
       <div className={`ms-select-field${className ? ` ${className}` : ''}`}>
@@ -25,6 +31,8 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             id={selectId}
             ref={ref}
             className={`ms-select${error ? ' ms-select--error' : ''}`}
+            aria-invalid={!!error}
+            aria-describedby={describedBy}
             {...props}
           >
             {options.map((opt) => (
@@ -35,8 +43,8 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           </select>
           <ChevronDown className="ms-select-field__chevron" width={16} height={16} />
         </div>
-        {error && <span className="ms-field__help ms-field__help--error">{error}</span>}
-        {helperText && !error && <span className="ms-field__help">{helperText}</span>}
+        {error && <span id={errorId} className="ms-field__help ms-field__help--error">{error}</span>}
+        {helperText && !error && <span id={helperId} className="ms-field__help">{helperText}</span>}
       </div>
     )
   }

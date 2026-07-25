@@ -2,14 +2,12 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import useSWR from 'swr'
+import type { User } from '@shared/types'
 
-export interface User {
-  id: string
-  name: string
-  email: string
-  phone: string
-  role: 'CUSTOMER' | 'ADMIN'
-}
+// Re-exported so existing `import { User } from '@/contexts/auth.context'` (and
+// the barrel at '@/contexts') keep working — this used to be a second, narrower
+// declaration of the same shape as shared/types' User.
+export type { User }
 
 const AuthContext = createContext<{
   user: User | null

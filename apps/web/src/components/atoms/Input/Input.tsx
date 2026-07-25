@@ -24,6 +24,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
   ) => {
     const generatedId = React.useId()
     const inputId = id || generatedId
+    const errorId = `${inputId}-error`
 
     const wrapperClass = [
       'ms-field',
@@ -51,11 +52,14 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             ref={ref}
             className={inputClass}
             aria-invalid={!!error}
+            // Without this, aria-invalid announces *that* the field is wrong but
+            // never *why* — the error text is not associated with the input.
+            aria-describedby={error ? errorId : undefined}
             {...props}
           />
           {rightIcon && <div className="ms-field__icon--right">{rightIcon}</div>}
         </div>
-        {error && <span className="ms-field__help ms-field__help--error">{error}</span>}
+        {error && <span id={errorId} className="ms-field__help ms-field__help--error">{error}</span>}
       </div>
     )
   }

@@ -96,6 +96,24 @@ export interface Address {
 }
 
 export type ViewerContext = 'customer' | 'admin';
+
+/**
+ * The checkout-time snapshot of a product's server-confirmed price/stock.
+ * Was independently declared in cart/page.tsx and checkout/page.tsx with
+ * different fields — availableStock existed only in the cart copy.
+ */
+export interface CartProduct {
+  id: string;
+  name: string;
+  slug: string;
+  price: string;
+  mrp: string;
+  stock: number;
+  gstPercent: number;
+  images: Array<{ url: string }>;
+  /** Stock minus active reservations. Only populated on the cart page today. */
+  availableStock?: number;
+}
 export interface Coupon {
   id: string
   code: string

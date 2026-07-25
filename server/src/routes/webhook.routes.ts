@@ -6,11 +6,14 @@ import { generateInvoicePdf } from '../services/invoice.service'
 import { sendOrderConfirmationEmail, sendShippingUpdateEmail } from '../services/email.service'
 import { RmaService } from '../services/rma.service'
 import { ShipmentStatus } from '@prisma/client'
+import { confirmPayment } from '../services/payment-confirmation.service'
 
 const router = Router()
 
 /**
- * Verifies an HMAC-SHA256 webhook signature over the raw JSON body.
+ * Verifies an HMAC-SHA256 webhook signature over a re-serialization of the
+ * already-parsed body. Kept for the logistics webhook, which is signed
+ * differently and out of this chain's scope (R3 covers Razorpay only).
  * Returns false when the secret is unset so an unconfigured webhook fails closed.
  */
 export function verifyWebhookSignature(body: unknown, signature: string | undefined, secret: string | undefined): boolean {
@@ -24,18 +27,36 @@ export function verifyWebhookSignature(body: unknown, signature: string | undefi
   return a.length === b.length && crypto.timingSafeEqual(a, b)
 }
 
-// Razorpay webhook
+/**
+ * R3 (SEC-3): verifies an HMAC-SHA256 signature over the exact raw request
+ * bytes, not a re-serialization of anything already parsed — the input
+ * Razorpay actually signed. Requires the route to be mounted behind
+ * express.raw() so `rawBody` is a Buffer, not a parsed object.
+ * Returns false when the secret is unset so an unconfigured webhook fails closed.
+ */
+export function verifyWebhookSignatureRaw(rawBody: Buffer, signature: string | undefined, secret: string | undefined): boolean {
+  if (!secret || !signature) return false
+
+  const expected = crypto.createHmac('sha256', secret).update(rawBody).digest('hex')
+  const a = Buffer.from(expected, 'utf8')
+  const b = Buffer.from(signature, 'utf8')
+
+  return a.length === b.length && crypto.timingSafeEqual(a, b)
+}
+
+// Razorpay webhook — mounted behind express.raw() in index.ts for this path only
 router.post('/razorpay', async (req, res: Response) => {
   try {
     const signature = req.headers['x-razorpay-signature'] as string
+    const rawBody = req.body as Buffer
 
-    if (!verifyWebhookSignature(req.body, signature, process.env.RAZORPAY_WEBHOOK_SECRET)) {
+    if (!verifyWebhookSignatureRaw(rawBody, signature, process.env.RAZORPAY_WEBHOOK_SECRET)) {
       console.error('Invalid webhook signature')
       res.status(400).json({ success: false, message: 'Invalid signature' })
       return
     }
 
-    const event = req.body
+    const event = JSON.parse(rawBody.toString('utf8'))
     const paymentEntity = event.payload?.payment?.entity
 
     if (!paymentEntity) {
@@ -64,32 +85,39 @@ router.post('/razorpay', async (req, res: Response) => {
 
     // Handle different events
     switch (event.event) {
-      case 'payment.captured':
-        // Check if already processed (idempotency)
-        if (order.paymentStatus === 'PAID') {
+      case 'payment.captured': {
+        // NOTE: Stock was already deducted during order creation.
+        // Do NOT deduct again here to prevent double-reduction.
+        //
+        // confirmPayment() errors are NOT caught here — they propagate to
+        // the route's outer catch, which returns 500. That is deliberate:
+        // Razorpay retries on a non-2xx response, and a confirmation that
+        // couldn't be verified (e.g. a transient failure fetching the
+        // payment from Razorpay) must cause a retry, not a silent 200 that
+        // leaves the order PENDING forever with Razorpay believing it
+        // succeeded. An earlier version of this code caught the error here
+        // and still fell through to `res.json({ success: true })` below —
+        // exactly the silent-success bug this comment now warns against.
+        const result = await confirmPayment({
+          orderId: order.id,
+          razorpayOrderId,
+          razorpayPaymentId,
+          source: 'webhook',
+          actorUserId: null,
+        })
+
+        if (result.alreadyConfirmed) {
           console.log('Order already marked as paid:', order.id)
           break
         }
 
-        // Update order
-        await prisma.order.update({
-          where: { id: order.id },
-          data: {
-            paymentStatus: 'PAID',
-            status: 'CONFIRMED',
-            razorpayPaymentId,
-          },
-        })
-
-        // NOTE: Stock was already deducted during order creation.
-        // Do NOT deduct again here to prevent double-reduction.
-
-        if (!order.user) {
+        const updatedOrder = result.order
+        if (!updatedOrder.user) {
           console.error('Order user not found for webhook:', razorpayOrderId)
           break
         }
 
-        const validOrder = order as typeof order & { user: NonNullable<typeof order.user> }
+        const validOrder = updatedOrder as typeof updatedOrder & { user: NonNullable<typeof updatedOrder.user> }
 
         // Generate invoice
         const invoicePath = await generateInvoicePdf(validOrder as any)
@@ -101,15 +129,29 @@ router.post('/razorpay', async (req, res: Response) => {
         // Send email
         await sendOrderConfirmationEmail(validOrder as any, invoicePath)
         break
+      }
 
-      case 'payment.failed':
-        await prisma.order.update({
-          where: { id: order.id },
-          data: {
-            paymentStatus: 'FAILED',
-            status: 'CANCELLED',
-          },
-        })
+      case 'payment.failed': {
+        const fromState = order.paymentStatus
+        await prisma.$transaction([
+          prisma.order.update({
+            where: { id: order.id },
+            data: {
+              paymentStatus: 'FAILED',
+              status: 'CANCELLED',
+            },
+          }),
+          prisma.orderAuditLog.create({
+            data: {
+              orderId: order.id,
+              userId: null,
+              action: 'PAYMENT_FAILED',
+              fromState,
+              toState: 'FAILED',
+              metadata: { source: 'webhook' },
+            },
+          }),
+        ])
 
         // Restore stock since payment failed and order is cancelled
         for (const item of order.items) {
@@ -119,15 +161,29 @@ router.post('/razorpay', async (req, res: Response) => {
           })
         }
         break
+      }
 
-      case 'refund.created':
-        await prisma.order.update({
-          where: { id: order.id },
-          data: {
-            paymentStatus: 'REFUNDED',
-            status: 'REFUNDED',
-          },
-        })
+      case 'refund.created': {
+        const fromState = order.paymentStatus
+        await prisma.$transaction([
+          prisma.order.update({
+            where: { id: order.id },
+            data: {
+              paymentStatus: 'REFUNDED',
+              status: 'REFUNDED',
+            },
+          }),
+          prisma.orderAuditLog.create({
+            data: {
+              orderId: order.id,
+              userId: null,
+              action: 'REFUND_ISSUED',
+              fromState,
+              toState: 'REFUNDED',
+              metadata: { source: 'webhook' },
+            },
+          }),
+        ])
 
         // Restore stock on refund
         for (const item of order.items) {
@@ -137,6 +193,7 @@ router.post('/razorpay', async (req, res: Response) => {
           })
         }
         break
+      }
     }
 
     res.json({ success: true })

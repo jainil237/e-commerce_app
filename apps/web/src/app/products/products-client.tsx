@@ -4,24 +4,14 @@ import './plp.scss'
 import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import useSWR from 'swr'
 import { Filter, X } from 'lucide-react'
 import { ProductCard } from '@/components/molecules/ProductCard/ProductCard'
 import { useStoreConfig } from '@/contexts'
 import { Button } from '@/components/atoms/Button/Button'
 import { Input } from '@/components/atoms/Input/Input'
 import { Select } from '@/components/atoms/Select/Select'
-
-interface Product {
-  id: string
-  slug: string
-  name: string
-  price: string
-  mrp: string
-  images: Array<{ url: string; altText?: string }>
-  category?: { name: string; slug: string }
-  stock: number
-}
+import { useGetProductsQuery } from '@shared/api/productsApi'
+import type { Product } from '@shared/types'
 
 interface Category {
   id: string
@@ -40,15 +30,6 @@ interface ProductsClientProps {
     }
   }
   categories: Category[]
-}
-
-const fetcher = async (url: string) => {
-  const res = await fetch(url)
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({}))
-    throw new Error(error.message || 'An error occurred')
-  }
-  return res.json()
 }
 
 export function ProductsClient({ initialProductsData, categories }: ProductsClientProps) {
@@ -73,28 +54,22 @@ export function ProductsClient({ initialProductsData, categories }: ProductsClie
   useEffect(() => { setLocalMin(minPrice || '') }, [minPrice])
   useEffect(() => { setLocalMax(maxPrice || '') }, [maxPrice])
 
-  const params = new URLSearchParams()
-  if (category) params.set('category', category)
-  if (search) params.set('search', search)
-  if (sort) params.set('sort', sort)
-  if (minPrice) params.set('minPrice', minPrice)
-  if (maxPrice) params.set('maxPrice', maxPrice)
-  if (inStock) params.set('inStock', 'true')
-  params.set('page', page.toString())
-  params.set('limit', '12')
+  const { data, isFetching } = useGetProductsQuery({
+    category, search, sort, minPrice, maxPrice, inStock, page, limit: 12,
+  })
 
-  const { data, isValidating } = useSWR<{
-    success: boolean
-    data: Product[]
-    meta?: { total: number; page: number; limit: number }
-  }>(
-    `/api/v1/products?${params.toString()}`,
-    fetcher,
-    { fallbackData: initialProductsData, keepPreviousData: true, revalidateOnFocus: false }
-  )
+  // RTK Query, unlike SWR's keepPreviousData, clears `data` while a new arg
+  // combination is in flight — which would flash the grid empty on every
+  // filter click. Holding the last successful response in local state (seeded
+  // from the SSR payload) reproduces the old behaviour; `isFetching` still
+  // drives the loading indicator below.
+  const [displayData, setDisplayData] = useState(initialProductsData)
+  useEffect(() => {
+    if (data) setDisplayData(data)
+  }, [data])
 
-  const products = data?.data || []
-  const total = data?.meta?.total || 0
+  const products = displayData.data || []
+  const total = displayData.meta?.total || 0
 
   const updateFilters = useCallback((key: string, value: string) => {
     const nextParams = new URLSearchParams(searchParams)
@@ -135,7 +110,7 @@ export function ProductsClient({ initialProductsData, categories }: ProductsClie
   const FilterContent = () => (
     <>
       <div className="ms-filter-sidebar__section">
-        <h3 className="ms-filter-sidebar__heading">Categories</h3>
+        <h2 className="ms-filter-sidebar__heading">Categories</h2>
         <Link
           href="/products"
           className={`ms-filter-sidebar__radio-item${!category ? ' ms-filter-sidebar__radio-item--active' : ''}`}
@@ -169,7 +144,7 @@ export function ProductsClient({ initialProductsData, categories }: ProductsClie
       <hr className="ms-filter-sidebar__divider" />
 
       <div className="ms-filter-sidebar__section">
-        <h3 className="ms-filter-sidebar__heading">Price Range</h3>
+        <h2 className="ms-filter-sidebar__heading">Price Range</h2>
         <div className="ms-filter-sidebar__price-row">
           <Input
             type="number"
@@ -279,7 +254,7 @@ export function ProductsClient({ initialProductsData, categories }: ProductsClie
             <div className={`ms-filter-drawer__panel${showFilters ? ' ms-filter-drawer__panel--open' : ''}`}>
               <div className="ms-filter-drawer__handle" />
               <div className="ms-filter-drawer__header">
-                <h3 className="ms-filter-drawer__title">Filters</h3>
+                <h2 className="ms-filter-drawer__title">Filters</h2>
                 <button
                   onClick={() => setShowFilters(false)}
                   className="ms-btn ms-btn--ghost ms-btn--icon ms-btn--sm"
@@ -300,7 +275,7 @@ export function ProductsClient({ initialProductsData, categories }: ProductsClie
           {/* Products column */}
           <div className="ms-plp__main">
 
-            {isValidating && products.length === 0 ? (
+            {isFetching && products.length === 0 ? (
               <div className="ms-plp-skeleton">
                 {Array.from({ length: 12 }).map((_, i) => (
                   <div key={i} className="ms-plp-skeleton__card">
@@ -321,7 +296,7 @@ export function ProductsClient({ initialProductsData, categories }: ProductsClie
               </div>
             ) : (
               <>
-                <div className={`ms-product-grid${isValidating ? ' ms-product-grid--loading' : ''}`}>
+                <div className={`ms-product-grid${isFetching ? ' ms-product-grid--loading' : ''}`}>
                   {products.map(product => (
                     <ProductCard key={product.id} product={product} />
                   ))}

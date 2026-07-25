@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Plus, Search, Edit2, Trash2, Eye, MoreVertical } from 'lucide-react'
 import { useToast } from '@/components/providers'
 import { FallbackImage } from '@/components/ui/fallback-image'
-import { SharedTableActionCell, SharedTableActionIcon, SharedBadge } from '../../../../../../shared/components/UIPrimitives'
+import { SharedTableActionCell, SharedTableActionIcon, SharedBadge } from '@shared/components/UIPrimitives'
 
 interface Product {
   id: string

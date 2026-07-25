@@ -53,7 +53,10 @@ export default function WishlistPage() {
   }, [user, wishlistIds.length]) // refetch when items change
 
   const handleMoveToCart = async (product: WishlistProduct) => {
-    addItem(product.id, 1, { price: Number(product.price), name: product.name })
+    // Only leave the wishlist if the cart actually took it — this used to
+    // remove the item even when addItem failed stock validation, losing it.
+    const added = await addItem(product.id, 1, { price: Number(product.price), name: product.name })
+    if (!added) return
     await removeFromWishlist(product.id)
     setProducts(prev => prev.filter(p => p.id !== product.id))
     showToast('success', `${product.name} moved to cart`)
@@ -66,13 +69,16 @@ export default function WishlistPage() {
   }
 
   const handleMoveAllToCart = async () => {
+    const movedProducts: WishlistProduct[] = []
     for (const product of products) {
       if (product.stock > 0) {
-        addItem(product.id, 1, { price: Number(product.price), name: product.name })
+        const added = await addItem(product.id, 1, { price: Number(product.price), name: product.name })
+        if (!added) continue
         await removeFromWishlist(product.id)
+        movedProducts.push(product)
       }
     }
-    const moved = products.filter(p => p.stock > 0)
+    const moved = movedProducts
     setProducts(prev => prev.filter(p => p.stock === 0))
     showToast('success', `${moved.length} item${moved.length !== 1 ? 's' : ''} moved to cart`)
   }

@@ -9,6 +9,8 @@ import { getStoreConfig } from '../utils/config'
 import { createError } from '../middleware/error.middleware'
 import { generateInvoicePdf } from '../services/invoice.service'
 import { sendOrderConfirmationEmail, sendOrderCancelledEmail, sendInvoiceEmail } from '../services/email.service'
+import { isPaymentsMockMode } from '../config/payments'
+import { confirmPayment, PaymentConfirmationError } from '../services/payment-confirmation.service'
 
 const router = Router()
 
@@ -170,6 +172,10 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next) => 
       } else {
         discount = Number(coupon.discountValue)
       }
+
+      // R4 — a FLAT coupon larger than the order (or a misconfigured
+      // PERCENTAGE above 100) must never push the total below zero.
+      discount = Math.min(discount, subtotal + shippingCharge)
     }
 
     const total = subtotal + shippingCharge - discount
@@ -177,9 +183,9 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next) => 
     // Generate order number
     const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`
 
-    // Create Razorpay order (or mock if using placeholder keys)
+    // Create Razorpay order (or mock in PAYMENTS_MOCK mode)
     let razorpayOrder;
-    if (process.env.RAZORPAY_KEY_ID === 'rzp_test_placeholder' || process.env.RAZORPAY_KEY_ID?.startsWith('rzp_test_placeholder')) {
+    if (isPaymentsMockMode()) {
       razorpayOrder = {
         id: `order_mock_${Date.now()}`,
         amount: Math.round(total * 100),
@@ -258,12 +264,8 @@ router.post('/verify-payment', authenticate, async (req: AuthRequest, res: Respo
       throw createError(400, 'Missing payment details', 'MISSING_PAYMENT_DETAILS')
     }
 
-    // In mock/dev mode, skip signature verification
-    const isMockMode = !process.env.RAZORPAY_KEY_ID ||
-      process.env.RAZORPAY_KEY_ID === 'rzp_test_placeholder' ||
-      process.env.RAZORPAY_KEY_ID.startsWith('rzp_test_placeholder')
-
-    if (!isMockMode) {
+    // In PAYMENTS_MOCK mode, skip signature verification
+    if (!isPaymentsMockMode()) {
       // Verify Razorpay HMAC signature
       const body = razorpayOrderId + '|' + razorpayPaymentId
       const expectedSignature = crypto
@@ -276,102 +278,50 @@ router.post('/verify-payment', authenticate, async (req: AuthRequest, res: Respo
       }
     }
 
-    // Get order
-    const order = await prisma.order.findFirst({
-      where: {
-        id: orderId,
-        userId: req.user!.id,
-      },
-      include: {
-        items: {
-          include: { product: true },
-        },
-        address: true,
-      },
-    })
-
-    if (!order) {
-      throw createError(404, 'Order not found', 'ORDER_NOT_FOUND')
-    }
-
-    // Update order
-    const updatedOrder = await prisma.order.update({
-      where: { id: orderId },
-      data: {
-        paymentStatus: 'PAID',
-        status: 'CONFIRMED',
-        razorpayPaymentId,
-      },
-      include: {
-        items: {
-          include: {
-            product: {
-              include: { images: true },
-            },
-          },
-        },
-        address: true,
-        user: true,
-      },
-    })
-
     // NOTE: Stock was already deducted during order creation.
     // Do NOT deduct again here to prevent double-reduction.
 
-    // Increment coupon usage
-    if (order.couponCode) {
-      const coupon = await prisma.coupon.findUnique({
-        where: { code: order.couponCode.toUpperCase() },
+    let result
+    try {
+      result = await confirmPayment({
+        orderId,
+        razorpayOrderId,
+        razorpayPaymentId,
+        source: 'client',
+        actorUserId: req.user!.id,
+      })
+    } catch (err) {
+      if (err instanceof PaymentConfirmationError) {
+        throw createError(err.statusCode, err.message, err.code)
+      }
+      throw err
+    }
+
+    const updatedOrder = result.order
+
+    // Invoice + confirmation email only on first confirmation — a replayed
+    // or duplicate request is a no-op, not a resend.
+    if (!result.alreadyConfirmed) {
+      if (!updatedOrder.user) {
+        throw createError(500, 'User details missing', 'MISSING_USER')
+      }
+
+      const orderWithUser = {
+        ...updatedOrder,
+        user: updatedOrder.user,
+      }
+
+      const invoicePath = await generateInvoicePdf(orderWithUser)
+
+      await prisma.order.update({
+        where: { id: orderId },
+        data: { invoiceUrl: invoicePath },
       })
 
-      if (coupon) {
-        // Global increment
-        await prisma.coupon.update({
-          where: { id: coupon.id },
-          data: { usedCount: { increment: 1 } },
-        })
-
-        // Per-user increment
-        await prisma.couponUsage.upsert({
-          where: {
-            couponId_userId: {
-              couponId: coupon.id,
-              userId: req.user!.id,
-            },
-          },
-          create: {
-            couponId: coupon.id,
-            userId: req.user!.id,
-            usedCount: 1,
-          },
-          update: {
-            usedCount: { increment: 1 },
-          },
-        })
-      }
+      // Send confirmation email (non-blocking — don't fail the payment if email fails)
+      sendOrderConfirmationEmail(orderWithUser, invoicePath)
+        .catch(err => console.error('[Email] Failed to send order confirmation:', err))
     }
-
-    if (!updatedOrder.user) {
-      throw createError(500, 'User details missing', 'MISSING_USER')
-    }
-
-    const orderWithUser = {
-      ...updatedOrder,
-      user: updatedOrder.user
-    }
-
-    // Generate invoice
-    const invoicePath = await generateInvoicePdf(orderWithUser)
-
-    // Update invoice URL
-    await prisma.order.update({
-      where: { id: orderId },
-      data: { invoiceUrl: invoicePath },
-    })
-
-    // Send confirmation email (non-blocking — don't fail the payment if email fails)
-    sendOrderConfirmationEmail(orderWithUser, invoicePath)
-      .catch(err => console.error('[Email] Failed to send order confirmation:', err))
 
     res.json({
       success: true,

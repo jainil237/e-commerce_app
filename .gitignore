@@ -18,3 +18,4 @@ security_performance_audit.md
 uploads/
 dist/
 *.tsbuildinfo
+graphify-out/

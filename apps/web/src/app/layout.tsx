@@ -5,6 +5,7 @@ import { Providers } from '@/components/providers'
 import { Topbar } from '@/components/organisms/Topbar/Topbar'
 import { Footer } from '@/components/layout/footer'
 import { BottomNav } from '@/components/organisms/BottomNav/BottomNav'
+import { ErrorBoundary } from '@shared/components/ErrorBoundary'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -25,19 +26,21 @@ export default function RootLayout({
   return (
     <html lang="en" className={inter.variable} suppressHydrationWarning>
       <body className="font-sans antialiased bg-[var(--surface-1)] text-[var(--text-primary)] transition-colors duration-200" suppressHydrationWarning>
-        <Providers>
-          <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:p-4 focus:bg-brand-primary focus:text-white">
-            Skip to main content
-          </a>
-          <div className="min-h-screen flex flex-col">
-            <Topbar />
-            <main id="main-content" className="flex-1 pb-20 md:pb-0 focus:outline-none" tabIndex={-1}>
-              {children}
-            </main>
-            <Footer />
-            <BottomNav />
-          </div>
-        </Providers>
+        <ErrorBoundary>
+          <Providers>
+            <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:p-4 focus:bg-brand-primary focus:text-white">
+              Skip to main content
+            </a>
+            <div className="min-h-screen flex flex-col">
+              <Topbar />
+              <main id="main-content" className="flex-1 pb-20 md:pb-0 focus:outline-none" tabIndex={-1}>
+                {children}
+              </main>
+              <Footer />
+              <BottomNav />
+            </div>
+          </Providers>
+        </ErrorBoundary>
       </body>
     </html>
   )

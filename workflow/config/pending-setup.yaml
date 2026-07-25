@@ -20,6 +20,14 @@ items:
     status: resolved
     resolved_by: inspect
     resolution: "Full-stack e-commerce platform for selling physical goods online, comprising a customer-facing storefront (Next.js), admin dashboard (Next.js), and REST API backend (Express + Prisma + MySQL). Supports product browsing, cart, checkout, order management, returns, and replacements."
+  - id: PS-3
+    config: verification.yaml
+    field: "commands[0].command"
+    question: "What command confirms the repo is healthy (build, test, lint)?"
+    hint: "Check Makefile, package.json scripts, or CI config"
+    status: resolved
+    resolved_by: inspect
+    resolution: "npm run build (already configured as commands[0], required:true, phases: build/ship); npm run lint also configured as commands[1]"
   - id: PS-6
     config: source-of-truth.yaml
     field: "source_of_truth.providers[0].type / source_of_truth.providers[0].location"
