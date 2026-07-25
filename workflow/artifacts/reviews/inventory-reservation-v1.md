@@ -18,7 +18,9 @@ orchestration:
   user_checkpoint: none
 ---
 
-> **Update 2026-07-25:** All P0/P1 findings below were fixed in two Build fix passes at the user's request, including the test-coverage gaps P1-1 originally flagged as partial. See `workflow/artifacts/tasks/inventory-reservation-v1.md` → "Review Fix Pass" for what changed. Findings are left as originally written (this is the record of what Review found); each is annotated inline with its resolution. This artifact has not yet been re-reviewed end-to-end by a fresh Review pass — the Requirement Coverage table below has been updated to reflect the fixed state, but an independent re-review is still the recommended next step before Ship.
+> **Update 2026-07-25:** All P0/P1 findings below were fixed in two Build fix passes at the user's request, including the test-coverage gaps P1-1 originally flagged as partial. See `workflow/artifacts/tasks/inventory-reservation-v1.md` → "Review Fix Pass" for what changed. Findings are left as originally written (this is the record of what Review found); each is annotated inline with its resolution.
+>
+> **Update 2026-07-26:** An independent Round 2 re-review was completed — see `workflow/artifacts/reviews/inventory-reservation-v2.md`. Recommendation: **pass**. One small new finding (P3, non-blocking) was found and fixed during that pass.
 
 # Inventory Reservation & Stock Integrity — Review
 

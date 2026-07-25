@@ -72,7 +72,11 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next) => 
     // pass when it shouldn't. The authoritative, race-free check happens atomically
     // inside createReservations() below, which locks each product row before
     // checking and inserting in the same transaction as order creation.
-    const preCheckAvailability = await getEffectiveAvailability(productIds, req.user!.id)
+    // Excludes nothing (matches createReservations' authoritative check below) — a
+    // same-user sibling order's hold on the same product is a real claim and must
+    // fail this pre-check too, or it wastes a Razorpay order-creation call before
+    // the atomic check catches it anyway.
+    const preCheckAvailability = await getEffectiveAvailability(productIds, undefined)
     for (const item of validatedData.items) {
       const product = products.find(p => p.id === item.productId)!
       const available = preCheckAvailability[item.productId] ?? 0
