@@ -148,6 +148,10 @@ const startServer = async () => {
   }
 }
 
-void startServer()
+// Importing this module under test (supertest) must not bind a port or block
+// on a DB connection at import time — only start listening outside tests.
+if (process.env.NODE_ENV !== 'test') {
+  void startServer()
+}
 
 export default app
