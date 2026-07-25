@@ -6,15 +6,48 @@ import { optionalAuth, AuthRequest } from '../middleware/auth.middleware'
 
 const router = Router()
 
+const cartItemsSchema = z
+  .array(
+    z.object({
+      productId: z.string().uuid(),
+      quantity: z.number().int().positive(),
+    })
+  )
+  .min(1)
+
+// R4 (S-21/W-07): both coupon endpoints used to trust a client-supplied
+// orderValue number for the minOrderValue gate and the discount preview —
+// display could show a discount the shopper wasn't actually entitled to.
+// There is no persisted server-side cart to resolve from (Epic 2/E4 is out
+// of scope for this chain), so the smallest contract that lets the server
+// compute a real number is the cart's line items, priced from the DB the
+// same way order creation prices them.
+async function computeServerSubtotal(items: { productId: string; quantity: number }[]): Promise<number> {
+  const products = await prisma.product.findMany({
+    where: { id: { in: items.map((i) => i.productId) }, isActive: true },
+    select: { id: true, price: true },
+  })
+  const priceById = new Map(products.map((p) => [p.id, Number(p.price)]))
+
+  let subtotal = 0
+  for (const item of items) {
+    const price = priceById.get(item.productId)
+    if (price === undefined) continue // unknown/inactive product — this endpoint is preview-only; order creation is the authoritative check
+    subtotal += price * item.quantity
+  }
+  return subtotal
+}
+
 const validateCouponSchema = z.object({
   code: z.string().min(1),
-  orderValue: z.number().positive(),
+  items: cartItemsSchema,
 })
 
 // Validate coupon
 router.post('/validate', optionalAuth, async (req: AuthRequest, res: Response, next) => {
   try {
     const validatedData = validateCouponSchema.parse(req.body)
+    const orderValue = await computeServerSubtotal(validatedData.items)
 
     const coupon = await prisma.coupon.findUnique({
       where: { code: validatedData.code.toUpperCase() },
@@ -56,7 +89,7 @@ router.post('/validate', optionalAuth, async (req: AuthRequest, res: Response, n
     }
 
     // Check minimum order value
-    if (coupon.minOrderValue && validatedData.orderValue < Number(coupon.minOrderValue)) {
+    if (coupon.minOrderValue && orderValue < Number(coupon.minOrderValue)) {
       throw createError(
         400,
         `Minimum order value ₹${coupon.minOrderValue} required`,
@@ -67,10 +100,11 @@ router.post('/validate', optionalAuth, async (req: AuthRequest, res: Response, n
     // Calculate discount
     let discount: number
     if (coupon.discountType === 'PERCENTAGE') {
-      discount = validatedData.orderValue * (Number(coupon.discountValue) / 100)
+      discount = orderValue * (Number(coupon.discountValue) / 100)
     } else {
       discount = Number(coupon.discountValue)
     }
+    discount = Math.min(discount, orderValue) // R4 — preview can't promise more than the cart is worth
 
     res.json({
       success: true,
@@ -87,10 +121,15 @@ router.post('/validate', optionalAuth, async (req: AuthRequest, res: Response, n
   }
 })
 
+const availableCouponsSchema = z.object({
+  items: cartItemsSchema,
+})
+
 // Get available coupons for a cart
-router.get('/available', optionalAuth, async (req: AuthRequest, res: Response, next) => {
+router.post('/available', optionalAuth, async (req: AuthRequest, res: Response, next) => {
   try {
-    const orderValue = parseFloat(req.query.orderValue as string) || 0
+    const { items } = availableCouponsSchema.parse(req.body)
+    const orderValue = await computeServerSubtotal(items)
 
     const coupons = await prisma.coupon.findMany({
       where: {

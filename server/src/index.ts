@@ -100,6 +100,15 @@ const generalLimiter = rateLimit({
 // Logging
 app.use(morgan('combined'))
 
+// R3: the Razorpay webhook must verify its HMAC against the exact bytes
+// Razorpay signed, not a re-serialization of whatever express.json() parsed
+// (SEC-3 — re-serialization does not reliably reproduce the original byte
+// sequence). Scoped to this one path and registered before the global JSON
+// parser below, so express.json() sees this request already has a body
+// (Express's body-parsers no-op when a prior parser already consumed the
+// stream) and every other route's parsing is unaffected.
+app.use('/api/v1/webhooks/razorpay', express.raw({ type: 'application/json' }))
+
 // Body parsing
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))

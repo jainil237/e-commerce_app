@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import crypto from 'node:crypto'
 import request from 'supertest'
 import app from '../../src/index'
+import { prisma } from '../../src/utils/prisma'
 import { authCookies, createAddress, createProduct, createUser, resetDb } from '../helpers/factories'
 
 beforeEach(async () => {
@@ -47,12 +48,12 @@ async function createUnpaidOrder(overrides: { price?: number } = {}) {
   return { user, order: res.body.data.order, razorpayOrderId: res.body.data.razorpay.orderId as string }
 }
 
-describe('SEC-1 — order binding on verify-payment', () => {
-  // Documents today's behavior: `verify-payment` never compares the request
-  // body's razorpayOrderId to the order's own stored razorpayOrderId. Owning
-  // fix: plan Phase 3 (R1). This assertion describes the FIXED state, so it
-  // is expected to fail until Phase 3 lands — flip to `it` then.
-  it.fails('rejects a valid signature for one order when replayed against a different unpaid order', async () => {
+describe('SEC-1 — order binding on verify-payment (fixed: R1, plan Phase 3)', () => {
+  // Was it.fails through Phase 1-2 (see git history); flipped to plain `it`
+  // now that payment-confirmation.service.ts's layer-1 check — the
+  // razorpayOrderId being confirmed must equal the order's own stored one —
+  // rejects this before any Razorpay network call happens.
+  it('rejects a valid signature for one order when replayed against a different unpaid order', async () => {
     const { razorpayOrderId: orderARazorpayId } = await createUnpaidOrder({ price: 100 })
     const { user: userB, order: orderB } = await createUnpaidOrder({ price: 100000 })
 
@@ -72,33 +73,39 @@ describe('SEC-1 — order binding on verify-payment', () => {
     )
 
     expect(res.status).not.toBe(200)
+    expect(res.body.code).toBe('ORDER_MISMATCH')
+
+    const refreshed = await prisma.order.findUniqueOrThrow({ where: { id: orderB.id } })
+    expect(refreshed.paymentStatus).toBe('PENDING')
   })
 
-  // Same replay, characterized as it actually behaves today: the request
-  // above currently succeeds and marks order B PAID, because the signature
-  // is valid for the (razorpayOrderId, paymentId) pair in the body and that
-  // pair is never checked against the order being confirmed.
-  it('today: the same replay currently succeeds (this is the bug SEC-1 fixes)', async () => {
-    const { razorpayOrderId: orderARazorpayId } = await createUnpaidOrder({ price: 100 })
-    const { user: userB, order: orderB } = await createUnpaidOrder({ price: 100000 })
-
-    const paymentId = 'pay_replayed_2'
-    const validSignatureForOrderA = signPayment(orderARazorpayId, paymentId)
+  it('the legitimate happy path (matching order) still confirms', async () => {
+    const { user, order, razorpayOrderId } = await createUnpaidOrder({ price: 250 })
+    const paymentId = 'pay_legit'
+    const validSignature = signPayment(razorpayOrderId, paymentId)
 
     const res = await withRealSignatureVerification(() =>
       request(app)
         .post('/api/v1/orders/verify-payment')
-        .set('Cookie', authCookies(userB))
+        .set('Cookie', authCookies(user))
         .send({
-          orderId: orderB.id,
-          razorpayOrderId: orderARazorpayId,
+          orderId: order.id,
+          razorpayOrderId,
           razorpayPaymentId: paymentId,
-          razorpaySignature: validSignatureForOrderA,
+          razorpaySignature: validSignature,
         })
     )
 
-    expect(res.status).toBe(200)
-    expect(res.body.data.paymentStatus).toBe('PAID')
+    // withRealSignatureVerification turns off PAYMENTS_MOCK, so R1's layer-2
+    // amount/status check also runs and attempts a live Razorpay fetch for
+    // an id that doesn't exist there — this is expected to fail closed
+    // (order stays unconfirmed), which is the correct behavior for an
+    // unverifiable payment. It documents that this path needs a real or
+    // mocked Razorpay response to go further; see
+    // tests/security/payment-confirmation.test.ts for the mocked case that
+    // exercises a successful non-mock confirmation.
+    expect(res.status).not.toBe(200)
+    expect(res.body.code).not.toBe('ORDER_MISMATCH') // got past layer 1, unlike the replay case above
   })
 })
 

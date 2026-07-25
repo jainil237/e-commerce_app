@@ -129,13 +129,17 @@ export default function CheckoutPage() {
         setCheckoutValid(false)
       }
 
-      // ── 2. Fetch eligible coupons using confirmed prices ──
-      // Use freshSubtotal (from API) when available, else fall back to the
-      // localStorage-derived subtotal so coupons appear even if step 1 failed.
-      const orderValue = freshSubtotal > 0 ? freshSubtotal : subtotal
-      if (orderValue <= 0) return
+      // ── 2. Fetch eligible coupons ──
+      // R4: the server prices these from real cart items now, not a
+      // client-supplied number — send the line items, not a total.
+      if (items.length === 0) return
       try {
-        const res = await fetch(`/api/v1/coupons/available?orderValue=${orderValue}`, { credentials: 'include' })
+        const res = await fetch('/api/v1/coupons/available', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ items: items.map(i => ({ productId: i.productId, quantity: i.quantity })) }),
+        })
         const data = await res.json()
         if (data.success) setAvailableCoupons(data.data)
       } catch (err) {
@@ -158,7 +162,7 @@ export default function CheckoutPage() {
       const res = await fetch('/api/v1/coupons/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, orderValue: effectiveSubtotal }),
+        body: JSON.stringify({ code, items: items.map(i => ({ productId: i.productId, quantity: i.quantity })) }),
       })
       const data = await res.json()
       if (data.success) {

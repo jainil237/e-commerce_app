@@ -115,31 +115,11 @@ describe('RMA refund — idempotency and state guards', () => {
   })
 })
 
-describe('TD-7 — GST asymmetry between order pricing and refund calculation', () => {
-  // Documents today's actual bug: orders store GST-inclusive unit prices
-  // (order.routes.ts:92, `const totalGst = 0 // GST is now inclusive`), but
-  // the refund calculation in rma.service.ts adds GST on top of that
-  // already-inclusive unitPrice. Every return over-refunds by one GST
-  // percentage on top of what was actually charged.
-  it('today: a full-item return refunds more than the customer was charged', async () => {
-    const unitPrice = 1000
-    const gstPercent = 18
-    const { refund } = await fullReturnFlow(unitPrice, gstPercent)
-
-    // What was actually charged for this order (GST-inclusive design).
-    const charged = unitPrice
-    // What rma.service.ts currently computes: unitPrice + GST on top of it.
-    const currentlyRefunded = unitPrice + (unitPrice * gstPercent) / 100
-
-    expect(Number(refund.amount)).toBeCloseTo(currentlyRefunded, 2)
-    expect(Number(refund.amount)).toBeGreaterThan(charged) // over-refund, characterized
-  })
-
-  // Describes the FIXED state (plan Phase 4 / R4): a full-order refund must
-  // equal exactly what was charged, since prices are GST-inclusive. Forward-
-  // only per brief A2 — this does not retro-adjust existing Refund rows.
-  // Expected to fail until Phase 4 lands.
-  it.fails('R4: a full-item return refunds exactly what was charged, no GST added on top', async () => {
+describe('TD-7 — GST asymmetry between order pricing and refund calculation (fixed: R4, plan Phase 4)', () => {
+  // Was it.fails through Phase 1-3 (see git history); flipped to plain `it`
+  // now that rma.service.ts's refund calculation no longer adds GST on top
+  // of the already GST-inclusive unitPrice.
+  it('a full-item return refunds exactly what was charged, no GST added on top', async () => {
     const unitPrice = 1000
     const gstPercent = 18
     const { refund } = await fullReturnFlow(unitPrice, gstPercent)

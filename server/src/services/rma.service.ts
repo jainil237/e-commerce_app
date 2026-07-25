@@ -124,14 +124,16 @@ export class RmaService {
 
       // 4. Handle Refund Details if it's a RETURN
       if (input.type === 'RETURN') {
-        // Calculate partial refund amount based on items
+        // Calculate partial refund amount based on items. unitPrice is
+        // already GST-inclusive (order.routes.ts stores the charged price
+        // directly, with gstAmount always 0 at the order level) — refunding
+        // unitPrice + GST on top double-counts GST that was never charged
+        // separately. R4 (TD-7): refund exactly what was paid, no more.
         let totalRefund = new Prisma.Decimal(0)
         for (const reqItem of input.items) {
           const orderItem = order.items.find((i) => i.id === reqItem.orderItemId)!
           const unitPrice = orderItem.unitPrice
-          const gstPercent = orderItem.gstPercent
-          const gstAmount = unitPrice.mul(new Prisma.Decimal(gstPercent)).div(100)
-          const itemTotal = unitPrice.add(gstAmount).mul(reqItem.quantity)
+          const itemTotal = unitPrice.mul(reqItem.quantity)
           totalRefund = totalRefund.add(itemTotal)
         }
 
