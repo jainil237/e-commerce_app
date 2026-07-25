@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@ecom/shared": "*",
     "clsx": "^2.1.0",
     "d3": "^7.9.0",
     "lucide-react": "^0.312.0",

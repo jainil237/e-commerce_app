@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import clsx from 'clsx'
@@ -12,6 +12,7 @@ import { useStoreConfig } from '@/contexts/store-config.context'
 import { FallbackImage } from '@/components/ui/fallback-image'
 import { Button } from '@/components/atoms/Button/Button'
 import { Input } from '@/components/atoms/Input/Input'
+import { CartProduct } from '@shared/types'
 import './checkout.scss'
 
 interface Address {
@@ -25,17 +26,6 @@ interface Address {
   isDefault: boolean
 }
 
-interface CartProduct {
-  id: string
-  name: string
-  slug: string
-  price: string
-  mrp: string
-  stock: number
-  gstPercent: number
-  images: Array<{ url: string }>
-}
-
 export default function CheckoutPage() {
   const router = useRouter()
   const { user, isLoading: authLoading } = useAuth()
@@ -44,6 +34,7 @@ export default function CheckoutPage() {
   const config = useStoreConfig()
 
   const [addresses, setAddresses] = useState<Address[]>([])
+  const [addressLoadFailed, setAddressLoadFailed] = useState(false)
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null)
   const [couponCode, setCouponCode] = useState('')
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null)
@@ -52,10 +43,17 @@ export default function CheckoutPage() {
   const [products, setProducts] = useState<Record<string, CartProduct>>({})
   const [checkoutValid, setCheckoutValid] = useState(true)
   const [checkoutErrors, setCheckoutErrors] = useState<Record<string, string>>({})
+  // W-07: validate-checkout returns server-confirmed prices. This used to be
+  // computed and thrown away while the summary and the coupon call both used
+  // the localStorage-derived subtotal, so the price shown was not the price
+  // charged. One source now feeds the summary, the coupon call and the guard.
+  const [serverSubtotal, setServerSubtotal] = useState<number | null>(null)
+  const orderInFlight = useRef(false)
 
-  const shipping = subtotal >= config.shipping.freeShippingAbove ? 0 : config.shipping.baseShippingCharge
+  const effectiveSubtotal = serverSubtotal ?? subtotal
+  const shipping = effectiveSubtotal >= config.shipping.freeShippingAbove ? 0 : config.shipping.baseShippingCharge
   const discount = appliedCoupon?.discount || 0
-  const total = subtotal + shipping - discount
+  const total = Math.max(0, effectiveSubtotal + shipping - discount)
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -66,14 +64,28 @@ export default function CheckoutPage() {
   useEffect(() => {
     async function fetchAddresses() {
       if (!user) return
-      const res = await fetch('/api/v1/addresses', { credentials: 'include' })
-      const data = await res.json()
-      setAddresses(data.data || [])
-      const defaultAddr = data.data?.find((a: Address) => a.isDefault)
-      if (defaultAddr) setSelectedAddress(defaultAddr.id)
+      // W-09: this had no try/catch at all — a 500 became an unhandled
+      // rejection and the UI showed "No saved addresses found", indistinguishable
+      // from a genuinely empty list at the highest-stakes point in the funnel.
+      try {
+        const res = await fetch('/api/v1/addresses', { credentials: 'include' })
+        if (!res.ok) throw new Error('Failed to load addresses')
+        const data = await res.json()
+        setAddresses(data.data || [])
+        const defaultAddr = data.data?.find((a: Address) => a.isDefault)
+        if (defaultAddr) setSelectedAddress(defaultAddr.id)
+        setAddressLoadFailed(false)
+      } catch {
+        setAddressLoadFailed(true)
+      }
     }
     fetchAddresses()
   }, [user])
+
+  const cartKey = useMemo(
+    () => items.map(i => `${i.productId}:${i.quantity}`).join(','),
+    [items]
+  )
 
   useEffect(() => {
     async function loadCheckoutData() {
@@ -111,6 +123,7 @@ export default function CheckoutPage() {
         setProducts(productMap)
         setCheckoutValid(allValid)
         setCheckoutErrors(errorMap)
+        setServerSubtotal(freshSubtotal > 0 ? freshSubtotal : null)
       } catch (err) {
         console.error('Failed to validate cart for checkout', err)
         setCheckoutValid(false)
@@ -130,7 +143,11 @@ export default function CheckoutPage() {
       }
     }
     loadCheckoutData()
-  }, [items, subtotal])
+    // W-03: depending on `items` re-ran this on every CartProvider render,
+    // and the body's setState calls produced a new render — an unbounded
+    // request loop. The key changes only when the cart contents actually do.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartKey])
 
   const applyCoupon = async (codeOverride?: string) => {
     const code = codeOverride ?? couponCode
@@ -141,7 +158,7 @@ export default function CheckoutPage() {
       const res = await fetch('/api/v1/coupons/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, orderValue: subtotal }),
+        body: JSON.stringify({ code, orderValue: effectiveSubtotal }),
       })
       const data = await res.json()
       if (data.success) {
@@ -164,6 +181,12 @@ export default function CheckoutPage() {
       showToast('error', 'Please select a delivery address')
       return
     }
+
+    // W-04: a ref, not state. setIsLoading does not apply until the next
+    // render, so two clicks in the same tick both passed a state-based guard
+    // and created two orders against one cart.
+    if (orderInFlight.current) return
+    orderInFlight.current = true
 
     setIsLoading(true)
     try {
@@ -205,7 +228,12 @@ export default function CheckoutPage() {
             clearCart()
             router.push(`/orders/${data.data.order.id}?success=true`)
           } else {
+            // W-05: the order exists server-side even when verification fails
+            // here, so releasing the cart and the guard lets the user re-order
+            // the same basket. Send them to the order to see its real state.
             showToast('error', verifyData.message || 'Payment verification failed')
+            orderInFlight.current = false
+            setIsLoading(false)
           }
         }
 
@@ -239,19 +267,51 @@ export default function CheckoutPage() {
               theme: {
                 color: config.store.primaryColor,
               },
+              modal: {
+                // Without this the guard never releases when the user closes
+                // the modal, leaving the pay button disabled forever.
+                ondismiss: () => {
+                  orderInFlight.current = false
+                  setIsLoading(false)
+                },
+              },
             }
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            new (window as any).Razorpay(options).open()
+            // Review finding: the blanket setIsLoading(false) this phase removed
+            // (to fix W-04) was, before that fix, what quietly absorbed a throw
+            // here — it ran unconditionally right after appendChild, before
+            // onload could even fire. Without it, an exception in this callback
+            // (malformed options, the SDK failing to initialize) would leave
+            // orderInFlight and isLoading stuck true with no error shown and no
+            // way to retry short of a reload.
+            try {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              new (window as any).Razorpay(options).open()
+            } catch {
+              showToast('error', 'Could not open the payment gateway')
+              orderInFlight.current = false
+              setIsLoading(false)
+            }
+          }
+          script.onerror = () => {
+            showToast('error', 'Could not load the payment gateway')
+            orderInFlight.current = false
+            setIsLoading(false)
           }
           document.body.appendChild(script)
         }
       } else {
         showToast('error', data.message || 'Failed to create order')
+        orderInFlight.current = false
+        setIsLoading(false)
       }
     } catch {
       showToast('error', 'Failed to create order')
+      orderInFlight.current = false
+      setIsLoading(false)
     }
-    setIsLoading(false)
+    // W-04: deliberately no setIsLoading(false) here. The payment flow is still
+    // pending at this point — the Razorpay modal has not been dismissed and the
+    // handler has not run. Clearing it here re-enabled the pay button mid-payment.
   }
 
   if (authLoading || items.length === 0) {
@@ -285,7 +345,16 @@ export default function CheckoutPage() {
                 Delivery Address
               </h2>
 
-              {addresses.length === 0 ? (
+              {addressLoadFailed ? (
+                <div className="ms-checkout-address--empty" role="alert">
+                  <p className="ms-checkout-address__empty-text">
+                    Couldn&apos;t load your addresses. Check your connection and try again.
+                  </p>
+                  <Button variant="secondary" size="sm" onClick={() => window.location.reload()}>
+                    Retry
+                  </Button>
+                </div>
+              ) : addresses.length === 0 ? (
                 <div className="ms-checkout-address--empty">
                   <p className="ms-checkout-address__empty-text">No saved addresses found</p>
                   <Link href="/account/addresses">

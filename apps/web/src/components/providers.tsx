@@ -2,6 +2,7 @@
 
 import { ReactNode } from 'react'
 import { SWRConfig } from 'swr'
+import { StoreProvider } from '@shared/state/StoreProvider'
 import {
   StoreConfigProvider,
   ThemeProvider,
@@ -22,21 +23,23 @@ const fetcher = async (url: string) => {
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
-    <SWRConfig value={{ fetcher }}>
-      <StoreConfigProvider>
-        <ThemeProvider>
-          <ToastProvider>
-            <AuthProvider>
-              <WishlistProvider>
-                <CartProvider>
-                  {children}
-                </CartProvider>
-              </WishlistProvider>
-            </AuthProvider>
-          </ToastProvider>
-        </ThemeProvider>
-      </StoreConfigProvider>
-    </SWRConfig>
+    <StoreProvider>
+      <SWRConfig value={{ fetcher }}>
+        <StoreConfigProvider>
+          <ThemeProvider>
+            <ToastProvider>
+              <AuthProvider>
+                <WishlistProvider>
+                  <CartProvider>
+                    {children}
+                  </CartProvider>
+                </WishlistProvider>
+              </AuthProvider>
+            </ToastProvider>
+          </ThemeProvider>
+        </StoreConfigProvider>
+      </SWRConfig>
+    </StoreProvider>
   )
 }
 

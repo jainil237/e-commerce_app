@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Plus, Edit2, Trash2 } from 'lucide-react'
 import { useToast } from '@/components/providers'
 import { Coupon } from '@shared/types'
-import { SharedTableActionCell, SharedTableActionIcon, SharedBadge } from '../../../../../../shared/components/UIPrimitives'
+import { SharedTableActionCell, SharedTableActionIcon, SharedBadge } from '@shared/components/UIPrimitives'
 
 export default function CouponsPage() {
   const { showToast } = useToast()

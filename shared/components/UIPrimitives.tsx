@@ -132,11 +132,21 @@ export const SharedButton: React.FC<SharedButtonProps> = ({
   );
 };
 
+const MODAL_SIZES = {
+  sm: 'max-w-sm',
+  md: 'max-w-md',
+  lg: 'max-w-lg',
+  xl: 'max-w-xl',
+  '2xl': 'max-w-2xl',
+} as const;
+
 interface SharedModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  /** Defaults to 'md' so existing callers are unaffected. */
+  size?: keyof typeof MODAL_SIZES;
 }
 
 export const SharedModal: React.FC<SharedModalProps> = ({
@@ -144,9 +154,13 @@ export const SharedModal: React.FC<SharedModalProps> = ({
   onClose,
   title,
   children,
+  size = 'md',
 }) => {
   const modalRef = React.useRef<HTMLDivElement>(null);
   const previousActiveElement = React.useRef<HTMLElement | null>(null);
+  // Was a hardcoded "modal-title", which produces duplicate ids — and so an
+  // ambiguous accessible name — if two modals are ever mounted at once.
+  const titleId = React.useId();
 
   React.useEffect(() => {
     if (isOpen) {
@@ -228,11 +242,11 @@ export const SharedModal: React.FC<SharedModalProps> = ({
         tabIndex={-1}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="modal-title"
-        className="bg-[var(--surface-0)] border border-[var(--border-base)] shadow-2xl rounded-3xl p-6 w-full max-w-md focus:outline-none animate-scale-in relative"
+        aria-labelledby={titleId}
+        className={`bg-[var(--surface-0)] border border-[var(--border-base)] shadow-2xl rounded-3xl p-6 w-full ${MODAL_SIZES[size]} focus:outline-none animate-scale-in relative`}
       >
         <div className="flex justify-between items-center mb-6">
-          <h3 id="modal-title" className="text-xl font-black text-[var(--text-primary)]">
+          <h3 id={titleId} className="text-xl font-black text-[var(--text-primary)]">
             {title}
           </h3>
           <button

@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express'
+import { ZodError } from 'zod'
 
 export interface ApiError extends Error {
   statusCode?: number
@@ -12,6 +13,18 @@ export const errorHandler = (
   _next: NextFunction
 ) => {
   const isDev = process.env.NODE_ENV === 'development'
+
+  // A ZodError carries no statusCode, so without this branch every schema.parse
+  // failure falls through to the 500 case and is masked in production.
+  if (err instanceof ZodError) {
+    return res.status(400).json({
+      success: false,
+      message: 'Validation failed',
+      code: 'VALIDATION_ERROR',
+      data: err.flatten().fieldErrors,
+    })
+  }
+
   const statusCode = err.statusCode || 500
   const isServerError = statusCode >= 500
   const code = err.code || (isServerError ? 'INTERNAL_ERROR' : 'ERROR')
@@ -26,7 +39,7 @@ export const errorHandler = (
     method: req.method,
   })
 
-  res.status(statusCode).json({
+  return res.status(statusCode).json({
     success: false,
     message,
     code,

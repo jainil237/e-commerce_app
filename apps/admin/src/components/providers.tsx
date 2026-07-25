@@ -1,17 +1,12 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { StoreProvider } from '@shared/state/StoreProvider'
 import { useRouter } from 'next/navigation'
-
-interface AdminUser {
-  id: string
-  email: string
-  name: string
-  role: string
-}
+import type { User } from '@shared/types'
 
 interface AuthContextType {
-  user: AdminUser | null
+  user: User | null
   isLoading: boolean
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
@@ -104,7 +99,9 @@ function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
 
   const showToast = (type: Toast['type'], message: string) => {
-    const id = Date.now().toString()
+    // Random suffix: two toasts raised in the same millisecond used to share an
+    // id, so removing one removed both. Web fixed this; admin had not.
+    const id = `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
     setToasts((prev) => [...prev, { id, type, message }])
     setTimeout(() => removeToast(id), 3000)
   }
@@ -116,16 +113,30 @@ function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ toasts, showToast, removeToast }}>
       {children}
+      {/* Two live regions: errors interrupt (assertive), the rest wait (polite).
+          Both render unconditionally so the region exists before content lands. */}
       <div className="fixed bottom-4 right-4 z-50 space-y-2">
-        {toasts.map((toast) => (
+        {(['assertive', 'polite'] as const).map((politeness) => (
           <div
-            key={toast.id}
-            className={`px-4 py-3 rounded-lg shadow-lg text-white ${
-              toast.type === 'success' ? 'bg-green-600' :
-              toast.type === 'error' ? 'bg-red-600' : 'bg-blue-600'
-            }`}
+            key={politeness}
+            role={politeness === 'assertive' ? 'alert' : 'status'}
+            aria-live={politeness}
+            aria-atomic="true"
+            className="space-y-2"
           >
-            {toast.message}
+            {toasts
+              .filter((t) => (politeness === 'assertive' ? t.type === 'error' : t.type !== 'error'))
+              .map((toast) => (
+                <div
+                  key={toast.id}
+                  className={`px-4 py-3 rounded-lg shadow-lg text-white ${
+                    toast.type === 'success' ? 'bg-green-600' :
+                    toast.type === 'error' ? 'bg-red-600' : 'bg-blue-600'
+                  }`}
+                >
+                  {toast.message}
+                </div>
+              ))}
           </div>
         ))}
       </div>
@@ -135,7 +146,7 @@ function ToastProvider({ children }: { children: ReactNode }) {
 
 function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
-  const [user, setUser] = useState<AdminUser | null>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -147,10 +158,11 @@ function AuthProvider({ children }: { children: ReactNode }) {
       const res = await fetch(`/api/v1/auth/me`, {
         credentials: 'include',
       })
-      if (res.ok) {
-        const data = await res.json()
-        setUser(data.data)
-      }
+      // The role test has to happen here as well as on the login path: a session
+      // restored from a cookie never goes through login(). A failed check clears
+      // the user rather than leaving the previous value in place.
+      const data = res.ok ? await res.json() : null
+      setUser(data?.data?.role === 'ADMIN' ? data.data : null)
     } catch {
       setUser(null)
     }
@@ -188,12 +200,14 @@ function AuthProvider({ children }: { children: ReactNode }) {
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
-    <ThemeProvider>
-      <ToastProvider>
-        <AuthProvider>
-          {children}
-        </AuthProvider>
-      </ToastProvider>
-    </ThemeProvider>
+    <StoreProvider>
+      <ThemeProvider>
+        <ToastProvider>
+          <AuthProvider>
+            {children}
+          </AuthProvider>
+        </ToastProvider>
+      </ThemeProvider>
+    </StoreProvider>
   )
 }

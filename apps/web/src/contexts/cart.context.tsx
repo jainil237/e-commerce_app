@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react'
 import { useAuth } from './auth.context'
 import { useToast } from './toast.context'
 import { validateCartQuantity, clearSnapshots, forceRefreshSnapshot } from '../lib/inventory-snapshot'
@@ -20,7 +20,8 @@ export interface CartData {
 
 const CartContext = createContext<{
   items: CartItem[]
-  addItem: (productId: string, quantity?: number, productMeta?: { price: number; name: string }) => void
+  /** Resolves false when the item was NOT added (stock validation failed). */
+  addItem: (productId: string, quantity?: number, productMeta?: { price: number; name: string }) => Promise<boolean>
   removeItem: (productId: string) => void
   updateQuantity: (productId: string, quantity: number) => void
   clearCart: () => void
@@ -29,7 +30,7 @@ const CartContext = createContext<{
   isHydrated: boolean
 }>({
   items: [],
-  addItem: () => {},
+  addItem: async () => false,
   removeItem: () => {},
   updateQuantity: () => {},
   clearCart: () => {},
@@ -138,6 +139,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // ── 3. SAVE to localStorage — only after hydration so we never overwrite with [] ──
   useEffect(() => {
     if (!isHydrated) return
+    // W-15: the logout branch above calls clearCartStorage(), and this effect
+    // used to immediately rewrite the key with an empty guest cart, so the
+    // removal never stuck. An empty guest cart has nothing worth persisting.
+    if (userId === null && items.length === 0) {
+      clearCartStorage()
+      return
+    }
     saveCartData({ userId, items })
   }, [items, userId, isHydrated])
 
@@ -172,7 +180,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
         if (!snapCheck.valid && snapCheck.error) {
           showToast('error', snapCheck.error)
-          return
+          return false
         }
       }
 
@@ -199,6 +207,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           },
         ]
       })
+      return true
     },
     [showToast]
   )
@@ -255,21 +264,26 @@ export function CartProvider({ children }: { children: ReactNode }) {
     clearSnapshots()
   }, [])
 
-  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0)
-  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  const totalItems = useMemo(
+    () => items.reduce((sum, item) => sum + item.quantity, 0),
+    [items]
+  )
+  const subtotal = useMemo(
+    () => items.reduce((sum, item) => sum + item.price * item.quantity, 0),
+    [items]
+  )
+
+  // A fresh object literal here re-rendered every consumer on any provider
+  // render. Cart is the innermost provider, so an auth revalidation cascaded
+  // through all five.
+  const value = useMemo(
+    () => ({ items, addItem, removeItem, updateQuantity, clearCart, totalItems, subtotal, isHydrated }),
+    [items, addItem, removeItem, updateQuantity, clearCart, totalItems, subtotal, isHydrated]
+  )
 
   return (
     <CartContext.Provider
-      value={{
-        items,
-        addItem,
-        removeItem,
-        updateQuantity,
-        clearCart,
-        totalItems,
-        subtotal,
-        isHydrated,
-      }}
+      value={value}
     >
       {children}
     </CartContext.Provider>

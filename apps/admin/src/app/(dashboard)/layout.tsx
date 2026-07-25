@@ -17,11 +17,13 @@ export default function DashboardLayout({
   const router = useRouter()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
+  const isAdmin = user?.role === 'ADMIN'
+
   useEffect(() => {
-    if (!isLoading && !user) {
+    if (!isLoading && !isAdmin) {
       router.push('/login')
     }
-  }, [user, isLoading, router])
+  }, [isAdmin, isLoading, router])
 
   if (isLoading) {
     return (
@@ -31,7 +33,7 @@ export default function DashboardLayout({
     )
   }
 
-  if (!user) {
+  if (!isAdmin) {
     return null
   }
 
