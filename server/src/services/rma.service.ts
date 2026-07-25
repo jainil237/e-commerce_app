@@ -11,6 +11,7 @@ import {
 import { v4 as uuidv4 } from 'uuid'
 import crypto from 'crypto'
 import Razorpay from 'razorpay'
+import { isPaymentsMockMode } from '../config/payments'
 
 // ponytail: DEBT — own PrismaClient instead of the `../utils/prisma` singleton, so this
 // opens a second connection pool and skips the singleton's `config/env` import and log
@@ -19,9 +20,12 @@ import Razorpay from 'razorpay'
 // but touches every query in three files; do it in an isolated commit.
 const prisma = new PrismaClient()
 
+// Empty string, not a placeholder-shaped fallback: the SDK client only needs
+// a string to construct, and isPaymentsMockMode() below is what actually
+// gates whether any of its methods get called.
 const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || 'dummy_key',
-  key_secret: process.env.RAZORPAY_KEY_SECRET || 'dummy_secret',
+  key_id: process.env.RAZORPAY_KEY_ID || '',
+  key_secret: process.env.RAZORPAY_KEY_SECRET || '',
 })
 
 interface CreateRmaRequestInput {
@@ -323,12 +327,11 @@ export class RmaService {
 
       // Call Razorpay API if ORIGINAL_PAYMENT_METHOD and not mock
       let actualPaymentId = paymentId
-      const isMockMode = !process.env.RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID.startsWith('rzp_test_placeholder') || process.env.RAZORPAY_KEY_ID === 'dummy_key'
 
       if (rma.refund.mode === 'ORIGINAL_PAYMENT_METHOD') {
         const order = await tx.order.findUnique({ where: { id: rma.orderId } })
         if (order?.razorpayPaymentId) {
-          if (!isMockMode) {
+          if (!isPaymentsMockMode()) {
             try {
               const refundResponse = await razorpay.payments.refund(order.razorpayPaymentId, {
                 amount: Math.round(Number(rma.refund.amount) * 100), // in paise

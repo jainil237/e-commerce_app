@@ -9,6 +9,7 @@ import { getStoreConfig } from '../utils/config'
 import { createError } from '../middleware/error.middleware'
 import { generateInvoicePdf } from '../services/invoice.service'
 import { sendOrderConfirmationEmail, sendOrderCancelledEmail, sendInvoiceEmail } from '../services/email.service'
+import { isPaymentsMockMode } from '../config/payments'
 
 const router = Router()
 
@@ -180,9 +181,9 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next) => 
     // Generate order number
     const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`
 
-    // Create Razorpay order (or mock if using placeholder keys)
+    // Create Razorpay order (or mock in PAYMENTS_MOCK mode)
     let razorpayOrder;
-    if (process.env.RAZORPAY_KEY_ID === 'rzp_test_placeholder' || process.env.RAZORPAY_KEY_ID?.startsWith('rzp_test_placeholder')) {
+    if (isPaymentsMockMode()) {
       razorpayOrder = {
         id: `order_mock_${Date.now()}`,
         amount: Math.round(total * 100),
@@ -261,12 +262,8 @@ router.post('/verify-payment', authenticate, async (req: AuthRequest, res: Respo
       throw createError(400, 'Missing payment details', 'MISSING_PAYMENT_DETAILS')
     }
 
-    // In mock/dev mode, skip signature verification
-    const isMockMode = !process.env.RAZORPAY_KEY_ID ||
-      process.env.RAZORPAY_KEY_ID === 'rzp_test_placeholder' ||
-      process.env.RAZORPAY_KEY_ID.startsWith('rzp_test_placeholder')
-
-    if (!isMockMode) {
+    // In PAYMENTS_MOCK mode, skip signature verification
+    if (!isPaymentsMockMode()) {
       // Verify Razorpay HMAC signature
       const body = razorpayOrderId + '|' + razorpayPaymentId
       const expectedSignature = crypto

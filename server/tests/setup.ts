@@ -11,10 +11,11 @@ import { resolveTestDatabaseUrl } from './helpers/test-db-url'
 process.env.NODE_ENV = 'test'
 process.env.DATABASE_URL = resolveTestDatabaseUrl()
 
-// server/.env carries a real-looking RAZORPAY_KEY_ID for local dev — force
-// placeholder-shaped values here so the suite runs in mock mode by default
-// regardless of the developer's local .env. Tests that specifically exercise
-// signature verification override these two vars for the scope of one call,
-// then restore them — see tests/security/payment-binding.test.ts.
-process.env.RAZORPAY_KEY_ID = 'rzp_test_placeholder'
-process.env.RAZORPAY_KEY_SECRET = 'rzp_test_placeholder_secret'
+// Mock mode (server/src/config/payments.ts) is decided solely by this flag
+// as of plan Phase 2 — RAZORPAY_KEY_ID/SECRET are irrelevant to that
+// decision now, so the suite runs in mock mode by default regardless of
+// whatever real-looking values server/.env provides for local dev. Tests
+// that specifically exercise signature verification override this flag for
+// the scope of one call, then restore it — see
+// tests/security/payment-binding.test.ts.
+process.env.PAYMENTS_MOCK = 'true'
