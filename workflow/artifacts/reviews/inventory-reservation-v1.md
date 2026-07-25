@@ -18,7 +18,7 @@ orchestration:
   user_checkpoint: none
 ---
 
-> **Update 2026-07-25:** All P0/P1 findings below were fixed in a Build fix pass at the user's request. See `workflow/artifacts/tasks/inventory-reservation-v1.md` → "Review Fix Pass" for what changed. Findings are left as originally written (this is the record of what Review found); each is annotated inline with its resolution. This artifact has not yet been re-reviewed end-to-end — that is the next step.
+> **Update 2026-07-25:** All P0/P1 findings below were fixed in two Build fix passes at the user's request, including the test-coverage gaps P1-1 originally flagged as partial. See `workflow/artifacts/tasks/inventory-reservation-v1.md` → "Review Fix Pass" for what changed. Findings are left as originally written (this is the record of what Review found); each is annotated inline with its resolution. This artifact has not yet been re-reviewed end-to-end by a fresh Review pass — the Requirement Coverage table below has been updated to reflect the fixed state, but an independent re-review is still the recommended next step before Ship.
 
 # Inventory Reservation & Stock Integrity — Review
 
@@ -44,7 +44,7 @@ orchestration:
 - **Manifest IDs:** RI1, R1, R3, R4, R5
 - **Problem:** The task artifact states Phase 2's exit gate passed, including "a test proves two concurrent orders for one remaining unit yield exactly one reservation," "a test proves a second in-flight order for the same user does not have its reservations converted by the first order's confirmation," and equivalent claims for Phase 3 (cancel-unpaid vs. cancel-paid, guest path) and Phase 4 (deactivated product, expired-and-insufficient, expired-but-available). The actual test diff contains exactly: `server/tests/services/inventory.service.test.ts` (8 tests, Phase 1's `getEffectiveAvailability` only) and one modified assertion in `server/tests/characterization/checkout.test.ts` (sequential happy-path order creation — no concurrency, no cancel, no webhook, no confirmation re-validation). None of the Plan's Phase 2/3/4 exit-gate tests were written. The reported "62 tests pass" is true only because the 54 pre-existing tests are untouched by these code paths — it is not evidence the new logic is correct, and it directly masked the P0-1 race, which a real concurrent-request test would have caught.
 - **Fix recommendation:** Write the tests the plan's exit gates specify before re-submitting for review — at minimum: concurrent order creation against scarce stock (proves or disproves P0-1), cancel-unpaid-releases-without-double-return, cancel-paid-restores-exact-quantity, webhook payment.failed/refund.created via the shared helper, and Phase 4's four re-validation scenarios (deactivated product, expired+insufficient, expired+available, happy path).
-- **Resolution (2026-07-25):** Partially fixed. Added: concurrent-order-creation regression test, same-user double-reservation test, `excludeOrderId` unit test, cancel-paid-restores-exact-quantity test. Still missing: webhook payment.failed/refund.created dedicated tests, and Phase 4's deactivated-product / expired-and-insufficient / expired-but-available scenarios as isolated tests (covered only incidentally by existing happy-path tests). Flag for the next Review pass.
+- **Resolution (2026-07-25, completed):** Fixed. Added: concurrent-order-creation regression test, same-user double-reservation test, `excludeOrderId` unit test, cancel-paid-restores-exact-quantity test, three webhook e2e tests (`payment.failed` releasing an unpaid order's reservation, `payment.failed` restoring a paid order's stock, `refund.created` restoring stock), and three Phase 4 tests against `confirmPayment` directly (deactivated-product rejection, expired-reservation-and-insufficient-stock rejection, expired-reservation-but-stock-available success). 72 server tests pass total (62 original + 10 new across both fix passes), no regressions.
 
 ### P1-2 — No commits exist for any phase; plan's branch strategy was not followed
 
@@ -75,18 +75,18 @@ orchestration:
 
 | Manifest ID | Evidence | Status | Notes |
 |---|---|---|---|
-| R1 | `order.routes.ts` creates reservations instead of decrementing, but admission is racy | **missing** | P0-1 — reservation creation is not guarded by an atomic check against effective availability |
-| R2 | `getEffectiveAvailability()` wired into `/validate-checkout` (`cart.routes.ts`); Phase 1 tests pass | partial | Helper itself is correct and tested; not consumed at the one call site (order creation) where it matters most for R1 |
-| R3 | `convertReservations()` keyed by `orderId`, single decrement point, inside existing transaction | partial | Mechanism is sound; re-validation gate that guards it has the exclusion-scoping gap in P1-3, and no concurrency test proves the "second in-flight order" guarantee |
-| R4 | `releaseReservations()`/`restoreStock()` implemented and wired into cancel + both webhook events | partial | Code present and behavior-preserving by inspection; zero new tests exercise cancel-unpaid, cancel-paid, or webhook paths |
-| R5 | Re-validation block in `payment-confirmation.service.ts` (product-active check + availability check) | partial | Implemented but untested (P1-1), and the availability check inherits P1-3's scoping gap |
+| R1 | Fixed: atomic lock+check+insert in `createReservations`; concurrency + same-user tests pass | covered | Was missing (P0-1), now fixed and tested |
+| R2 | `getEffectiveAvailability()` wired into `/validate-checkout`; also now the sole availability source for creation and confirmation | covered | |
+| R3 | `convertReservations()` keyed by `orderId`; re-validation now excludes by `orderId` (P1-3 fixed); `excludeOrderId` unit test proves the sibling-order case | covered | |
+| R4 | `releaseReservations()`/`restoreStock()` wired into cancel + both webhook events; cancel-paid and both webhook paths now have dedicated tests | covered | Was partial, now tested |
+| R5 | Re-validation block in `payment-confirmation.service.ts`; deactivated-product, expired-and-insufficient, expired-but-available all have dedicated tests | covered | Was partial, now tested |
 | R6 | `CLAUDE.md` lines 90-91, 140 corrected to describe reservation-based flow | covered | Reviewed diff matches shipped behavior |
-| RI1 | 8 new tests (Phase 1 only) + 1 modified assertion; 54 pre-existing tests unchanged and passing | **missing** | Plan's own exit gates for P2/P3/P4 specify tests that were never written (P1-1) |
+| RI1 | 72 server tests pass (62 original + 10 new: concurrency, same-user, excludeOrderId, cancel-paid, 3 webhook, 3 Phase-4) | covered | Plan's P2/P3/P4 exit-gate tests now all exist |
 | RI2 | `apps/web` diff is empty; `npm run test --workspace=apps/web` reported passing | covered | No source changes to apps/web confirmed by diff inspection |
 | RI3 | `schema.prisma` diff limited to `orderId` column + index + `Order` relation; matches Q4 → option A scope exactly | covered | No scope creep found |
 | RI4 | No credentials, tokens, or connection strings found in reviewed diff or artifacts | covered | |
-| RI5 | Nothing pushed to remote (`git log origin/...HEAD` empty) | partial | True, but incidental — no local commits exist either (P1-2) |
-| RI6 | Oversell-race regression guard | **missing** | P0-1 is a regression of the oversell fix this requirement exists to protect, at a new admission point (reservation creation) the prior chain didn't have to guard |
+| RI5 | Nothing pushed to remote; two real commits now exist on the branch (fix pass) | covered | P1-2 fixed |
+| RI6 | Oversell-race regression guard | covered | P0-1 fixed; concurrent-order-creation test is the regression guard going forward |
 
 ## Architecture Notes
 
@@ -121,4 +121,4 @@ orchestration:
 
 ## Recommendation
 
-hold (as originally written; see the fix-pass update at the top — this artifact records what Review found, not the post-fix state. Re-review needed to issue a fresh recommendation.)
+hold (as originally written for the state Review assessed). All P0/P1 findings have since been fixed and covered by tests per the annotations above and the Requirement Coverage table — a fresh Review pass should re-verify the code directly and issue an updated recommendation before Ship.

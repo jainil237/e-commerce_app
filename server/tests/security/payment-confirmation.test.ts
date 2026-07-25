@@ -28,10 +28,10 @@ afterEach(() => {
   process.env.PAYMENTS_MOCK = 'true' // restore the suite default (tests/setup.ts)
 })
 
-async function createPendingOrder(total: number, razorpayOrderId = `order_${crypto.randomUUID()}`) {
+async function createPendingOrder(total: number, razorpayOrderId = `order_${crypto.randomUUID()}`, stock = 5) {
   const user = await createUser()
   const address = await createAddress(user.id)
-  const product = await createProduct({ price: total, stock: 5 })
+  const product = await createProduct({ price: total, stock })
 
   const order = await prisma.order.create({
     data: {
@@ -50,7 +50,7 @@ async function createPendingOrder(total: number, razorpayOrderId = `order_${cryp
     },
   })
 
-  return { user, order, razorpayOrderId }
+  return { user, order, product, razorpayOrderId }
 }
 
 describe('confirmPayment — R1 amount/status verification (non-mock)', () => {
@@ -208,6 +208,85 @@ describe('R1 — order binding, unit-level', () => {
         actorUserId: otherUser.id,
       })
     ).rejects.toMatchObject({ code: 'ORDER_NOT_FOUND' })
+  })
+})
+
+describe('Phase 4 — re-validate before conversion', () => {
+  it('rejects confirmation when a product was deactivated after order creation', async () => {
+    const { order, product, razorpayOrderId } = await createPendingOrder(500)
+    await prisma.product.update({ where: { id: product.id }, data: { isActive: false } })
+
+    await expect(
+      confirmPayment({ orderId: order.id, razorpayOrderId, razorpayPaymentId: 'pay_x', source: 'client', actorUserId: order.userId })
+    ).rejects.toMatchObject({ code: 'PRODUCT_DEACTIVATED' })
+
+    const refreshed = await prisma.order.findUniqueOrThrow({ where: { id: order.id } })
+    expect(refreshed.paymentStatus).toBe('PENDING')
+  })
+
+  it('rejects confirmation when the reservation expired and current stock cannot cover it', async () => {
+    const { order, product, razorpayOrderId } = await createPendingOrder(500, undefined, 1)
+
+    // This order's own reservation expired (lazy expiry: still status ACTIVE,
+    // but past expiresAt so it no longer counts for anyone, including itself).
+    await prisma.stockReservation.create({
+      data: {
+        productId: product.id,
+        orderId: order.id,
+        userId: order.userId,
+        quantity: 1,
+        expiresAt: new Date(Date.now() - 60_000),
+        status: 'ACTIVE',
+      },
+    })
+    // A different, unexpired order now holds the only physical unit. Reuses the
+    // same product by pointing a second real order's item at it directly (the
+    // FK on StockReservation.orderId requires a real Order row).
+    const other = await createPendingOrder(500, undefined, 1)
+    await prisma.stockReservation.create({
+      data: {
+        productId: product.id,
+        orderId: other.order.id,
+        userId: other.order.userId,
+        quantity: 1,
+        expiresAt: new Date(Date.now() + 15 * 60_000),
+        status: 'ACTIVE',
+      },
+    })
+
+    await expect(
+      confirmPayment({ orderId: order.id, razorpayOrderId, razorpayPaymentId: 'pay_x', source: 'client', actorUserId: order.userId })
+    ).rejects.toMatchObject({ code: 'INSUFFICIENT_STOCK_AT_CONFIRMATION' })
+
+    const refreshed = await prisma.order.findUniqueOrThrow({ where: { id: order.id } })
+    expect(refreshed.paymentStatus).toBe('PENDING')
+  })
+
+  it('still confirms when the reservation expired but current stock covers the order', async () => {
+    const { order, product, razorpayOrderId } = await createPendingOrder(500, undefined, 5)
+
+    await prisma.stockReservation.create({
+      data: {
+        productId: product.id,
+        orderId: order.id,
+        userId: order.userId,
+        quantity: 1,
+        expiresAt: new Date(Date.now() - 60_000), // expired
+        status: 'ACTIVE',
+      },
+    })
+
+    const result = await confirmPayment({
+      orderId: order.id,
+      razorpayOrderId,
+      razorpayPaymentId: 'pay_x',
+      source: 'client',
+      actorUserId: order.userId,
+    })
+
+    expect(result.order.paymentStatus).toBe('PAID')
+    const refreshedProduct = await prisma.product.findUniqueOrThrow({ where: { id: product.id } })
+    expect(refreshedProduct.stock).toBe(4) // decremented by the ordered quantity
   })
 })
 

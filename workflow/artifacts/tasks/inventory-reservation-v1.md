@@ -80,6 +80,8 @@ All five phases completed successfully. **62 server tests pass** (8 new Phase 1 
 - `server/src/services/payment-confirmation.service.ts`
 - `server/tests/services/inventory.service.test.ts`
 - `server/tests/characterization/checkout.test.ts`
+- `server/tests/characterization/webhook.test.ts`
+- `server/tests/security/payment-confirmation.test.ts`
 
 ## Files Modified
 
@@ -159,6 +161,15 @@ Review (`workflow/artifacts/reviews/inventory-reservation-v1.md`) returned `hold
 
 Re-verified: `npm run build` exits 0 (all 3 workspaces), `npm run test --workspace=server` exits 0 (66 tests, 4 new), `npx tsc --noEmit -p server/tsconfig.json` exits 0.
 
+## Review Fix Pass — Round 2 (2026-07-25)
+
+The Round 1 fix pass left P1-1 partially resolved per the review artifact's annotation: webhook `payment.failed`/`refund.created` tests and Phase 4's re-validation scenario tests (deactivated product, expired-and-insufficient, expired-but-available) were still missing. Closed:
+
+- `server/tests/characterization/webhook.test.ts`: three new e2e tests — `payment.failed` releasing an unpaid order's reservation (stock untouched, reservation → `RELEASED`), `payment.failed` restoring a paid order's already-converted stock (reservation `CONVERTED` → `RELEASED`, stock restored), `refund.created` restoring a paid order's stock the same way.
+- `server/tests/security/payment-confirmation.test.ts`: three new tests calling `confirmPayment` directly — rejects when a product was deactivated post-creation (`PRODUCT_DEACTIVATED`, order stays `PENDING`), rejects when the order's own reservation expired and a different order's unexpired reservation now holds the only unit (`INSUFFICIENT_STOCK_AT_CONFIRMATION`), confirms successfully when the order's own reservation expired but current stock still covers it.
+
+Re-verified: `npm run build` exits 0, `npm run test --workspace=server` exits 0 (72 tests, 10 new total across both fix rounds), `npx tsc --noEmit -p server/tsconfig.json` exits 0. `workflow/artifacts/reviews/inventory-reservation-v1.md`'s Requirement Coverage table updated to `covered` across the board.
+
 ## Handoff to Review Phase
 
-This Build artifact is **ready for next phase** (Review). All acceptance criteria met, all gates passed, and the prior Review's P0/P1 findings have been fixed. Next: Review should re-verify the fixes against `workflow/artifacts/reviews/inventory-reservation-v1.md`.
+This Build artifact is **ready for next phase** (Review). All acceptance criteria met, all gates passed, and both rounds of the prior Review's findings — including the originally-partial test coverage — have been fixed. Next: Review should re-verify directly against the current diff and issue a fresh recommendation.
