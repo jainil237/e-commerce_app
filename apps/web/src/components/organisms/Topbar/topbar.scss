@@ -56,32 +56,6 @@
     gap: 0.25rem;
   }
 
-  &__action-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: var(--radius-full);
-    border: none;
-    background: none;
-    cursor: pointer;
-    color: var(--text-secondary);
-    position: relative;
-    text-decoration: none;
-
-    @include m.motion {
-      transition: background v.$duration-fast ease, color v.$duration-fast ease;
-    }
-
-    &:hover {
-      background: var(--surface-2);
-      color: var(--text-primary);
-    }
-
-    &:focus-visible { @include m.focus-ring; }
-  }
-
   &__cart-badge {
     position: absolute;
     top: 0;

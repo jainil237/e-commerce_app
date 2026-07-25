@@ -1,0 +1,29 @@
+@use '../../../styles/mixins' as m;
+@use '../../../styles/variables' as v;
+
+.ms-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius-full);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+
+  @include m.motion {
+    transition: color v.$duration-fast ease, background v.$duration-fast ease;
+  }
+
+  // ── Sizes ──
+  &--sm { padding: 0 0.5rem;    font-size: 0.625rem; }
+  &--md { padding: 0.125rem 0.625rem; font-size: 0.75rem; }
+
+  // ── Variants ──
+  &--primary   { background: var(--brand-primary); color: #fff; }
+  &--secondary { background: var(--surface-2); color: var(--text-secondary); border: 1px solid var(--border-subtle); }
+  &--outline   { background: transparent; color: var(--text-primary); border: 1px solid var(--border-base); }
+  &--neutral   { background: var(--surface-2); color: var(--text-tertiary); }
+  &--success   { background: var(--surface-2); color: var(--success); border: 1px solid color-mix(in srgb, var(--success) 20%, transparent); box-shadow: var(--shadow-sm); }
+  &--warning   { background: var(--surface-2); color: var(--warning); border: 1px solid color-mix(in srgb, var(--warning) 20%, transparent); box-shadow: var(--shadow-sm); }
+  &--error     { background: var(--surface-2); color: var(--error);   border: 1px solid color-mix(in srgb, var(--error)   20%, transparent); box-shadow: var(--shadow-sm); }
+  &--info      { background: var(--surface-2); color: var(--info);    border: 1px solid color-mix(in srgb, var(--info)    20%, transparent); box-shadow: var(--shadow-sm); }
+}

@@ -4,9 +4,10 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { User, Mail, Phone, Lock, Loader2 } from 'lucide-react'
-import { useAuth, useToast } from '@/components/providers'
+import { useAuth, useToast } from '@/contexts'
 import { Button } from '@/components/atoms/Button/Button'
 import { Input } from '@/components/atoms/Input/Input'
+import '../auth.scss'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -58,15 +59,15 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--surface-1)] flex items-center justify-center py-12 px-4">
-      <div className="max-w-md w-full">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold tracking-tight text-[var(--text-primary)]">Create Account</h1>
-          <p className="text-[var(--text-secondary)] mt-2">Join us today</p>
+    <div className="ms-auth">
+      <div className="ms-auth__wrapper">
+        <div className="ms-auth__header">
+          <h1 className="ms-auth__title">Create Account</h1>
+          <p className="ms-auth__subtitle">Join us today</p>
         </div>
 
-        <div className="bg-[var(--surface-0)] p-8 rounded-2xl shadow-sm border border-[var(--border-subtle)]">
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="ms-auth-card">
+          <form onSubmit={handleSubmit} className="ms-auth-card__form ms-auth-card__form--dense">
             <Input
               label="Full Name"
               type="text"
@@ -122,7 +123,7 @@ export default function RegisterPage() {
               type="submit"
               variant="primary"
               size="lg"
-              className="w-full mt-6"
+              className="ms-auth-card__submit ms-auth-card__submit--top-lg"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -133,9 +134,9 @@ export default function RegisterPage() {
             </Button>
           </form>
 
-          <div className="mt-8 text-center text-sm">
-            <span className="text-[var(--text-secondary)]">Already have an account?</span>{' '}
-            <Link href="/account/login" className="text-[var(--brand-primary)] font-semibold hover:underline">
+          <div className="ms-auth-card__footer">
+            <span className="ms-auth-card__footer-text">Already have an account?</span>{' '}
+            <Link href="/account/login" className="ms-auth-card__footer-link">
               Sign in
             </Link>
           </div>

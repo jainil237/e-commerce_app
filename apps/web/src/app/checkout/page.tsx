@@ -3,12 +3,16 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import clsx from 'clsx'
 import { ArrowLeft, MapPin, CreditCard, Tag, Check, Loader2, ShieldCheck } from 'lucide-react'
-import { useAuth, useCart, useToast, useStoreConfig } from '@/components/providers'
+import { useAuth } from '@/contexts/auth.context'
+import { useCart } from '@/contexts/cart.context'
+import { useToast } from '@/contexts/toast.context'
+import { useStoreConfig } from '@/contexts/store-config.context'
 import { FallbackImage } from '@/components/ui/fallback-image'
 import { Button } from '@/components/atoms/Button/Button'
 import { Input } from '@/components/atoms/Input/Input'
-import styles from './checkout.module.css'
+import './checkout.scss'
 
 interface Address {
   id: string
@@ -72,9 +76,12 @@ export default function CheckoutPage() {
   }, [user])
 
   useEffect(() => {
-    async function fetchProducts() {
+    async function loadCheckoutData() {
       if (items.length === 0) return
       const sessionId = typeof window !== 'undefined' ? localStorage.getItem('cartSessionId') || undefined : undefined
+
+      // ── 1. Validate cart items and fetch fresh product prices ──
+      let freshSubtotal = 0
       try {
         const res = await fetch('/api/v1/cart/validate-checkout', {
           method: 'POST',
@@ -93,6 +100,7 @@ export default function CheckoutPage() {
           for (const item of data.data.items) {
             if (item.product) {
               productMap[item.productId] = item.product
+              freshSubtotal += Number(item.product.price) * item.quantity
             }
             if (!item.valid) {
               allValid = false
@@ -107,33 +115,33 @@ export default function CheckoutPage() {
         console.error('Failed to validate cart for checkout', err)
         setCheckoutValid(false)
       }
-    }
-    fetchProducts()
-  }, [items])
 
-  useEffect(() => {
-    async function fetchAvailableCoupons() {
+      // ── 2. Fetch eligible coupons using confirmed prices ──
+      // Use freshSubtotal (from API) when available, else fall back to the
+      // localStorage-derived subtotal so coupons appear even if step 1 failed.
+      const orderValue = freshSubtotal > 0 ? freshSubtotal : subtotal
+      if (orderValue <= 0) return
       try {
-        const res = await fetch(`/api/v1/coupons/available?orderValue=${subtotal}`, { credentials: 'include' })
+        const res = await fetch(`/api/v1/coupons/available?orderValue=${orderValue}`, { credentials: 'include' })
         const data = await res.json()
-        if (data.success) {
-          setAvailableCoupons(data.data)
-        }
+        if (data.success) setAvailableCoupons(data.data)
       } catch (err) {
         console.error('Failed to fetch available coupons', err)
       }
     }
-    fetchAvailableCoupons()
-  }, [subtotal])
+    loadCheckoutData()
+  }, [items, subtotal])
 
-  const applyCoupon = async () => {
-    if (!couponCode) return
+  const applyCoupon = async (codeOverride?: string) => {
+    const code = codeOverride ?? couponCode
+    if (!code) return
+    if (codeOverride) setCouponCode(codeOverride)
     setIsLoading(true)
     try {
       const res = await fetch('/api/v1/coupons/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: couponCode, orderValue: subtotal }),
+        body: JSON.stringify({ code, orderValue: subtotal }),
       })
       const data = await res.json()
       if (data.success) {
@@ -248,77 +256,79 @@ export default function CheckoutPage() {
 
   if (authLoading || items.length === 0) {
     return (
-      <div className={`${styles.wrapper} flex items-center justify-center`}>
+      <div className="ms-checkout ms-checkout--loading">
         <Loader2 className="w-10 h-10 animate-spin text-brand-primary" />
       </div>
     )
   }
 
   return (
-    <div className={styles.wrapper}>
-      <div className={styles.container}>
-        
+    <div className="ms-checkout">
+      <div className="ms-checkout__container">
+
         {/* Header */}
-        <div className={styles.header}>
-          <Link href="/cart" className={styles.backBtn} aria-label="Back to Cart">
+        <div className="ms-checkout__header">
+          <Link href="/cart" className="ms-checkout__back" aria-label="Back to Cart">
             <ArrowLeft className="w-6 h-6 shrink-0" />
           </Link>
-          <h1 className={styles.pageTitle}>Secure Checkout</h1>
+          <h1 className="ms-checkout__title">Secure Checkout</h1>
         </div>
 
-        <div className={styles.layoutGrid}>
+        <div className="ms-checkout-layout">
           {/* Main Content */}
-          <div className={styles.mainColumn}>
-            
+          <div className="ms-checkout__main">
+
             {/* Address Selection */}
-            <div className={styles.sectionCard}>
-              <h2 className={styles.sectionHeader}>
-                <MapPin className={`${styles.sectionIcon} w-5 h-5`} />
+            <div className="ms-checkout-section">
+              <h2 className="ms-checkout-section__header">
+                <MapPin className="ms-checkout-section__icon" />
                 Delivery Address
               </h2>
 
               {addresses.length === 0 ? (
-                <div className={styles.addressEmpty}>
-                  <p className={styles.addressEmptyText}>No saved addresses found</p>
+                <div className="ms-checkout-address--empty">
+                  <p className="ms-checkout-address__empty-text">No saved addresses found</p>
                   <Link href="/account/addresses">
                     <Button variant="secondary" size="sm">Add Address</Button>
                   </Link>
                 </div>
               ) : (
-                <div className={styles.addressList}>
+                <div className="ms-checkout-address__list">
                   {addresses.map(address => {
                     const isSelected = selectedAddress === address.id;
                     return (
                       <label
                         key={address.id}
-                        className={`${styles.addressLabel} ${isSelected ? styles.addressSelected : styles.addressUnselected}`}
+                        className={clsx('ms-checkout-address__item', {
+                          'ms-checkout-address__item--selected': isSelected,
+                        })}
                       >
-                        <div className={styles.addressInfo}>
+                        <div className="ms-checkout-address__info">
                           <input
                             type="radio"
                             name="address"
                             checked={isSelected}
                             onChange={() => setSelectedAddress(address.id)}
-                            className={styles.radioInput}
+                            className="ms-checkout-address__radio"
                           />
-                          <div className={styles.addressContent}>
-                            <p className={styles.addressName}>{address.label}</p>
-                            <p className={styles.addressLines}>
+                          <div className="ms-checkout-address__content">
+                            <p className="ms-checkout-address__name">{address.label}</p>
+                            <p className="ms-checkout-address__line">
                               {address.line1}
                               {address.line2 && `, ${address.line2}`}
                             </p>
-                            <p className={styles.addressLines}>
+                            <p className="ms-checkout-address__line">
                               {address.city}, {address.state} - {address.pincode}
                             </p>
                           </div>
                           {isSelected && (
-                            <Check className={styles.checkIcon} />
+                            <Check className="ms-checkout-address__check" />
                           )}
                         </div>
                       </label>
                     )
                   })}
-                  <div className="pt-3">
+                  <div className="ms-checkout-address__add-row">
                     <Link href="/account/addresses">
                       <Button variant="ghost" size="sm">Add New Address</Button>
                     </Link>
@@ -328,34 +338,33 @@ export default function CheckoutPage() {
             </div>
 
             {/* Coupon */}
-            <div className={styles.sectionCard}>
-              <h2 className={styles.sectionHeader}>
-                <Tag className={`${styles.sectionIcon} w-5 h-5`} />
+            <div className="ms-checkout-section">
+              <h2 className="ms-checkout-section__header">
+                <Tag className="ms-checkout-section__icon" />
                 Discount & Coupons
               </h2>
 
               {appliedCoupon ? (
-                <div className={styles.couponApplied}>
-                  <span className={styles.couponCode}>{appliedCoupon.code}</span>
+                <div className="ms-checkout-coupon--applied">
+                  <span className="ms-checkout-coupon__code">{appliedCoupon.code}</span>
                   <button
                     onClick={() => setAppliedCoupon(null)}
-                    className={styles.couponRemove}
+                    className="ms-checkout-coupon__remove"
                   >
                     Remove
                   </button>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  <div className={styles.couponInputWrapper}>
+                <div className="ms-checkout-coupon__body">
+                  <div className="ms-checkout-coupon__input-row">
                     <Input
                       name="coupon"
                       placeholder="Enter discount code"
                       value={couponCode}
                       onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                      className={styles.couponInput}
                     />
                     <Button
-                      onClick={applyCoupon}
+                      onClick={() => applyCoupon()}
                       disabled={isLoading || !couponCode}
                       variant="secondary"
                       className="px-6"
@@ -365,20 +374,17 @@ export default function CheckoutPage() {
                   </div>
 
                   {availableCoupons.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium text-[var(--foreground-2)]">Available Offers</p>
-                      <div className="flex flex-wrap gap-2">
+                    <div>
+                      <p className="ms-checkout-coupon__offers-label">Available Offers</p>
+                      <div className="ms-checkout-coupon__offers-list">
                         {availableCoupons.map((coupon) => (
                           <button
                             key={coupon.id}
-                            onClick={() => {
-                              setCouponCode(coupon.code)
-                              // We could automatically apply it here or just fill the input
-                            }}
-                            className="flex flex-col items-start p-3 border border-dashed border-[var(--border-1)] rounded-lg hover:border-brand-primary transition-colors text-left"
+                            onClick={() => applyCoupon(coupon.code)}
+                            className="ms-checkout-coupon__offer"
                           >
-                            <span className="text-sm font-bold text-brand-primary">{coupon.code}</span>
-                            <span className="text-xs text-[var(--foreground-3)]">
+                            <span className="ms-checkout-coupon__offer-code">{coupon.code}</span>
+                            <span className="ms-checkout-coupon__offer-desc">
                               {coupon.discountType === 'PERCENTAGE' ? `${coupon.discountValue}% OFF` : `₹${coupon.discountValue} OFF`}
                             </span>
                           </button>
@@ -391,77 +397,79 @@ export default function CheckoutPage() {
             </div>
 
             {/* Order Items */}
-            <div className={styles.sectionCard}>
-              <h2 className={styles.sectionHeader}>Order Review</h2>
-              <div className={styles.orderItemsList}>
+            <div className="ms-checkout-section">
+              <h2 className="ms-checkout-section__header">Order Review</h2>
+              <div className="ms-checkout-items">
                 {items.map(item => {
                   const product = products[item.productId]
                   if (!product) return null
                   const error = checkoutErrors[item.productId]
                   return (
-                    <div key={item.productId} className={styles.orderItem}>
-                      <div className={styles.itemImageWrapper}>
+                    <div key={item.productId} className="ms-checkout-item">
+                      <div className="ms-checkout-item__image">
                         <FallbackImage
                           src={product?.images?.[0]?.url}
                           alt={product.name}
                           fill
-                          className={styles.itemImage}
+                          className="object-cover"
                         />
                       </div>
-                      <div className={styles.itemInfo}>
-                        <p className={styles.itemName}>{product.name}</p>
-                        <p className={styles.itemQty}>Qty: {item.quantity}</p>
+                      <div className="ms-checkout-item__info">
+                        <p className="ms-checkout-item__name">{product.name}</p>
+                        <p className="ms-checkout-item__qty">Qty: {item.quantity}</p>
                         {error && (
-                          <p className="text-xs text-red-600 dark:text-red-400 font-medium">{error}</p>
+                          <p className="ms-checkout-item__error">{error}</p>
                         )}
                       </div>
-                      <p className={styles.itemTotal}>₹{(Number(product.price) * item.quantity).toFixed(2)}</p>
+                      <p className="ms-checkout-item__total">₹{(Number(product.price) * item.quantity).toFixed(2)}</p>
                     </div>
                   )
                 })}
               </div>
             </div>
-            
+
           </div>
 
           {/* Order Summary Sidebar */}
           <div>
-            <div className={`${styles.sectionCard} ${styles.summarySection}`}>
-              <h2 className={styles.sectionHeader}>Summary</h2>
+            <div className="ms-checkout-section ms-checkout-section--sticky">
+              <h2 className="ms-checkout-section__header">Summary</h2>
 
-              <div className="space-y-1 mb-5">
-                <div className={styles.summaryRow}>
+              <div className="ms-checkout-summary__rows">
+                <div className="ms-checkout-summary__row">
                   <span>Subtotal</span>
-                  <span className={styles.summaryValue}>₹{subtotal.toFixed(2)}</span>
+                  <span className="ms-checkout-summary__value">₹{subtotal.toFixed(2)}</span>
                 </div>
-                
-                <div className={styles.summaryRow}>
+
+                <div className="ms-checkout-summary__row">
                   <span>Shipping</span>
-                  <span className={shipping === 0 ? 'text-green-600 dark:text-green-500 font-semibold' : styles.summaryValue}>
+                  <span className={clsx('ms-checkout-summary__value', {
+                    'ms-checkout-summary__value--free': shipping === 0,
+                  })}>
                     {shipping === 0 ? 'FREE' : `₹${shipping}`}
                   </span>
                 </div>
-                
+
                 {discount > 0 && (
-                  <div className={styles.summaryDiscount}>
+                  <div className="ms-checkout-summary__discount">
                     <span>Discount applied</span>
                     <span>-₹{discount.toFixed(2)}</span>
                   </div>
                 )}
               </div>
 
-              <hr className={styles.divider} />
+              <hr className="ms-checkout-summary__divider" />
 
-              <div className="mb-6">
-                <div className={styles.totalRow}>
-                  <span className={styles.totalLabel}>Total</span>
-                  <span className={styles.totalValue}>₹{total.toFixed(2)}</span>
+              <div className="ms-checkout-summary__total-block">
+                <div className="ms-checkout-summary__total-row">
+                  <span className="ms-checkout-summary__total-label">Total</span>
+                  <span className="ms-checkout-summary__total-value">₹{total.toFixed(2)}</span>
                 </div>
-                <p className={styles.taxNotice}>Taxes included</p>
+                <p className="ms-checkout-summary__tax">Taxes included</p>
               </div>
 
               {!checkoutValid && (
-                <p className="text-sm text-red-600 dark:text-red-400 mb-3">
+                <p className="ms-checkout-item__error" style={{ marginBottom: '0.75rem' }}>
                   Some items in your cart are no longer available in the requested quantity. Please update your cart.
                 </p>
               )}
@@ -477,13 +485,13 @@ export default function CheckoutPage() {
                 Pay ₹{total.toFixed(2)}
               </Button>
 
-              <p className={styles.secureNotice}>
+              <p className="ms-checkout-summary__secure">
                 <ShieldCheck className="w-4 h-4 text-green-500" />
                 Payments processed securely by Razorpay
               </p>
             </div>
           </div>
-          
+
         </div>
       </div>
     </div>

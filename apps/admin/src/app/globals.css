@@ -28,6 +28,7 @@
   --surface-0: #FFFFFF;
   --surface-1: #FAFAFA;
   --surface-2: #F4F4F5;
+  --surface-3: #E4E4E7;
   --surface-glass: rgba(255, 255, 255, 0.85);
 
   /* Text */
@@ -39,6 +40,24 @@
   /* UI Borders */
   --border-base: var(--gray-200);
   --border-subtle: var(--gray-100);
+
+  /* Radius scale */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* Shadow scale */
+  --shadow-sm:  0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md:  0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg:  0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl:  0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+
+  /* Glass blur */
+  --blur-glass: blur(12px);
 }
 
 .dark {
@@ -58,9 +77,10 @@
   --gray-900: #F4F4F5;
 
   /* Surfaces */
-  --surface-0: #18181B; 
-  --surface-1: #09090B; 
-  --surface-2: #27272A; 
+  --surface-0: #18181B;
+  --surface-1: #09090B;
+  --surface-2: #27272A;
+  --surface-3: #3F3F46;
   --surface-glass: rgba(24, 24, 27, 0.85);
 
   /* Text */
@@ -72,6 +92,13 @@
   /* UI Borders */
   --border-base: #27272A;
   --border-subtle: #18181B;
+
+  /* Shadow scale (deeper for dark) */
+  --shadow-sm:  0 1px 2px 0 rgb(0 0 0 / 0.2);
+  --shadow-md:  0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+  --shadow-lg:  0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+  --shadow-xl:  0 20px 25px -5px rgb(0 0 0 / 0.4), 0 8px 10px -6px rgb(0 0 0 / 0.4);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.6);
 }
 
 @layer base {
@@ -86,7 +113,7 @@
     @apply inline-flex items-center justify-center rounded-xl font-bold transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98];
   }
   .btn-primary {
-    @apply bg-[var(--brand-primary)] text-white hover:opacity-90 focus:ring-[var(--brand-primary)];
+    @apply bg-[var(--brand-primary)] text-[var(--brand-primary-fg)] hover:opacity-90 focus:ring-[var(--brand-primary)];
   }
   .btn-secondary {
     @apply bg-[var(--surface-2)] text-[var(--text-primary)] border border-[var(--border-base)] hover:bg-[var(--surface-0)] focus:ring-[var(--gray-400)];
@@ -172,4 +199,22 @@
 
 .badge-neutral, .badge-gray {
   @apply bg-slate-500/10 text-slate-600 border-slate-500/20;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }

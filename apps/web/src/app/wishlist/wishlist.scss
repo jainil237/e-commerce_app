@@ -1,0 +1,238 @@
+@use '../../styles/mixins' as m;
+@use '../../styles/variables' as v;
+
+// ─── Page shell ────────────────────────────────────────────
+.ms-wishlist {
+  min-height: 100vh;
+  background: var(--surface-1);
+
+  &__container {
+    max-width: var(--container-max);
+    margin: 0 auto;
+    padding: 2rem 1rem;
+    @include m.md { padding: 2rem 1.5rem; }
+    @include m.lg { padding: 2rem 2rem; }
+  }
+
+  // Shared wrapper for loading and gate (unauthenticated) states
+  &__spinner-wrap {
+    max-width: var(--container-max);
+    margin: 0 auto;
+    padding: 4rem 1rem;
+    text-align: center;
+    @include m.md { padding: 4rem 1.5rem; }
+    @include m.lg { padding: 4rem 2rem; }
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+  }
+
+  &__title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.025em;
+    @include m.md { font-size: 1.875rem; }
+  }
+
+  &__count {
+    color: var(--text-secondary);
+    margin-top: 0.25rem;
+    font-weight: 500;
+  }
+}
+
+// ─── Gate card (unauthenticated) ──────────────────────────
+.ms-wishlist-gate {
+  background: var(--surface-0);
+  border-radius: var(--radius-2xl);
+  border: 1px solid var(--border-subtle);
+  padding: 3rem;
+  max-width: 28rem;
+  margin: 0 auto;
+  text-align: center;
+
+  &__icon {
+    width: 4rem;
+    height: 4rem;
+    margin: 0 auto 1rem;
+    color: var(--text-tertiary);
+  }
+
+  &__title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+  }
+
+  &__text {
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+  }
+}
+
+// ─── Empty state card ─────────────────────────────────────
+.ms-wishlist-empty {
+  background: var(--surface-0);
+  border-radius: var(--radius-2xl);
+  border: 1px dashed var(--border-subtle);
+  padding: 3rem;
+  text-align: center;
+
+  &__icon {
+    width: 4rem;
+    height: 4rem;
+    margin: 0 auto 1rem;
+    color: var(--text-tertiary);
+  }
+
+  &__title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+  }
+
+  &__text {
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+  }
+}
+
+// ─── Product grid ──────────────────────────────────────────
+.ms-wishlist-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  @include m.sm { grid-template-columns: repeat(2, 1fr); }
+  @include m.lg { grid-template-columns: repeat(3, 1fr); }
+  @include m.xl { grid-template-columns: repeat(4, 1fr); gap: 1.5rem; }
+}
+
+// ─── Product card ──────────────────────────────────────────
+.ms-wishlist-card {
+  background: var(--surface-0);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+  @include m.motion {
+    transition: box-shadow v.$duration-slow ease, transform v.$duration-slow ease;
+  }
+
+  &:hover {
+    box-shadow: var(--shadow-xl);
+    transform: translateY(-4px);
+  }
+
+  &__image-wrap {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    background: var(--surface-2);
+
+    img {
+      @include m.motion { transition: transform 0.7s ease; }
+    }
+  }
+
+  &:hover &__image-wrap img {
+    transform: scale(1.05);
+  }
+
+  &__discount {
+    position: absolute;
+    top: 0.75rem;
+    left: 0.75rem;
+  }
+
+  &__oos-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &__oos-badge {
+    background: rgba(255, 255, 255, 0.9);
+    color: #111;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-full);
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+
+  &__body {
+    padding: 1.25rem;
+  }
+
+  &__category {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+
+  &__name {
+    font-weight: 600;
+    color: var(--text-primary);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-top: 0.25rem;
+    @include m.motion { transition: color v.$duration-fast ease; }
+  }
+
+  &:hover &__name {
+    color: var(--brand-primary);
+  }
+
+  &__price-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+
+  &__price {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__mrp {
+    font-size: 0.875rem;
+    text-decoration: line-through;
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-base);
+  }
+
+  &__remove {
+    color: var(--error);
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    @include m.motion {
+      transition: background v.$duration-fast ease, color v.$duration-fast ease;
+    }
+    &:hover {
+      background: color-mix(in srgb, var(--error) 10%, transparent);
+    }
+  }
+}

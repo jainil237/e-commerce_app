@@ -68,7 +68,7 @@ export default function OrderDetailPage() {
 
   if (authLoading || isLoading) {
     return (
-      <div className="flex h-[70vh] items-center justify-center">
+      <div className="ms-order__loading">
         <Loader2 className="w-10 h-10 animate-spin text-[var(--brand-primary)]" />
       </div>
     )
@@ -81,9 +81,9 @@ export default function OrderDetailPage() {
 
   if (!order) {
     return (
-      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-32 text-center">
-        <h1 className="text-3xl font-black mb-4">Order not found</h1>
-        <button onClick={() => router.push('/account/orders')} className="text-[var(--brand-primary)] font-bold">
+      <div className="ms-order__notfound">
+        <h1 className="ms-order__notfound-title">Order not found</h1>
+        <button onClick={() => router.push('/account/orders')} className="ms-order__notfound-link">
           View all orders
         </button>
       </div>
@@ -100,15 +100,15 @@ export default function OrderDetailPage() {
   return (
     <>
       {isSuccess && (
-        <div className="bg-[var(--success)] text-white p-4 text-center font-bold">
+        <div className="ms-order-banner ms-order-banner--success">
           Order placed successfully! We've sent a confirmation email.
         </div>
       )}
       {canTrack && (
-        <div className="bg-[var(--surface-2)] p-4 text-center border-b border-[var(--border-base)]">
+        <div className="ms-order-banner ms-order-banner--track">
           <button
             onClick={() => setIsTrackingOpen(true)}
-            className="px-6 py-2 bg-[var(--brand-primary)] text-[var(--brand-primary-fg)] font-semibold rounded-md hover:opacity-90 transition"
+            className="ms-order-banner__track-btn"
           >
             Track Delivery
           </button>

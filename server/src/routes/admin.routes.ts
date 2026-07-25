@@ -12,12 +12,15 @@ import { sendShippingUpdateEmail } from '../services/email.service'
 import { getActiveProvider } from '../services/storage.service'
 import { isR2Enabled } from '../services/r2.service'
 import { isCloudinaryEnabled } from '../services/cloudinary.service'
+import adminRmaRoutes from './admin.rma.routes'
 
 const router = Router()
 
 // All admin routes require authentication and admin role
 router.use(authenticate)
 router.use(authorizeAdmin)
+
+router.use('/rma', adminRmaRoutes)
 
 const storage = multer.memoryStorage()
 
@@ -823,6 +826,14 @@ router.get('/orders/:id', async (req, res: Response, next) => {
           },
         },
         shipping: true,
+        rmaRequests: {
+          include: {
+            items: true,
+            refund: true,
+            pickupShipment: true,
+            replacementShipment: true,
+          }
+        }
       },
     })
 
@@ -839,6 +850,11 @@ router.get('/orders/:id', async (req, res: Response, next) => {
         discount: order.discount.toString(),
         gstAmount: order.gstAmount.toString(),
         total: order.total.toString(),
+        tracking: order.shipping && order.shipping.awbNumber ? {
+          courier: order.shipping.courierPartner,
+          trackingId: order.shipping.awbNumber,
+          trackingUrl: order.shipping.trackingUrl || '',
+        } : undefined,
       },
     })
   } catch (error) {
@@ -848,7 +864,13 @@ router.get('/orders/:id', async (req, res: Response, next) => {
 
 router.patch('/orders/:id/status', async (req, res: Response, next) => {
   try {
-    const { status } = req.body
+    const { status, awbNumber, courierPartner } = req.body
+
+    const existing = await prisma.order.findUnique({
+      where: { id: req.params.id },
+      select: { status: true },
+    })
+    if (!existing) throw createError(404, 'Order not found', 'ORDER_NOT_FOUND')
 
     const order = await prisma.order.update({
       where: { id: req.params.id },
@@ -859,24 +881,71 @@ router.patch('/orders/:id/status', async (req, res: Response, next) => {
       },
     })
 
+    await prisma.orderAuditLog.create({
+      data: {
+        orderId: order.id,
+        userId: (req as AuthRequest).user?.id,
+        action: 'ORDER_STATUS_UPDATED',
+        fromState: existing.status,
+        toState: status,
+      },
+    })
+
+    let shipment = order.shipping
+    if (status === 'SHIPPED') {
+      const config = getStoreConfig()
+      const partner = courierPartner || (shipment?.courierPartner) || config.courier.defaultPartner
+      const trackingUrl = awbNumber ? getTrackingUrl(partner, awbNumber) : undefined
+
+      if (shipment) {
+        shipment = await prisma.shipment.update({
+          where: { orderId: order.id },
+          data: {
+            status: 'DISPATCHED',
+            awbNumber: awbNumber || shipment.awbNumber,
+            courierPartner: partner,
+            trackingUrl: trackingUrl || shipment.trackingUrl,
+            dispatchedAt: new Date(),
+          },
+        })
+      } else {
+        shipment = await prisma.shipment.create({
+          data: {
+            orderId: order.id,
+            status: 'DISPATCHED',
+            awbNumber: awbNumber || null,
+            courierPartner: partner,
+            trackingUrl,
+            dispatchedAt: new Date(),
+          },
+        })
+      }
+    }
+
     // Send shipping update email when order status changes to SHIPPED or DELIVERED
-    if (order.user && order.shipping && ['SHIPPED', 'DELIVERED'].includes(status)) {
+    if (order.user && ['SHIPPED', 'DELIVERED'].includes(status)) {
       const shipmentStatus = status === 'SHIPPED' ? 'DISPATCHED' : 'DELIVERED'
-      if (status === 'DELIVERED') {
-        await prisma.shipment.update({
+      if (status === 'DELIVERED' && shipment) {
+        shipment = await prisma.shipment.update({
           where: { orderId: order.id },
           data: { status: 'DELIVERED', deliveredAt: new Date() },
         })
       }
+      
+      const emailDetails = shipment ? {
+        status: shipmentStatus,
+        courierPartner: shipment.courierPartner,
+        awbNumber: shipment.awbNumber,
+        trackingUrl: shipment.trackingUrl,
+        expectedBy: shipment.expectedBy,
+      } : {
+        status: shipmentStatus,
+        courierPartner: getStoreConfig().courier.defaultPartner,
+      }
+
       sendShippingUpdateEmail(
         { id: order.id, orderNumber: order.orderNumber, user: order.user },
-        {
-          status: shipmentStatus,
-          courierPartner: order.shipping.courierPartner,
-          awbNumber: order.shipping.awbNumber,
-          trackingUrl: order.shipping.trackingUrl,
-          expectedBy: order.shipping.expectedBy,
-        }
+        emailDetails
       ).catch(err => console.error('Failed to send shipping update email:', err))
     }
 

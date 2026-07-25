@@ -18,6 +18,8 @@ import couponRoutes from './routes/coupon.routes'
 import webhookRoutes from './routes/webhook.routes'
 import adminRoutes from './routes/admin.routes'
 import wishlistRoutes from './routes/wishlist.routes'
+import rmaRoutes from './routes/rma.routes'
+
 
 // Import storage provider detection
 import { getActiveProvider } from './services/storage.service'
@@ -121,6 +123,7 @@ app.use('/api/v1/coupons', generalLimiter, couponRoutes)
 app.use('/api/v1/webhooks', webhookRoutes)
 app.use('/api/v1/admin', generalLimiter, adminRoutes)
 app.use('/api/v1/wishlist', generalLimiter, wishlistRoutes)
+app.use('/api/v1/rma', generalLimiter, rmaRoutes)
 
 // Error handling
 app.use(notFound)

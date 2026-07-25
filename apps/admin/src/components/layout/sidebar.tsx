@@ -10,11 +10,11 @@ import {
   Tags,
   Settings,
   LogOut,
-  Store,
   Sun,
   Moon,
   X,
 } from 'lucide-react'
+import clsx from 'clsx'
 import { useAuth, useTheme } from '@/components/providers'
 import { getFirstLetter } from '@/utils/initials'
 
@@ -33,86 +33,69 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
   const { theme, toggleTheme } = useTheme()
 
   return (
-    <div className="flex flex-col h-full w-64 bg-slate-900 text-white border-r border-slate-800 overflow-hidden shadow-2xl">
-      {/* Logo */}
-      <div className="flex items-center justify-between px-6 py-8">
-        <div className="flex items-center gap-2">
-          <div className="p-2 bg-blue-600 rounded-xl shadow-lg shadow-blue-500/20">
-            <Store className="w-6 h-6 text-white" />
-          </div>
-          <span className="text-xl font-bold tracking-tight text-white">Admin Panel</span>
+    <div className="ms-sidebar">
+      <div className="ms-sidebar__brand">
+        <div className="ms-sidebar__brand-text">
+          Admin Panel
+          <span className="ms-sidebar__sub">Store management</span>
         </div>
         {onClose && (
-          <button 
-            type="button" 
-            onClick={onClose} 
-            className="md:hidden p-2 text-slate-400 hover:bg-slate-800 hover:text-white rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 relative z-50"
+          <button
+            type="button"
+            onClick={onClose}
+            className="ms-sidebar__close"
             aria-label="Close sidebar"
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5" />
           </button>
         )}
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 py-4 space-y-1 px-2 overflow-y-auto" style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+      <nav className="ms-sidebar__nav">
         {navigation.map((item) => {
-          const isActive = pathname === item.href || 
+          const isActive = pathname === item.href ||
             (item.href !== '/' && pathname.startsWith(item.href))
           return (
             <Link
               key={item.name}
               href={item.href}
               onClick={onClose}
-              className={`flex items-center gap-3 px-4 py-3 mx-2 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${isActive ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'}`}
+              className={clsx('ms-sidebar__link', isActive && 'ms-sidebar__link--active')}
             >
               <item.icon className="w-5 h-5" />
-              <span className="font-medium">{item.name}</span>
+              <span>{item.name}</span>
             </Link>
           )
         })}
       </nav>
 
-      {/* User section */}
-      <div className="p-4 mt-auto">
-        <div className="bg-slate-800/40 rounded-2xl p-4 border border-slate-700/50">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-sm font-bold shadow-md shadow-blue-600/20 text-white">
-              {getFirstLetter(user?.name)}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-white truncate">{user?.name}</p>
-              <p className="text-[10px] text-slate-400 font-medium truncate uppercase tracking-wider">{user?.email}</p>
-            </div>
+      <div className="ms-sidebar__footer">
+        <div className="ms-sidebar__user">
+          <div className="ms-sidebar__avatar">{getFirstLetter(user?.name)}</div>
+          <div className="ms-sidebar__user-info">
+            <p className="ms-sidebar__user-name">{user?.name}</p>
+            <p className="ms-sidebar__user-email">{user?.email}</p>
           </div>
-
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="w-full flex items-center gap-3 px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-800/40 rounded-md transition-colors mb-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
-          >
-            {theme === 'light' ? (
-              <>
-                <Moon className="w-4 h-4" />
-                <span className="text-sm font-medium">Dark Mode</span>
-              </>
-            ) : (
-               <>
-                <Sun className="w-4 h-4" />
-                <span className="text-sm font-medium">Light Mode</span>
-              </>
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={logout}
-            className="w-full flex items-center gap-3 px-3 py-2 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
-          >
-            <LogOut className="w-4 h-4" />
-            <span className="text-sm font-medium">Logout</span>
-          </button>
         </div>
+
+        <button type="button" onClick={toggleTheme} className="ms-sidebar__link">
+          {theme === 'light' ? (
+            <>
+              <Moon className="w-4 h-4" />
+              <span>Dark Mode</span>
+            </>
+          ) : (
+            <>
+              <Sun className="w-4 h-4" />
+              <span>Light Mode</span>
+            </>
+          )}
+        </button>
+
+        <button type="button" onClick={logout} className="ms-sidebar__link">
+          <LogOut className="w-4 h-4" />
+          <span>Logout</span>
+        </button>
       </div>
     </div>
   )

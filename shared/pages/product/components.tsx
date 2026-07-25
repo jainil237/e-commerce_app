@@ -2,9 +2,9 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { ChevronRight, Info, Tag, Plus, Minus, ShoppingCart, Heart, Share2, Truck, ShieldCheck, RotateCcw } from 'lucide-react';
+import { ChevronRight, Tag, Truck, ShieldCheck, RotateCcw } from 'lucide-react';
 import { FallbackImage } from '../../components/FallbackImage';
-import { SharedBadge, SharedButton } from '../../components/UIPrimitives';
+import { SharedBadge } from '../../components/UIPrimitives';
 import { Product, ViewerContext } from '../../types';
 import { formatCurrency, getDiscountPercentage, parseTags } from '../../utils';
 
@@ -16,22 +16,26 @@ export const ProductBreadcrumbs: React.FC<{ product: Product; viewer: ViewerCont
   const productsLink = isCustomer ? '/products' : '/products';
 
   return (
-    <nav className="mb-6 overflow-x-auto whitespace-nowrap hide-scrollbar">
-      <ol className="flex items-center text-sm text-[var(--text-tertiary)]">
-        <li><Link href={homeLink} className="hover:text-[var(--text-primary)] transition-colors">Home</Link></li>
-        <li><ChevronRight className="w-4 h-4 mx-2" /></li>
-        <li><Link href={productsLink} className="hover:text-[var(--text-primary)] transition-colors">Products</Link></li>
-        <li><ChevronRight className="w-4 h-4 mx-2" /></li>
+    <nav className="ms-breadcrumb">
+      <ol className="ms-breadcrumb">
         <li>
-          <Link 
-            href={isCustomer ? `/products?category=${product.category.slug}` : `/categories/${product.category.id}`} 
-            className="hover:text-[var(--text-primary)] transition-colors"
+          <Link href={homeLink} className="ms-breadcrumb__link">Home</Link>
+        </li>
+        <li className="ms-breadcrumb__sep"><ChevronRight size={16} /></li>
+        <li>
+          <Link href={productsLink} className="ms-breadcrumb__link">Products</Link>
+        </li>
+        <li className="ms-breadcrumb__sep"><ChevronRight size={16} /></li>
+        <li>
+          <Link
+            href={isCustomer ? `/products?category=${product.category.slug}` : `/categories/${product.category.id}`}
+            className="ms-breadcrumb__link"
           >
             {product.category.name}
           </Link>
         </li>
-        <li><ChevronRight className="w-4 h-4 mx-2" /></li>
-        <li className="text-[var(--text-primary)] font-medium truncate max-w-[200px]">{product.name}</li>
+        <li className="ms-breadcrumb__sep"><ChevronRight size={16} /></li>
+        <li className="ms-breadcrumb__current">{product.name}</li>
       </ol>
     </nav>
   );
@@ -42,32 +46,30 @@ export const ProductGallery: React.FC<{ product: Product }> = ({ product }) => {
   const discount = getDiscountPercentage(product.price, product.mrp);
 
   return (
-    <div className="space-y-4">
-      <div className="relative aspect-[4/5] bg-[var(--surface-2)] rounded-3xl overflow-hidden group">
+    <div className="ms-gallery">
+      <div className="ms-gallery__main">
         <FallbackImage
           key={selectedImage}
           src={product.images[selectedImage]?.url}
           alt={product.images[selectedImage]?.altText || product.name}
           fill
-          className="object-cover group-hover:scale-105 transition-transform duration-500"
+          className="object-cover"
           priority
         />
         {discount > 0 && (
-          <div className="absolute top-4 left-4">
-            <SharedBadge variant="success" className="shadow-lg">- {discount}%</SharedBadge>
+          <div className="ms-gallery__badge">
+            <SharedBadge variant="success">- {discount}%</SharedBadge>
           </div>
         )}
       </div>
 
       {product.images.length > 1 && (
-        <div className="flex gap-4 overflow-x-auto pb-2 hide-scrollbar">
+        <div className="ms-gallery__thumbs">
           {product.images.map((image, index) => (
             <button
               key={index}
               onClick={() => setSelectedImage(index)}
-              className={`relative w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 border-2 transition-all ${
-                selectedImage === index ? 'border-[var(--brand-primary)]' : 'border-transparent opacity-60 hover:opacity-100'
-              }`}
+              className={`ms-gallery__thumb${selectedImage === index ? ' ms-gallery__thumb--active' : ''}`}
             >
               <FallbackImage
                 src={image.url}
@@ -85,22 +87,22 @@ export const ProductGallery: React.FC<{ product: Product }> = ({ product }) => {
 
 export const ProductInfo: React.FC<{ product: Product; viewer: ViewerContext }> = ({ product, viewer }) => {
   return (
-    <div className="space-y-2">
+    <div className="ms-pdp-info__pricing">
       <Link href={`/products?category=${product.category.slug}`}>
-        <p className="text-sm font-bold text-[var(--brand-primary)] uppercase tracking-wider">{product.category.name}</p>
+        <p className="ms-pdp-info__cat">{product.category.name}</p>
       </Link>
-      <h1 className="text-3xl font-black text-[var(--text-primary)] leading-tight">{product.name}</h1>
-      
-      <div className="flex items-center gap-4 mt-4">
-        <div className="flex items-center gap-1.5">
-          <span className={`w-2 h-2 rounded-full ${product.stock > 0 ? 'bg-[var(--success)]' : 'bg-[var(--error)]'}`} />
-          <span className={`text-sm font-bold ${product.stock > 0 ? 'text-[var(--success)]' : 'text-[var(--error)]'}`}>
+      <h1 className="ms-pdp-info__name">{product.name}</h1>
+
+      <div className="ms-pdp-info__stock">
+        <div className="ms-pdp-info__stock-indicator">
+          <span className={`ms-pdp-info__stock-dot ms-pdp-info__stock-dot--${product.stock > 0 ? 'in' : 'out'}`} />
+          <span className={`ms-pdp-info__stock-text ms-pdp-info__stock-text--${product.stock > 0 ? 'in' : 'out'}`}>
             {product.stock > 0 ? 'In Stock' : 'Out of Stock'}
           </span>
         </div>
         {viewer === 'admin' && (
-          <div className="text-sm text-[var(--text-secondary)] border-l pl-4 border-[var(--border-subtle)]">
-            <span className="font-bold">{product.stock}</span> units available
+          <div className="ms-pdp-info__stock-qty">
+            <span style={{ fontWeight: 700 }}>{product.stock}</span> units available
           </div>
         )}
       </div>
@@ -112,31 +114,31 @@ export const ProductPricing: React.FC<{ product: Product; viewer: ViewerContext 
   const discount = getDiscountPercentage(product.price, product.mrp);
 
   return (
-    <div className="space-y-1">
-      <div className="flex items-baseline gap-3">
-        <span className="text-4xl font-black text-[var(--text-primary)]">{formatCurrency(product.price)}</span>
+    <div className="ms-pdp-info__pricing">
+      <div className="ms-pdp-info__price-row">
+        <span className="ms-pdp-info__price">{formatCurrency(product.price)}</span>
         {discount > 0 && (
           <>
-            <span className="text-xl text-[var(--text-tertiary)] line-through font-medium">{formatCurrency(product.mrp)}</span>
+            <span className="ms-pdp-info__mrp">{formatCurrency(product.mrp)}</span>
             <SharedBadge variant="success">Save {discount}%</SharedBadge>
           </>
         )}
       </div>
-      <p className="text-xs text-[var(--text-tertiary)]">Inclusive of all taxes</p>
-      
+      <p className="ms-pdp-info__tax">Inclusive of all taxes</p>
+
       {viewer === 'admin' && (
-        <div className="mt-4 p-4 bg-[var(--surface-0)] rounded-2xl border border-[var(--border-subtle)] shadow-sm space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-[var(--text-secondary)]">MRP</span>
-            <span className="font-medium">{formatCurrency(product.mrp)}</span>
+        <div className="ms-pdp-admin-pricing">
+          <div className="ms-pdp-admin-pricing__row">
+            <span>MRP</span>
+            <span>{formatCurrency(product.mrp)}</span>
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-[var(--text-secondary)]">Selling Price</span>
-            <span className="font-medium">{formatCurrency(product.price)}</span>
+          <div className="ms-pdp-admin-pricing__row">
+            <span>Selling Price</span>
+            <span>{formatCurrency(product.price)}</span>
           </div>
-          <div className="flex justify-between text-sm border-t pt-2 border-[var(--border-subtle)]">
-            <span className="text-[var(--text-primary)] font-bold">Margin</span>
-            <span className="text-[var(--success)] font-bold">{formatCurrency(Number(product.mrp) - Number(product.price))}</span>
+          <div className="ms-pdp-admin-pricing__row ms-pdp-admin-pricing__row--total">
+            <span>Margin</span>
+            <span>{formatCurrency(Number(product.mrp) - Number(product.price))}</span>
           </div>
         </div>
       )}
@@ -148,70 +150,60 @@ export const ProductSpecifications: React.FC<{ product: Product }> = ({ product 
   const tags = parseTags(product.tags);
 
   return (
-    <div className="space-y-6">
-      <div className="bg-[var(--surface-0)] rounded-3xl p-6 border border-[var(--border-subtle)] shadow-sm">
-        <h3 className="text-base font-bold text-[var(--text-primary)] mb-4">Specifications</h3>
-        <div className="grid grid-cols-2 gap-y-4 gap-x-8">
-          <div className="space-y-1">
-            <span className="text-xs text-[var(--text-tertiary)] uppercase font-bold tracking-wider">SKU</span>
-            <p className="text-sm font-mono font-medium text-[var(--text-primary)] uppercase">{product.sku}</p>
-          </div>
-          {product.weight && (
-            <div className="space-y-1">
-              <span className="text-xs text-[var(--text-tertiary)] uppercase font-bold tracking-wider">Weight</span>
-              <p className="text-sm font-medium text-[var(--text-primary)]">{product.weight}g</p>
-            </div>
-          )}
-          <div className="space-y-1">
-            <span className="text-xs text-[var(--text-tertiary)] uppercase font-bold tracking-wider">GST Tier</span>
-            <p className="text-sm font-medium text-[var(--text-primary)]">{product.gstPercent}%</p>
-          </div>
-          <div className="space-y-1">
-            <span className="text-xs text-[var(--text-tertiary)] uppercase font-bold tracking-wider">Category</span>
-            <p className="text-sm font-medium text-[var(--text-primary)]">{product.category.name}</p>
-          </div>
+    <div className="ms-spec-card">
+      <h3 className="ms-spec-card__title">Specifications</h3>
+      <div className="ms-spec-card__grid">
+        <div className="ms-spec-card__item">
+          <span className="ms-spec-card__key">SKU</span>
+          <p className="ms-spec-card__val ms-spec-card__val--mono">{product.sku}</p>
         </div>
-
-        {tags.length > 0 && (
-          <div className="mt-6 pt-6 border-t border-[var(--border-subtle)]">
-            <div className="flex items-center gap-2 mb-3">
-              <Tag className="w-4 h-4 text-[var(--text-tertiary)]" />
-              <span className="text-xs text-[var(--text-tertiary)] uppercase font-bold tracking-wider">Tags</span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {tags.map(tag => (
-                <span key={tag} className="px-3 py-1 bg-[var(--surface-1)] border border-[var(--border-subtle)] rounded-full text-xs font-medium text-[var(--text-secondary)]">
-                  {tag}
-                </span>
-              ))}
-            </div>
+        {product.weight && (
+          <div className="ms-spec-card__item">
+            <span className="ms-spec-card__key">Weight</span>
+            <p className="ms-spec-card__val">{product.weight}g</p>
           </div>
         )}
+        <div className="ms-spec-card__item">
+          <span className="ms-spec-card__key">GST Tier</span>
+          <p className="ms-spec-card__val">{product.gstPercent}%</p>
+        </div>
+        <div className="ms-spec-card__item">
+          <span className="ms-spec-card__key">Category</span>
+          <p className="ms-spec-card__val">{product.category.name}</p>
+        </div>
       </div>
+
+      {tags.length > 0 && (
+        <div className="ms-spec-card__tags-section">
+          <div className="ms-spec-card__tags-label">
+            <Tag size={14} />
+            <span>Tags</span>
+          </div>
+          <div className="ms-spec-card__tags">
+            {tags.map(tag => (
+              <span key={tag} className="ms-badge ms-badge--neutral ms-badge--sm">{tag}</span>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export const TrustBadges: React.FC = () => {
   return (
-    <div className="grid grid-cols-3 gap-4 py-6 border-y border-[var(--border-subtle)]">
-      <div className="text-center space-y-2">
-        <div className="w-10 h-10 bg-[var(--surface-2)] rounded-full flex items-center justify-center mx-auto">
-          <Truck className="w-5 h-5 text-[var(--brand-primary)]" />
-        </div>
-        <p className="text-[10px] font-bold text-[var(--text-secondary)] leading-tight">Free<br/>Delivery</p>
+    <div className="ms-trust-row">
+      <div className="ms-trust-row__item">
+        <div className="ms-trust-row__icon"><Truck size={20} /></div>
+        <p className="ms-trust-row__label">Free<br />Delivery</p>
       </div>
-      <div className="text-center space-y-2">
-        <div className="w-10 h-10 bg-[var(--surface-2)] rounded-full flex items-center justify-center mx-auto">
-          <ShieldCheck className="w-5 h-5 text-[var(--brand-primary)]" />
-        </div>
-        <p className="text-[10px] font-bold text-[var(--text-secondary)] leading-tight">100%<br/>Secure</p>
+      <div className="ms-trust-row__item">
+        <div className="ms-trust-row__icon"><ShieldCheck size={20} /></div>
+        <p className="ms-trust-row__label">100%<br />Secure</p>
       </div>
-      <div className="text-center space-y-2">
-        <div className="w-10 h-10 bg-[var(--surface-2)] rounded-full flex items-center justify-center mx-auto">
-          <RotateCcw className="w-5 h-5 text-[var(--brand-primary)]" />
-        </div>
-        <p className="text-[10px] font-bold text-[var(--text-secondary)] leading-tight">Easy<br/>Returns</p>
+      <div className="ms-trust-row__item">
+        <div className="ms-trust-row__icon"><RotateCcw size={20} /></div>
+        <p className="ms-trust-row__label">Easy<br />Returns</p>
       </div>
     </div>
   );

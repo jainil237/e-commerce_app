@@ -1,0 +1,56 @@
+@use 'mixins' as m;
+@use 'variables' as v;
+
+// Shared layout for static / policy pages (cancellation, shipping, contact,
+// faq, returns, privacy, terms). Namespace: ms-policy.
+.ms-policy {
+  max-width: 56rem;
+  margin: 0 auto;
+  padding: 4rem 1rem;
+  @include m.sm { padding: 4rem 1.5rem; }
+  @include m.lg { padding: 4rem 2rem; }
+
+  &__title {
+    font-size: 1.875rem;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    color: var(--text-primary);
+    margin-bottom: 2rem;
+  }
+
+  &__card {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    background: var(--surface-0);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-base);
+    border-radius: var(--radius-xl);
+    padding: 2rem;
+    color: var(--text-secondary);
+
+    &--gap-lg { gap: 2rem; }
+  }
+
+  &__h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    &:not(:first-child) { margin-top: 0.5rem; }
+  }
+
+  &__group-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+  }
+
+  &__list {
+    list-style: disc;
+    padding-left: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}

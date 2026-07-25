@@ -1,8 +1,8 @@
+import './badge.scss'
 import React, { HTMLAttributes } from 'react'
-import styles from './Badge.module.css'
 
 interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'success' | 'warning' | 'error'
+  variant?: 'primary' | 'secondary' | 'outline' | 'neutral' | 'success' | 'warning' | 'error' | 'info'
   size?: 'sm' | 'md'
 }
 
@@ -14,10 +14,10 @@ export const Badge: React.FC<BadgeProps> = ({
   ...props
 }) => {
   const rootClass = [
-    styles.badge,
-    styles[variant],
-    styles[`size-${size}`],
-    className
+    'ms-badge',
+    `ms-badge--${variant}`,
+    `ms-badge--${size}`,
+    className,
   ].filter(Boolean).join(' ')
 
   return (

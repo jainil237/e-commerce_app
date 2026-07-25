@@ -131,3 +131,122 @@ export const SharedButton: React.FC<SharedButtonProps> = ({
     </button>
   );
 };
+
+interface SharedModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+}
+
+export const SharedModal: React.FC<SharedModalProps> = ({
+  isOpen,
+  onClose,
+  title,
+  children,
+}) => {
+  const modalRef = React.useRef<HTMLDivElement>(null);
+  const previousActiveElement = React.useRef<HTMLElement | null>(null);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      // Store the active element to restore later
+      previousActiveElement.current = document.activeElement as HTMLElement;
+
+      // Disable body scroll when modal is open
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+
+      // Find first focusable element and focus it
+      if (modalRef.current) {
+        const focusableElements = modalRef.current.querySelectorAll(
+          'a[href], area[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [tabindex="0"]'
+        );
+        if (focusableElements.length > 0) {
+          (focusableElements[0] as HTMLElement).focus();
+        } else {
+          modalRef.current.focus();
+        }
+      }
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          onClose();
+        }
+
+        if (e.key === 'Tab' && modalRef.current) {
+          const focusableElements = Array.from(
+            modalRef.current.querySelectorAll<HTMLElement>(
+              'a[href], area[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [tabindex="0"]'
+            )
+          );
+          
+          if (focusableElements.length === 0) return;
+
+          const firstElement = focusableElements[0];
+          const lastElement = focusableElements[focusableElements.length - 1];
+
+          if (e.shiftKey) {
+            // Shift + Tab -> loop to last element if on first
+            if (document.activeElement === firstElement) {
+              lastElement.focus();
+              e.preventDefault();
+            }
+          } else {
+            // Tab -> loop to first element if on last
+            if (document.activeElement === lastElement) {
+              firstElement.focus();
+              e.preventDefault();
+            }
+          }
+        }
+      };
+
+      document.addEventListener('keydown', handleKeyDown);
+
+      return () => {
+        document.removeEventListener('keydown', handleKeyDown);
+        document.body.style.overflow = originalOverflow;
+        if (previousActiveElement.current) {
+          previousActiveElement.current.focus();
+        }
+      };
+    }
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div 
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        ref={modalRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
+        className="bg-[var(--surface-0)] border border-[var(--border-base)] shadow-2xl rounded-3xl p-6 w-full max-w-md focus:outline-none animate-scale-in relative"
+      >
+        <div className="flex justify-between items-center mb-6">
+          <h3 id="modal-title" className="text-xl font-black text-[var(--text-primary)]">
+            {title}
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1.5 rounded-full hover:bg-[var(--surface-2)] transition-colors focus:ring-2 focus:ring-[var(--brand-primary)] focus:outline-none"
+            aria-label="Close modal"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+};

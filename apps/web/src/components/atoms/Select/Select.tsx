@@ -1,6 +1,6 @@
+import '@/styles/input.scss'
 import React, { SelectHTMLAttributes, forwardRef } from 'react'
 import { ChevronDown } from 'lucide-react'
-import styles from './Select.module.css'
 
 export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   label?: string
@@ -10,25 +10,21 @@ export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
 }
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
-  (
-    { className = '', label, error, helperText, options, id, ...props },
-    ref
-  ) => {
+  ({ className = '', label, error, helperText, options, id, ...props }, ref) => {
     const selectId = id || label?.toLowerCase().replace(/\s+/g, '-')
 
     return (
-      <div className={`${styles.wrapper} ${className}`}>
+      <div className={`ms-select-field${className ? ` ${className}` : ''}`}>
         {label && (
-          <label htmlFor={selectId} className={styles.label}>
+          <label htmlFor={selectId} className="ms-field__label">
             {label}
           </label>
         )}
-        
-        <div className={styles.selectContainer}>
+        <div style={{ position: 'relative' }}>
           <select
             id={selectId}
             ref={ref}
-            className={`${styles.select} ${error ? styles.error : ''}`}
+            className={`ms-select${error ? ' ms-select--error' : ''}`}
             {...props}
           >
             {options.map((opt) => (
@@ -37,13 +33,10 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
               </option>
             ))}
           </select>
-          <ChevronDown className={styles.iconRight} />
+          <ChevronDown className="ms-select-field__chevron" width={16} height={16} />
         </div>
-
-        {error && <span className={styles.errorText}>{error}</span>}
-        {helperText && !error && (
-          <span className={styles.helperText}>{helperText}</span>
-        )}
+        {error && <span className="ms-field__help ms-field__help--error">{error}</span>}
+        {helperText && !error && <span className="ms-field__help">{helperText}</span>}
       </div>
     )
   }

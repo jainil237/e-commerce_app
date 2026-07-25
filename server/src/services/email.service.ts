@@ -1,6 +1,10 @@
 import nodemailer from 'nodemailer'
 import fs from 'fs'
+import { PrismaClient } from '@prisma/client'
 import { getStoreConfig } from '../utils/config'
+import { getTrackingUrl } from '../utils/tracking'
+
+const prisma = new PrismaClient()
 
 interface OrderUser {
   name: string
@@ -35,8 +39,131 @@ interface OrderWithRelations {
   items: OrderItem[]
 }
 
+// Check if SMTP is fully configured with real credentials
+function isSmtpConfigured(): boolean {
+  const host = process.env.SMTP_HOST
+  const user = process.env.SMTP_USER
+  const pass = process.env.SMTP_PASS
+
+  if (!host) return false
+
+  // If host is the default mailtrap or gmail placeholders, check credentials
+  if (host === 'smtp.mailtrap.io' || host === 'smtp.gmail.com') {
+    if (!user || user === 'mailtrap_user' || user === 'yourstore@gmail.com') {
+      return false
+    }
+    if (!pass || pass === 'mailtrap_password' || pass === 'app-specific-password') {
+      return false
+    }
+  }
+
+  // Also check if they are generic empty placeholders
+  if (!user || !pass) {
+    return false
+  }
+
+  return true
+}
+
+// Mock Transporter for local development and testing fallback
+class MockTransporter {
+  async sendMail(options: {
+    from?: string
+    to?: string | string[]
+    subject?: string
+    html?: string
+    text?: string
+    attachments?: Array<{
+      filename: string
+      path?: string
+      href?: string
+    }>
+  }): Promise<{ messageId: string; response: string }> {
+    const emailDir = './uploads/emails'
+    try {
+      if (!fs.existsSync(emailDir)) {
+        fs.mkdirSync(emailDir, { recursive: true })
+      }
+
+      const cleanSubject = (options.subject || 'no-subject')
+        .replace(/[^a-z0-9]/gi, '_')
+        .toLowerCase()
+      const filename = `email_${Date.now()}_${cleanSubject}.html`
+      const filePath = `${emailDir}/${filename}`
+
+      const previewHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Mock Email Preview - ${options.subject || 'No Subject'}</title>
+          <style>
+            .email-metadata {
+              background: #f1f5f9;
+              border-bottom: 2px solid #e2e8f0;
+              padding: 16px;
+              font-family: ui-sans-serif, system-ui, sans-serif;
+              color: #334155;
+            }
+            .metadata-row { margin-bottom: 8px; }
+            .metadata-label { font-weight: bold; width: 100px; display: inline-block; }
+            .email-content { padding: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="email-metadata">
+            <div class="metadata-row"><span class="metadata-label">From:</span> ${options.from || 'system'}</div>
+            <div class="metadata-row"><span class="metadata-label">To:</span> ${options.to || 'recipient'}</div>
+            <div class="metadata-row"><span class="metadata-label">Subject:</span> ${options.subject || 'No Subject'}</div>
+            <div class="metadata-row"><span class="metadata-label">Date:</span> ${new Date().toLocaleString()}</div>
+            ${
+              options.attachments && options.attachments.length > 0
+                ? `
+              <div class="metadata-row">
+                <span class="metadata-label">Attachments:</span> 
+                ${options.attachments
+                  .map(
+                    (a) =>
+                      `${a.filename || 'file'} (${a.path || a.href || 'inline data'})`
+                  )
+                  .join(', ')}
+              </div>
+            `
+                : ''
+            }
+          </div>
+          <div class="email-content">
+            ${options.html || `<pre>${options.text || ''}</pre>`}
+          </div>
+        </body>
+        </html>
+      `
+
+      fs.writeFileSync(filePath, previewHtml)
+
+      console.log('╔═══════════════════════════════════════════════════════════════════╗')
+      console.log(`║ 📧 [Mock Email] Sent successfully to ${options.to}`)
+      console.log(`║ Subject: ${options.subject}`)
+      console.log(`║ Saved Preview to: ${filePath}`)
+      console.log('╚═══════════════════════════════════════════════════════════════════╝')
+
+      return {
+        messageId: `mock-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        response: '250 OK - Mock Email Saved Successfully',
+      }
+    } catch (err) {
+      console.error('[Mock Email] Failed to save simulated email:', err)
+      throw err
+    }
+  }
+}
+
 // Create transporter
-function createTransporter() {
+function createTransporter(): any {
+  if (!isSmtpConfigured()) {
+    console.log('[Email] SMTP is not fully configured. Using development Mock Email fallback.')
+    return new MockTransporter()
+  }
+
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: parseInt(process.env.SMTP_PORT || '587'),
@@ -54,12 +181,8 @@ export async function sendOrderConfirmationEmail(
 ): Promise<void> {
   const config = getStoreConfig()
 
-  // Skip if email service is disabled or SMTP not configured
+  // Skip if email service is disabled
   if (!config.features.emailService) return
-  if (!process.env.SMTP_HOST || process.env.SMTP_HOST === 'smtp.mailtrap.io') {
-    console.log('[Email] SMTP not configured — skipping order confirmation email')
-    return
-  }
 
   const transporter = createTransporter()
 
@@ -179,10 +302,6 @@ export async function sendInvoiceEmail(
 
   if (!config.features.emailService) {
     throw new Error('Email service is disabled')
-  }
-
-  if (!process.env.SMTP_HOST || process.env.SMTP_HOST === 'smtp.mailtrap.io') {
-    throw new Error('SMTP is not configured')
   }
 
   const transporter = createTransporter()
@@ -324,13 +443,15 @@ export async function sendShippingUpdateEmail(
   const transporter = createTransporter()
   const statusLabel = shipmentStatusLabels[shipping.status] || shipping.status
 
-  const trackingSection = shipping.trackingUrl && shipping.awbNumber
+  const finalTrackingUrl = shipping.trackingUrl || (shipping.awbNumber && shipping.courierPartner ? getTrackingUrl(shipping.courierPartner, shipping.awbNumber) : null)
+
+  const trackingSection = finalTrackingUrl && shipping.awbNumber
     ? `
       <div style="background: #f0f9ff; padding: 16px; border-radius: 8px; margin: 20px 0;">
         <p style="margin: 0 0 8px;"><strong>Courier:</strong> ${shipping.courierPartner}</p>
         <p style="margin: 0 0 8px;"><strong>Tracking Number:</strong> ${shipping.awbNumber}</p>
         <p style="margin: 0; text-align: center;">
-          <a href="${shipping.trackingUrl}" style="display: inline-block; background: ${config.store.primaryColor}; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">Track Your Package</a>
+          <a href="${finalTrackingUrl}" style="display: inline-block; background: ${config.store.primaryColor}; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">Track Your Package</a>
         </p>
       </div>
     `
@@ -465,3 +586,273 @@ export async function sendOrderCancelledEmail(
     html,
   })
 }
+
+export async function sendRmaCreatedAdminNotificationEmail(
+  rmaId: string
+): Promise<void> {
+  const config = getStoreConfig()
+  if (!config.features.emailService) return
+
+  const rma = await prisma.rMARequest.findUnique({
+    where: { id: rmaId },
+    include: {
+      user: true,
+      order: true,
+      items: {
+        include: {
+          orderItem: {
+            include: {
+              product: true,
+            },
+          },
+        },
+      },
+    },
+  })
+
+  if (!rma) {
+    console.error(`[Email] RMA request not found for notification: ${rmaId}`)
+    return
+  }
+
+  const transporter = createTransporter()
+
+  const itemsHtml = rma.items
+    .map(
+      (item) => `
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.orderItem.product.name}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">₹${Number(item.orderItem.unitPrice).toFixed(2)}</td>
+        </tr>
+      `
+    )
+    .join('')
+
+  const adminDashboardUrl = `${process.env.ADMIN_URL || 'http://localhost:3001'}/returns/${rma.id}`
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #f59e0b; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { padding: 20px; background: #f9f9f9; border-radius: 0 0 8px 8px; }
+        .info-card { background: white; padding: 15px; margin: 15px 0; border-radius: 8px; border: 1px solid #e2e8f0; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f0f0f0; padding: 10px; text-align: left; }
+        .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+        .button { display: inline-block; background: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1 style="margin: 0;">New ${rma.type === 'RETURN' ? 'Return' : 'Replacement'} Request</h1>
+          <p style="margin: 8px 0 0;">RMA Request #${rma.rmaNumber}</p>
+        </div>
+        
+        <div class="content">
+          <p>Hello Admin,</p>
+          <p>A new <strong>${rma.type === 'RETURN' ? 'Return' : 'Replacement'}</strong> request has been submitted for Order <strong>#${rma.order.orderNumber}</strong> by <strong>${rma.user.name}</strong>.</p>
+          
+          <div class="info-card">
+            <h3 style="margin-top: 0; color: #f59e0b;">Request Summary</h3>
+            <p><strong>RMA Number:</strong> ${rma.rmaNumber}</p>
+            <p><strong>Order Number:</strong> ${rma.order.orderNumber}</p>
+            <p><strong>Customer Name:</strong> ${rma.user.name}</p>
+            <p><strong>Customer Email:</strong> ${rma.user.email}</p>
+            <p><strong>Customer Phone:</strong> ${rma.user.phone}</p>
+            <p><strong>Reason:</strong> ${rma.reason.replace('_', ' ')}</p>
+            ${rma.customerNote ? `<p><strong>Customer Note:</strong> ${rma.customerNote}</p>` : ''}
+            <p><strong>Request Date:</strong> ${new Date(rma.createdAt).toLocaleDateString('en-IN', {
+              day: '2-digit',
+              month: 'long',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+            })}</p>
+          </div>
+          
+          <div class="info-card">
+            <h3 style="margin-top: 0;">Items Requested</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th style="padding: 8px; text-align: left; background: #f8fafc;">Product</th>
+                  <th style="padding: 8px; text-align: center; background: #f8fafc;">Qty</th>
+                  <th style="padding: 8px; text-align: right; background: #f8fafc;">Price</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemsHtml}
+              </tbody>
+            </table>
+          </div>
+          
+          <p style="text-align: center; margin-top: 30px;">
+            <a href="${adminDashboardUrl}" class="button">View & Process RMA in Dashboard</a>
+          </p>
+        </div>
+        
+        <div class="footer">
+          <p>This is an automated system notification from ${config.store.name}.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `
+
+  try {
+    await transporter.sendMail({
+      from: `"${config.store.name} Support" <${process.env.SMTP_USER}>`,
+      to: config.store.contact.email,
+      subject: `[New RMA] #${rma.rmaNumber} - ${rma.type} Request for Order #${rma.order.orderNumber} | ${config.store.name}`,
+      html,
+    })
+    console.log(`[Email] RMA created notification sent to store admin at ${config.store.contact.email}`)
+  } catch (error) {
+    console.error('[Email] Failed to send RMA admin notification:', error)
+  }
+}
+
+export async function sendRmaApprovedCustomerNotificationEmail(
+  rmaId: string
+): Promise<void> {
+  const config = getStoreConfig()
+  if (!config.features.emailService) return
+
+  const rma = await prisma.rMARequest.findUnique({
+    where: { id: rmaId },
+    include: {
+      user: true,
+      order: true,
+      items: {
+        include: {
+          orderItem: {
+            include: {
+              product: true,
+            },
+          },
+        },
+      },
+    },
+  })
+
+  if (!rma) {
+    console.error(`[Email] RMA request not found for notification: ${rmaId}`)
+    return
+  }
+
+  const transporter = createTransporter()
+
+  const itemsHtml = rma.items
+    .map(
+      (item) => `
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.orderItem.product.name}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
+        </tr>
+      `
+    )
+    .join('')
+
+  const statusTrackingUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/orders/${rma.order.id}`
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: ${config.store.primaryColor}; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { padding: 20px; background: #f9f9f9; border-radius: 0 0 8px 8px; }
+        .info-card { background: white; padding: 15px; margin: 15px 0; border-radius: 8px; border: 1px solid #e2e8f0; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f0f0f0; padding: 10px; text-align: left; }
+        .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+        .button { display: inline-block; background: ${config.store.primaryColor}; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; }
+        .next-steps-list { padding-left: 20px; margin: 10px 0; }
+        .next-steps-list li { margin-bottom: 8px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1 style="margin: 0;">Request Approved</h1>
+          <p style="margin: 8px 0 0;">RMA Request #${rma.rmaNumber}</p>
+        </div>
+        
+        <div class="content">
+          <p>Hi ${rma.user.name},</p>
+          <p>Great news! Your <strong>${rma.type === 'RETURN' ? 'Return' : 'Replacement'}</strong> request has been <strong>approved</strong> by our team.</p>
+          
+          <div class="info-card">
+            <h3 style="margin-top: 0; color: ${config.store.primaryColor};">Request Details</h3>
+            <p><strong>RMA Number:</strong> ${rma.rmaNumber}</p>
+            <p><strong>Order Number:</strong> ${rma.order.orderNumber}</p>
+            <p><strong>Request Type:</strong> ${rma.type}</p>
+            <p><strong>Status:</strong> APPROVED</p>
+            ${rma.adminNote ? `<p><strong>Merchant Instructions:</strong> ${rma.adminNote}</p>` : ''}
+          </div>
+          
+          <div class="info-card">
+            <h3 style="margin-top: 0;">Approved Items</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th style="padding: 8px; text-align: left; background: #f8fafc;">Product</th>
+                  <th style="padding: 8px; text-align: center; background: #f8fafc;">Qty</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemsHtml}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="info-card" style="border-left: 4px solid ${config.store.accentColor}; background: #fffbeb;">
+            <h3 style="margin-top: 0; color: #b45309;">What Happens Next?</h3>
+            <ul class="next-steps-list">
+              <li><strong>Reverse Pickup:</strong> Our courier partner will schedule a reverse pickup from your delivery address.</li>
+              <li><strong>Keep it Ready:</strong> Please ensure the item is packed securely in its original packaging with all tags, labels, and accessories intact.</li>
+              <li><strong>Verification:</strong> Once the package is received at our facility and verified, your ${rma.type === 'RETURN' ? 'refund will be processed' : 'replacement will be shipped'}.</li>
+            </ul>
+          </div>
+          
+          <p style="text-align: center; margin-top: 30px;">
+            <a href="${statusTrackingUrl}" class="button">Track Request Status</a>
+          </p>
+          
+          <p style="margin-top: 20px;">
+            If you have any questions, feel free to contact us at ${config.store.contact.email} or WhatsApp us at ${config.store.contact.whatsapp}.
+          </p>
+        </div>
+        
+        <div class="footer">
+          <p>Thank you for shopping with ${config.store.name}!</p>
+          <p>${config.store.name} Support Team</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `
+
+  try {
+    await transporter.sendMail({
+      from: `"${config.store.name}" <${process.env.SMTP_USER}>`,
+      to: rma.user.email,
+      subject: `Your ${rma.type === 'RETURN' ? 'Return' : 'Replacement'} Request #${rma.rmaNumber} has been Approved | ${config.store.name}`,
+      html,
+    })
+    console.log(`[Email] RMA approved notification sent to customer at ${rma.user.email}`)
+  } catch (error) {
+    console.error('[Email] Failed to send RMA customer notification:', error)
+  }
+}
+
