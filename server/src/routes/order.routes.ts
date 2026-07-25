@@ -64,26 +64,23 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next) => 
       throw createError(400, 'Some products are unavailable', 'PRODUCTS_UNAVAILABLE')
     }
 
-    // Validate stock and deduct atomically with row-level locks
-    const sortedProductIds = [...productIds].sort()
+    // Validate stock and deduct atomically: the WHERE and the decrement are one statement, so
+    // MySQL evaluates `stock >= quantity` under the row lock it takes itself — no window between
+    // reading stock and writing it, unlike a separate read-then-decrement. Items are processed in
+    // productId order to avoid deadlocking against other concurrent orders taking the same locks.
+    const sortedItems = [...validatedData.items].sort((a, b) => a.productId.localeCompare(b.productId))
     await prisma.$transaction(async (tx) => {
-      // Lock all products in consistent order to prevent deadlocks
-      for (const id of sortedProductIds) {
-        await tx.$executeRaw`SELECT id FROM Product WHERE id = ${id} FOR UPDATE`
-      }
-
-      for (const item of validatedData.items) {
+      for (const item of sortedItems) {
         const product = products.find(p => p.id === item.productId)!
 
-        if (product.stock < item.quantity) {
-          throw createError(400, `Insufficient stock for ${product.name}`, 'INSUFFICIENT_STOCK')
-        }
-
-        // Deduct stock
-        await tx.product.update({
-          where: { id: item.productId },
+        const result = await tx.product.updateMany({
+          where: { id: item.productId, stock: { gte: item.quantity } },
           data: { stock: { decrement: item.quantity } },
         })
+
+        if (result.count === 0) {
+          throw createError(400, `Insufficient stock for ${product.name}`, 'INSUFFICIENT_STOCK')
+        }
       }
     })
 
