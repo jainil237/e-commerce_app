@@ -87,8 +87,8 @@ MySQL via **Prisma 5**. Schema: `server/prisma/schema.prisma`.
 
 Key models and relationships:
 - `User` → `Order` (one-to-many, userId nullable for guest checkout)
-- `Order` → `Shipment` (one-to-one), `OrderItem[]`, `RMARequest[]`, `OrderAuditLog[]`
-- `Product` → `StockReservation[]` — stock is soft-locked during checkout for 15 min (`inventory.reservationDurationMinutes` in Store.config.json)
+- `Order` → `Shipment` (one-to-one), `OrderItem[]`, `RMARequest[]`, `OrderAuditLog[]`, `StockReservation[]`
+- `Product` → `StockReservation[]` — stock is soft-locked via reservations at order creation for 15 min (`inventory.reservationDurationMinutes` in Store.config.json); reservations are converted to stock decrements at payment confirmation
 - `RMARequest` (return/replacement) → `RMAItem[]`, `Refund?`, `Shipment` (pickup + replacement, two foreign keys on Shipment)
 - `OrderAuditLog` — append-only; every status transition must write here
 
@@ -137,7 +137,7 @@ Server reads from `server/.env`. Minimum required:
 ## Key Patterns
 
 - **Order status mutations** must write an `OrderAuditLog` entry.
-- **Stock changes** during checkout go through `StockReservation` (soft-lock), not direct decrements.
+- **Stock reservation & conversion**: at order creation, `StockReservation` records are created (status: ACTIVE); at payment confirmation, reservations are converted (status: CONVERTED) and `Product.stock` is decremented atomically. Cancelled/refunded orders release or restore reservations via the `inventory.service.ts` helpers.
 - **Shared page components** (`shared/pages/order/OrderDetailsPage.tsx`) accept a `viewer: ViewerContext` prop (`'customer' | 'admin'`) to render conditionally for each context rather than duplicating the component.
 - **RMA flow**: `PENDING → APPROVED → PICKUP_SCHEDULED → ITEM_RECEIVED → REFUND_INITIATED/REPLACEMENT_SHIPPED → COMPLETED`. Each state drives a shipment record with `ShipmentType: REVERSE | REPLACEMENT`.
 
