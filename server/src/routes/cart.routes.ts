@@ -2,7 +2,8 @@ import { Router, Response } from 'express'
 import { z } from 'zod'
 import { prisma } from '../utils/prisma'
 import { createError } from '../middleware/error.middleware'
-import { optionalAuth } from '../middleware/auth.middleware'
+import { optionalAuth, AuthRequest } from '../middleware/auth.middleware'
+import { getEffectiveAvailability } from '../services/inventory.service'
 
 const router = Router()
 
@@ -63,7 +64,7 @@ const validateCheckoutSchema = z.object({
   sessionId: z.string().optional(),
 })
 
-router.post('/validate-checkout', optionalAuth, async (req, res: Response, next) => {
+router.post('/validate-checkout', optionalAuth, async (req: AuthRequest, res: Response, next) => {
   try {
     const validatedData = validateCheckoutSchema.parse(req.body)
     const productIds = validatedData.items.map(i => i.productId)
@@ -81,6 +82,11 @@ router.post('/validate-checkout', optionalAuth, async (req, res: Response, next)
           images: { orderBy: { sortOrder: 'asc' }, take: 1 },
         },
       })
+
+      // Compute effective availability (stock minus other users' unexpired holds)
+      // ponytail: requesterKey is userId (authenticated) or sessionId (guest). Both are strings.
+      const requesterKey = req.user?.id || validatedData.sessionId || 'anonymous'
+      const effectiveAvailability = await getEffectiveAvailability(productIds, requesterKey, tx)
 
       const validationResults = validatedData.items.map(item => {
         const product = products.find(p => p.id === item.productId)
@@ -101,7 +107,7 @@ router.post('/validate-checkout', optionalAuth, async (req, res: Response, next)
           }
         }
 
-        const available = product.stock
+        const available = effectiveAvailability[item.productId] ?? 0
 
         if (available < item.quantity) {
           return {

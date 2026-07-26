@@ -7,6 +7,7 @@ import { sendOrderConfirmationEmail, sendShippingUpdateEmail } from '../services
 import { RmaService } from '../services/rma.service'
 import { ShipmentStatus } from '@prisma/client'
 import { confirmPayment } from '../services/payment-confirmation.service'
+import { restoreStock, releaseReservations } from '../services/inventory.service'
 
 const router = Router()
 
@@ -133,15 +134,17 @@ router.post('/razorpay', async (req, res: Response) => {
 
       case 'payment.failed': {
         const fromState = order.paymentStatus
-        await prisma.$transaction([
-          prisma.order.update({
+        // Payment failed: if order is still unpaid, release reservations; if paid, restore stock.
+        // Use transaction to keep order status update and reservation handling atomic.
+        await prisma.$transaction(async (tx) => {
+          await tx.order.update({
             where: { id: order.id },
             data: {
               paymentStatus: 'FAILED',
               status: 'CANCELLED',
             },
-          }),
-          prisma.orderAuditLog.create({
+          })
+          await tx.orderAuditLog.create({
             data: {
               orderId: order.id,
               userId: null,
@@ -150,30 +153,29 @@ router.post('/razorpay', async (req, res: Response) => {
               toState: 'FAILED',
               metadata: { source: 'webhook' },
             },
-          }),
-        ])
-
-        // Restore stock since payment failed and order is cancelled
-        for (const item of order.items) {
-          await prisma.product.update({
-            where: { id: item.productId },
-            data: { stock: { increment: item.quantity } },
           })
-        }
+          // Release ACTIVE reservations (unpaid) or restore CONVERTED ones (paid)
+          if (order.paymentStatus === 'PAID') {
+            await restoreStock(order.id, tx)
+          } else {
+            await releaseReservations(order.id, tx)
+          }
+        })
         break
       }
 
       case 'refund.created': {
         const fromState = order.paymentStatus
-        await prisma.$transaction([
-          prisma.order.update({
+        // Refund only happens for paid orders; restore the stock inside the transaction.
+        await prisma.$transaction(async (tx) => {
+          await tx.order.update({
             where: { id: order.id },
             data: {
               paymentStatus: 'REFUNDED',
               status: 'REFUNDED',
             },
-          }),
-          prisma.orderAuditLog.create({
+          })
+          await tx.orderAuditLog.create({
             data: {
               orderId: order.id,
               userId: null,
@@ -182,16 +184,10 @@ router.post('/razorpay', async (req, res: Response) => {
               toState: 'REFUNDED',
               metadata: { source: 'webhook' },
             },
-          }),
-        ])
-
-        // Restore stock on refund
-        for (const item of order.items) {
-          await prisma.product.update({
-            where: { id: item.productId },
-            data: { stock: { increment: item.quantity } },
           })
-        }
+          // Restore stock from CONVERTED reservations (order was paid)
+          await restoreStock(order.id, tx)
+        })
         break
       }
     }

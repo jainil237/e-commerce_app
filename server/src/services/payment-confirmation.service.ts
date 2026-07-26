@@ -2,6 +2,7 @@ import Razorpay from 'razorpay'
 import { Prisma } from '@prisma/client'
 import { prisma } from '../utils/prisma'
 import { isPaymentsMockMode } from '../config/payments'
+import { convertReservations, getEffectiveAvailability } from './inventory.service'
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID || '',
@@ -117,6 +118,58 @@ export async function confirmPayment(input: ConfirmPaymentInput) {
         user: true,
       },
     })
+
+    // Phase 4: Re-validate before conversion. Fail closed (leave order PENDING) if stock is insufficient.
+    // Check 1: Products must still be active (not deactivated post-order-creation)
+    const currentProducts = await tx.product.findMany({
+      where: { id: { in: order.items.map(i => i.productId) } },
+      select: { id: true, isActive: true, stock: true },
+    })
+
+    for (const item of order.items) {
+      const product = currentProducts.find(p => p.id === item.productId)
+      if (!product) {
+        throw new PaymentConfirmationError(
+          `Product ${item.productId} no longer exists`,
+          'PRODUCT_DELETED',
+          400
+        )
+      }
+      if (!product.isActive) {
+        throw new PaymentConfirmationError(
+          'One or more products in this order have been deactivated',
+          'PRODUCT_DEACTIVATED',
+          400
+        )
+      }
+    }
+
+    // Check 2: Validate stock availability. If reservations expired, check current stock directly.
+    // Excludes only this order's own reservation (by orderId), not every reservation the
+    // user holds — a user with a second in-flight order on the same product must still have
+    // that sibling hold count against this order's availability, or this check could pass
+    // while the sibling order is left holding stock that doesn't really exist for both.
+    const effectiveAvailability = await getEffectiveAvailability(
+      order.items.map(i => i.productId),
+      order.userId ?? '',
+      tx,
+      order.id
+    )
+
+    for (const item of order.items) {
+      const available = effectiveAvailability[item.productId] ?? 0
+      if (available < item.quantity) {
+        throw new PaymentConfirmationError(
+          `Insufficient stock for one or more items (${item.quantity} requested, ${available} available)`,
+          'INSUFFICIENT_STOCK_AT_CONFIRMATION',
+          400
+        )
+      }
+    }
+
+    // Convert reservations to decrements: mark them CONVERTED and decrement stock.
+    // This is the single point where stock is decremented for a confirmed order.
+    await convertReservations(order.id, tx)
 
     // Coupon usage — inside this transaction now, not a separate write
     // after the fact. This is the structural prerequisite Phase 4's

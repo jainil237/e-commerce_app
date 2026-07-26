@@ -243,6 +243,152 @@ describe('R3 — POST /api/v1/webhooks/razorpay end to end', () => {
     // undefined, not merely a different valid number).
     expect(Number(res.body.data.order.total)).toBeGreaterThanOrEqual(250)
   })
+
+  it('P3: payment.failed releases reservations when the order is still unpaid', async () => {
+    const user = await createUser()
+    const address = await createAddress(user.id)
+    const product = await createProduct({ price: 500, stock: 5 })
+    const createRes = await request(app)
+      .post('/api/v1/orders')
+      .set('Cookie', authCookies(user))
+      .send({ items: [{ productId: product.id, quantity: 2 }], addressId: address.id })
+    const { razorpayOrderId, orderId } = { razorpayOrderId: createRes.body.data.razorpay.orderId as string, orderId: createRes.body.data.order.id as string }
+
+    const payload = {
+      event: 'payment.failed',
+      payload: { payment: { entity: { id: 'pay_failed', order_id: razorpayOrderId } } },
+    }
+    const signature = signRawBody(payload, WEBHOOK_SECRET)
+    const prevSecret = process.env.RAZORPAY_WEBHOOK_SECRET
+    process.env.RAZORPAY_WEBHOOK_SECRET = WEBHOOK_SECRET
+
+    try {
+      const res = await request(app)
+        .post('/api/v1/webhooks/razorpay')
+        .set('x-razorpay-signature', signature)
+        .send(payload)
+
+      expect(res.status).toBe(200)
+
+      // Never decremented at creation, so nothing to restore — stock stays put.
+      const refreshedProduct = await prisma.product.findUniqueOrThrow({ where: { id: product.id } })
+      expect(refreshedProduct.stock).toBe(5)
+
+      const reservation = await prisma.stockReservation.findFirstOrThrow({ where: { orderId } })
+      expect(reservation.status).toBe('RELEASED')
+
+      const order = await prisma.order.findUniqueOrThrow({ where: { id: orderId } })
+      expect(order.paymentStatus).toBe('FAILED')
+    } finally {
+      if (prevSecret === undefined) delete process.env.RAZORPAY_WEBHOOK_SECRET
+      else process.env.RAZORPAY_WEBHOOK_SECRET = prevSecret
+    }
+  })
+
+  it('P3: payment.failed restores stock when the order was already paid', async () => {
+    const user = await createUser()
+    const address = await createAddress(user.id)
+    const product = await createProduct({ price: 500, stock: 5 })
+    const createRes = await request(app)
+      .post('/api/v1/orders')
+      .set('Cookie', authCookies(user))
+      .send({ items: [{ productId: product.id, quantity: 2 }], addressId: address.id })
+    const { razorpayOrderId, orderId } = { razorpayOrderId: createRes.body.data.razorpay.orderId as string, orderId: createRes.body.data.order.id as string }
+
+    // Confirm payment first — converts the reservation and decrements stock (5 -> 3).
+    await request(app)
+      .post('/api/v1/orders/verify-payment')
+      .set('Cookie', authCookies(user))
+      .send({
+        orderId,
+        razorpayOrderId,
+        razorpayPaymentId: 'pay_mock_test',
+        razorpaySignature: 'mock_signature',
+      })
+    const afterPay = await prisma.product.findUniqueOrThrow({ where: { id: product.id } })
+    expect(afterPay.stock).toBe(3)
+
+    const payload = {
+      event: 'payment.failed',
+      payload: { payment: { entity: { id: 'pay_failed_late', order_id: razorpayOrderId } } },
+    }
+    const signature = signRawBody(payload, WEBHOOK_SECRET)
+    const prevSecret = process.env.RAZORPAY_WEBHOOK_SECRET
+    process.env.RAZORPAY_WEBHOOK_SECRET = WEBHOOK_SECRET
+
+    try {
+      const res = await request(app)
+        .post('/api/v1/webhooks/razorpay')
+        .set('x-razorpay-signature', signature)
+        .send(payload)
+
+      expect(res.status).toBe(200)
+
+      // Order was PAID (converted), so payment.failed must restore the
+      // decremented stock, not merely release (nothing to release — the
+      // reservation is already CONVERTED, not ACTIVE).
+      const refreshedProduct = await prisma.product.findUniqueOrThrow({ where: { id: product.id } })
+      expect(refreshedProduct.stock).toBe(5)
+
+      const reservation = await prisma.stockReservation.findFirstOrThrow({ where: { orderId } })
+      expect(reservation.status).toBe('RELEASED')
+    } finally {
+      if (prevSecret === undefined) delete process.env.RAZORPAY_WEBHOOK_SECRET
+      else process.env.RAZORPAY_WEBHOOK_SECRET = prevSecret
+    }
+  })
+
+  it('P3: refund.created restores stock for a paid order', async () => {
+    const user = await createUser()
+    const address = await createAddress(user.id)
+    const product = await createProduct({ price: 500, stock: 5 })
+    const createRes = await request(app)
+      .post('/api/v1/orders')
+      .set('Cookie', authCookies(user))
+      .send({ items: [{ productId: product.id, quantity: 2 }], addressId: address.id })
+    const { razorpayOrderId, orderId } = { razorpayOrderId: createRes.body.data.razorpay.orderId as string, orderId: createRes.body.data.order.id as string }
+
+    await request(app)
+      .post('/api/v1/orders/verify-payment')
+      .set('Cookie', authCookies(user))
+      .send({
+        orderId,
+        razorpayOrderId,
+        razorpayPaymentId: 'pay_mock_test',
+        razorpaySignature: 'mock_signature',
+      })
+    const afterPay = await prisma.product.findUniqueOrThrow({ where: { id: product.id } })
+    expect(afterPay.stock).toBe(3)
+
+    const payload = {
+      event: 'refund.created',
+      payload: { payment: { entity: { id: 'pay_refunded', order_id: razorpayOrderId } } },
+    }
+    const signature = signRawBody(payload, WEBHOOK_SECRET)
+    const prevSecret = process.env.RAZORPAY_WEBHOOK_SECRET
+    process.env.RAZORPAY_WEBHOOK_SECRET = WEBHOOK_SECRET
+
+    try {
+      const res = await request(app)
+        .post('/api/v1/webhooks/razorpay')
+        .set('x-razorpay-signature', signature)
+        .send(payload)
+
+      expect(res.status).toBe(200)
+
+      const refreshedProduct = await prisma.product.findUniqueOrThrow({ where: { id: product.id } })
+      expect(refreshedProduct.stock).toBe(5)
+
+      const reservation = await prisma.stockReservation.findFirstOrThrow({ where: { orderId } })
+      expect(reservation.status).toBe('RELEASED')
+
+      const order = await prisma.order.findUniqueOrThrow({ where: { id: orderId } })
+      expect(order.paymentStatus).toBe('REFUNDED')
+    } finally {
+      if (prevSecret === undefined) delete process.env.RAZORPAY_WEBHOOK_SECRET
+      else process.env.RAZORPAY_WEBHOOK_SECRET = prevSecret
+    }
+  })
 })
 
 describe('R3 — logistics webhook is unaffected (different path, still JSON-based)', () => {

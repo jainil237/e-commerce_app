@@ -11,6 +11,7 @@ import { generateInvoicePdf } from '../services/invoice.service'
 import { sendOrderConfirmationEmail, sendOrderCancelledEmail, sendInvoiceEmail } from '../services/email.service'
 import { isPaymentsMockMode } from '../config/payments'
 import { confirmPayment, PaymentConfirmationError } from '../services/payment-confirmation.service'
+import { createReservations, getEffectiveAvailability, releaseReservations, reserveStock, restoreStock } from '../services/inventory.service'
 
 const router = Router()
 
@@ -66,25 +67,23 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next) => 
       throw createError(400, 'Some products are unavailable', 'PRODUCTS_UNAVAILABLE')
     }
 
-    // Validate stock and deduct atomically: the WHERE and the decrement are one statement, so
-    // MySQL evaluates `stock >= quantity` under the row lock it takes itself — no window between
-    // reading stock and writing it, unlike a separate read-then-decrement. Items are processed in
-    // productId order to avoid deadlocking against other concurrent orders taking the same locks.
-    const sortedItems = [...validatedData.items].sort((a, b) => a.productId.localeCompare(b.productId))
-    await prisma.$transaction(async (tx) => {
-      for (const item of sortedItems) {
-        const product = products.find(p => p.id === item.productId)!
-
-        const result = await tx.product.updateMany({
-          where: { id: item.productId, stock: { gte: item.quantity } },
-          data: { stock: { decrement: item.quantity } },
-        })
-
-        if (result.count === 0) {
-          throw createError(400, `Insufficient stock for ${product.name}`, 'INSUFFICIENT_STOCK')
-        }
+    // Best-effort pre-check so an out-of-stock request fails before we call Razorpay's
+    // API, not after. Not authoritative — it can race with a concurrent request and
+    // pass when it shouldn't. The authoritative, race-free check happens atomically
+    // inside createReservations() below, which locks each product row before
+    // checking and inserting in the same transaction as order creation.
+    // Excludes nothing (matches createReservations' authoritative check below) — a
+    // same-user sibling order's hold on the same product is a real claim and must
+    // fail this pre-check too, or it wastes a Razorpay order-creation call before
+    // the atomic check catches it anyway.
+    const preCheckAvailability = await getEffectiveAvailability(productIds, undefined)
+    for (const item of validatedData.items) {
+      const product = products.find(p => p.id === item.productId)!
+      const available = preCheckAvailability[item.productId] ?? 0
+      if (available < item.quantity) {
+        throw createError(400, `Insufficient stock for ${product.name}`, 'INSUFFICIENT_STOCK')
       }
-    })
+    }
 
     // Calculate totals
     let subtotal = 0
@@ -202,36 +201,55 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next) => 
       })
     }
 
-    // Create order in database
-    const order = await prisma.order.create({
-      data: {
-        orderNumber,
-        userId: req.user!.id,
-        addressId: address.id,
-        subtotal,
-        shippingCharge,
-        discount,
-        gstAmount: totalGst,
-        total,
-        status: 'PENDING',
-        paymentStatus: 'PENDING',
-        razorpayOrderId: razorpayOrder.id,
-        couponCode: validatedData.couponCode,
-        notes: validatedData.notes,
-        items: {
-          create: orderItems,
-        },
-      },
-      include: {
-        items: {
-          include: {
-            product: {
-              include: { images: true },
-            },
+    // Create order and reservations in a single transaction.
+    // Reservations are stamped with the orderId at creation — the link is established at birth.
+    const order = await prisma.$transaction(async (tx) => {
+      // Lock and validate BEFORE order.create: an OrderItem's FK to Product takes
+      // an implicit shared lock on the Product row, and taking that before this
+      // function's exclusive FOR UPDATE would let two concurrent transactions
+      // both hold the shared lock and deadlock trying to upgrade to exclusive.
+      await reserveStock(validatedData.items, tx)
+
+      const created = await tx.order.create({
+        data: {
+          orderNumber,
+          userId: req.user!.id,
+          addressId: address.id,
+          subtotal,
+          shippingCharge,
+          discount,
+          gstAmount: totalGst,
+          total,
+          status: 'PENDING',
+          paymentStatus: 'PENDING',
+          razorpayOrderId: razorpayOrder.id,
+          couponCode: validatedData.couponCode,
+          notes: validatedData.notes,
+          items: {
+            create: orderItems,
           },
         },
-        address: true,
-      },
+        include: {
+          items: {
+            include: {
+              product: {
+                include: { images: true },
+              },
+            },
+          },
+          address: true,
+        },
+      })
+
+      // Create ACTIVE reservations for this order (never decrement stock at order creation)
+      await createReservations(
+        created.id,
+        validatedData.items,
+        req.user!.id,
+        tx
+      )
+
+      return created
     })
 
     res.status(201).json({
@@ -278,8 +296,9 @@ router.post('/verify-payment', authenticate, async (req: AuthRequest, res: Respo
       }
     }
 
-    // NOTE: Stock was already deducted during order creation.
-    // Do NOT deduct again here to prevent double-reduction.
+    // NOTE: Stock is NOT deducted at order creation; instead, reservations are created.
+    // Conversion (deduction) happens inside confirmPayment inside the same transaction
+    // that marks the order PAID.
 
     let result
     try {
@@ -593,20 +612,23 @@ router.post('/:id/cancel', authenticate, async (req: AuthRequest, res: Response,
       throw createError(400, 'Order cannot be cancelled', 'CANNOT_CANCEL')
     }
 
-
-    // Update order status
-    await prisma.order.update({
-      where: { id },
-      data: { status: 'CANCELLED' },
-    })
-
-    // Restore stock
-    for (const item of order.items) {
-      await prisma.product.update({
-        where: { id: item.productId },
-        data: { stock: { increment: item.quantity } },
+    // Update order status and handle reservations in one transaction.
+    // Unpaid orders: release ACTIVE reservations (never decremented).
+    // Paid orders: restore stock from CONVERTED reservations.
+    await prisma.$transaction(async (tx) => {
+      await tx.order.update({
+        where: { id },
+        data: { status: 'CANCELLED' },
       })
-    }
+
+      if (order.paymentStatus === 'PAID') {
+        // Order was paid; restore the decremented stock
+        await restoreStock(id, tx)
+      } else {
+        // Order was not paid; release the ACTIVE reservations
+        await releaseReservations(id, tx)
+      }
+    })
 
     // Send cancellation email
     if (order.user) {
