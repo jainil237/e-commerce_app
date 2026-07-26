@@ -81,42 +81,39 @@ export async function getEffectiveAvailability(
 }
 
 /**
- * Create ACTIVE stock reservations for an order at order-creation time,
- * after atomically verifying availability.
+ * Lock each product row (`SELECT ... FOR UPDATE`) and verify availability,
+ * BEFORE anything else in the caller's transaction touches these rows.
  *
- * Each product row is locked (`SELECT ... FOR UPDATE`) inside the caller's
- * transaction before availability is checked and the reservation inserted.
- * Every reservation writer takes this same lock before checking, so
- * concurrent reservation attempts for the same product serialize on the
- * lock instead of racing on a plain read — this is what the old atomic
- * `updateMany` decrement guaranteed, reproduced for a write that no longer
- * touches `Product.stock` directly. Throws (rolling back the whole
- * transaction, including order creation) if any item is unavailable.
+ * Order matters: `Order.items` has an FK to `Product`, so inserting an
+ * `OrderItem` takes an implicit shared lock on the referenced `Product` row
+ * for FK integrity. If that shared lock were taken first and this function's
+ * exclusive `FOR UPDATE` came second, two concurrent transactions could each
+ * hold the shared lock and then both block trying to upgrade to exclusive —
+ * a real MySQL deadlock (error 1213), reproduced under an actual concurrent
+ * test run. Taking the exclusive lock FIRST, before any shared lock can be
+ * acquired by this same transaction, means only one lock type is ever
+ * contested: the loser just queues for the exclusive lock and proceeds
+ * cleanly once the winner commits, instead of deadlocking.
  *
- * Reservations are stamped with the order's ID at creation — the link is
- * established at birth rather than reconstructed later.
+ * Throws (rolling back the whole transaction, including order creation) if
+ * any item is unavailable.
  *
- * @param orderId - UUID of the order being created
  * @param orderItems - array of { productId, quantity }
- * @param userId - UUID of the user placing the order (used as the reservation owner key)
- * @param tx - Prisma transaction (required; order creation must be atomic)
+ * @param tx - Prisma transaction (required; must be the transaction order creation runs in)
  */
-export async function createReservations(
-  orderId: string,
+export async function reserveStock(
   orderItems: Array<{ productId: string; quantity: number }>,
-  userId: string,
   tx: Prisma.TransactionClient
 ) {
-  const config = getStoreConfig()
-  const expiresAt = new Date(Date.now() + config.inventory.reservationDurationMinutes * 60_000)
-
   // Processed in productId order — same deadlock-avoidance convention used
-  // by convertReservations/restoreStock and by the route this replaces.
+  // by convertReservations/restoreStock, for the case of multiple distinct
+  // products in one order (two transactions locking two products in the
+  // same relative order can't form a circular wait).
   const sorted = [...orderItems].sort((a, b) => a.productId.localeCompare(b.productId))
 
   for (const item of sorted) {
-    const locked = await tx.$queryRaw<Array<{ id: string; name: string; stock: number }>>(
-      Prisma.sql`SELECT id, name, stock FROM Product WHERE id = ${item.productId} FOR UPDATE`
+    const locked = await tx.$queryRaw<Array<{ id: string; name: string }>>(
+      Prisma.sql`SELECT id, name FROM Product WHERE id = ${item.productId} FOR UPDATE`
     )
     const product = locked[0]
     if (!product) {
@@ -134,18 +131,44 @@ export async function createReservations(
     if (available < item.quantity) {
       throw createError(400, `Insufficient stock for ${product.name}`, 'INSUFFICIENT_STOCK')
     }
-
-    await tx.stockReservation.create({
-      data: {
-        productId: item.productId,
-        quantity: item.quantity,
-        orderId,
-        userId,
-        expiresAt,
-        status: 'ACTIVE',
-      },
-    })
   }
+}
+
+/**
+ * Insert ACTIVE stock reservations for an order, stamped with the order's ID
+ * at creation — the link is established at birth rather than reconstructed
+ * later. Must be called only after `reserveStock` has already locked and
+ * validated every item in the same transaction; this function does no
+ * locking or checking of its own.
+ *
+ * @param orderId - UUID of the order being created
+ * @param orderItems - array of { productId, quantity }
+ * @param userId - UUID of the user placing the order (used as the reservation owner key)
+ * @param tx - Prisma transaction (required; must be the same transaction `reserveStock` ran in)
+ */
+export async function createReservations(
+  orderId: string,
+  orderItems: Array<{ productId: string; quantity: number }>,
+  userId: string,
+  tx: Prisma.TransactionClient
+) {
+  const config = getStoreConfig()
+  const expiresAt = new Date(Date.now() + config.inventory.reservationDurationMinutes * 60_000)
+
+  await Promise.all(
+    orderItems.map((item) =>
+      tx.stockReservation.create({
+        data: {
+          productId: item.productId,
+          quantity: item.quantity,
+          orderId,
+          userId,
+          expiresAt,
+          status: 'ACTIVE',
+        },
+      })
+    )
+  )
 }
 
 /**

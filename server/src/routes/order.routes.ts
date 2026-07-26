@@ -11,7 +11,7 @@ import { generateInvoicePdf } from '../services/invoice.service'
 import { sendOrderConfirmationEmail, sendOrderCancelledEmail, sendInvoiceEmail } from '../services/email.service'
 import { isPaymentsMockMode } from '../config/payments'
 import { confirmPayment, PaymentConfirmationError } from '../services/payment-confirmation.service'
-import { createReservations, getEffectiveAvailability, releaseReservations, restoreStock } from '../services/inventory.service'
+import { createReservations, getEffectiveAvailability, releaseReservations, reserveStock, restoreStock } from '../services/inventory.service'
 
 const router = Router()
 
@@ -204,6 +204,12 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next) => 
     // Create order and reservations in a single transaction.
     // Reservations are stamped with the orderId at creation — the link is established at birth.
     const order = await prisma.$transaction(async (tx) => {
+      // Lock and validate BEFORE order.create: an OrderItem's FK to Product takes
+      // an implicit shared lock on the Product row, and taking that before this
+      // function's exclusive FOR UPDATE would let two concurrent transactions
+      // both hold the shared lock and deadlock trying to upgrade to exclusive.
+      await reserveStock(validatedData.items, tx)
+
       const created = await tx.order.create({
         data: {
           orderNumber,
