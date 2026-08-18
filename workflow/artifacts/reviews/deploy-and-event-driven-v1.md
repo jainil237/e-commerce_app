@@ -23,6 +23,25 @@ orchestration:
 Review target: `git diff inventory-reservation..HEAD` — 27 files, +2420/−99, commits
 c60e6a6, e753a41, 1d996fc, 659f420, e011da0, bb79608, 55703a2.
 
+## Remediation Status
+
+User approved fixing P1-1, P2-1, P2-2, and P3-1 on 2026-08-18. All four are resolved in commit
+`a835301`. P3-2 was not selected and remains open.
+
+| Finding | Severity | Status |
+|---|---|---|
+| P1-1 Redis outage prevents boot | P1 | **fixed** — `a835301` |
+| P2-1 Admin responses block on Redis | P2 | **fixed** — `a835301` |
+| P2-2 Duplicate confirmation email on retry | P2 | **fixed** — `a835301`, regression test added |
+| P3-1 Agent memory files committed | P3 | **fixed** — `a835301` |
+| P3-2 Docs placeholder convention | P3 | open — not selected |
+
+Post-remediation verification: `npm run build --workspace=server` clean; **11 files / 83 tests
+pass** (was 10/79). The new `server/tests/services/queue-jobs.test.ts` was confirmed to have
+teeth by temporarily disabling the P2-2 guard — 2 of its 4 tests failed, then passed on restore.
+
+Findings below are preserved as originally written, each annotated with its resolution.
+
 ## Findings
 
 ### P1-1 — A Redis outage prevents the server from booting at all
@@ -49,6 +68,14 @@ c60e6a6, e753a41, 1d996fc, 659f420, e011da0, bb79608, 55703a2.
   wrap them in their own `try/catch` that logs and continues. The server should serve traffic
   with an inline-fallback queue rather than not serve at all. Worth asserting in a test:
   boot with `REDIS_URL` pointed at a dead port and confirm the process stays up.
+- **RESOLVED** (`a835301`): extracted `startQueue()`, invoked as `void startQueue()` after
+  `app.listen(...)`, with its own catch that logs `⚠️ Queue unavailable — jobs will run
+  inline. The API is still serving traffic`. The misleading `Failed to connect to database`
+  catch message was corrected to `Failed to start server`. The suggested dead-port boot test
+  was **not** added: `REDIS_URL` is read at module load in `queues/index.ts`, so asserting it
+  requires module-registry mocking that would test the mock more than the behaviour. The
+  structural guarantee is now that no queue call is awaited before `listen`, which is
+  verifiable by reading the file. Recorded as a deliberate gap rather than an oversight.
 
 ### P2-1 — Admin shipping responses now block on a Redis round-trip
 
@@ -64,6 +91,12 @@ c60e6a6, e753a41, 1d996fc, 659f420, e011da0, bb79608, 55703a2.
   itself, accepting that a lost enqueue falls back to nothing), or bound it with an explicit
   short timeout. Note this trades against the retry guarantee the change was made to gain, so
   it is a real decision rather than an obvious cleanup — flagging rather than prescribing.
+- **RESOLVED** (`a835301`): added `enqueueOrRun()` to `queues/index.ts` — enqueues, or runs the
+  fallback inline if there is no queue, without making the caller await either, and never
+  throwing. This avoids the trade the finding described: the retry guarantee is kept when Redis
+  is healthy, and the response path is non-blocking either way. Incidental TypeScript fix: the
+  enclosing `order.user` narrowing does not survive into the deferred closure, so all three
+  sites now bind `const recipient = order.user` first.
 
 ### P2-2 — Order-confirmation job can re-send a duplicate email on retry
 
@@ -79,6 +112,11 @@ c60e6a6, e753a41, 1d996fc, 659f420, e011da0, bb79608, 55703a2.
   repo already treats as the append-only record for order events) and skip the send when it
   is present. Low likelihood, cosmetic impact, but it is the kind of thing that erodes trust
   in transactional email.
+- **RESOLVED** (`a835301`): guarded with an `ORDER_CONFIRMATION_EMAIL_SENT` entry in
+  `OrderAuditLog`, checked before the send and written after. Covered by four new tests in
+  `server/tests/services/queue-jobs.test.ts` (first-run send, no re-send on retry, exactly one
+  audit entry, markers not shared across orders). The tests were verified to actually catch the
+  defect: with the guard temporarily disabled, 2 of the 4 fail.
 
 ### P3-1 — Subagent private memory files committed to the repository
 
@@ -92,6 +130,10 @@ c60e6a6, e753a41, 1d996fc, 659f420, e011da0, bb79608, 55703a2.
   `docs/deployment.md`. Their content is benign — no secrets — but they are noise in the
   history and will confuse a reader looking for authoritative docs.
 - **Fix:** `git rm -r --cached .claude/agent-memory/` and add it to `.gitignore`.
+- **RESOLVED** (`a835301`): untracked (4 files, including two from an earlier chain that had
+  also been swept in) and added `.claude/agent-memory/` to `.gitignore`. Verified afterwards
+  that the three `.env.example` files remain tracked — the negation rules added in Phase 3 are
+  in the same file and were easy to disturb.
 
 ### P3-2 — `docs/deployment.md` verification block references an unset variable
 
@@ -108,9 +150,9 @@ c60e6a6, e753a41, 1d996fc, 659f420, e011da0, bb79608, 55703a2.
 | Severity | Count |
 |---|---|
 | P0 | 0 |
-| P1 | 1 |
-| P2 | 2 |
-| P3 | 2 |
+| P1 | 1 (fixed) |
+| P2 | 2 (fixed) |
+| P3 | 2 (1 fixed, 1 open) |
 
 ## Requirement Coverage
 
@@ -177,9 +219,10 @@ round-trip, and the two-tab session-isolation QA. All three need user-supplied c
 
 ## Residual Risk
 
-- **P1-1 is a production availability risk**, not a theoretical one. Upstash free tiers
-  throttle, and a throttled or misconfigured Redis currently takes the whole API down rather
-  than degrading it.
+- ~~**P1-1 is a production availability risk.**~~ **Resolved in `a835301`** — Redis is now a
+  degraded-mode dependency, not a boot dependency. Residual: the fix is structurally verifiable
+  by reading `index.ts` but has no automated test (see P1-1 resolution note), so a future
+  refactor could re-introduce an awaited queue call before `listen` without anything failing.
 - **TiDB behaviour remains unverified.** The locking remedy is correct in principle and
   proven on MySQL, but TiDB's pessimistic locking is not byte-identical to InnoDB. The
   concurrency tests must be re-run against TiDB before this is trusted. This is the single
@@ -196,7 +239,7 @@ round-trip, and the two-tab session-isolation QA. All three need user-supplied c
 
 ## Recommendation
 
-**pass-with-risk**
+**pass-with-risk** — original recommendation, retained.
 
 The chain met its requirements, held the protected-path boundary, and produced honest
 evidence including self-reported regressions. P1-1 should be fixed before deploying — it is a
@@ -206,3 +249,11 @@ housekeeping.
 
 Nothing here blocks proceeding to Test, since Test's remaining work is exactly the live
 credential-dependent verification that P1-1's fix should be validated alongside.
+
+### Post-remediation (2026-08-18)
+
+P1-1, P2-1, P2-2, and P3-1 are fixed in `a835301`. The recommendation stays **pass-with-risk**
+rather than moving to **pass**, because the risks that produced that qualifier were never the
+findings themselves — they are the three requirement rows still `partial` (R2, R3, R4), all
+blocked on live credentials, and the TiDB locking behaviour that remains unverified against
+real TiDB. Those carry into Test unchanged.
