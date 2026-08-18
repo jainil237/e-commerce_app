@@ -273,3 +273,37 @@ export async function restoreStock(
     })
   }
 }
+
+/**
+ * Mark ACTIVE reservations whose hold has lapsed as EXPIRED.
+ *
+ * This is cleanup, not correctness. Availability already ignores lapsed
+ * reservations at read time (`getEffectiveAvailability` filters on
+ * `expiresAt > now`), so an unswept row never oversells — it just accumulates.
+ * Without this the table grows without bound, since nothing else ever
+ * transitions an abandoned-checkout reservation out of ACTIVE.
+ *
+ * Deliberately does NOT touch Product.stock: an ACTIVE reservation is a soft
+ * hold that was never decremented from stock in the first place (that happens
+ * at conversion). Incrementing here would invent inventory.
+ *
+ * Safe to run at any cadence, including not at all for a while — which matters
+ * because the worker is idle-spun-down on Render's free tier.
+ *
+ * @returns number of reservations marked EXPIRED
+ */
+export async function sweepExpiredReservations(): Promise<number> {
+  const result = await prisma.stockReservation.updateMany({
+    where: {
+      status: 'ACTIVE',
+      expiresAt: { lt: new Date() },
+    },
+    data: { status: 'EXPIRED' },
+  })
+
+  if (result.count > 0) {
+    console.log(`[Inventory] swept ${result.count} expired reservation(s)`)
+  }
+
+  return result.count
+}

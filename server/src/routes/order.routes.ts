@@ -11,6 +11,8 @@ import { generateInvoicePdf } from '../services/invoice.service'
 import { sendOrderConfirmationEmail, sendOrderCancelledEmail, sendInvoiceEmail } from '../services/email.service'
 import { isPaymentsMockMode } from '../config/payments'
 import { confirmPayment, PaymentConfirmationError } from '../services/payment-confirmation.service'
+import { enqueue } from '../queues'
+import { JOB, OrderConfirmationPayload } from '../queues/jobs'
 import { createReservations, getEffectiveAvailability, releaseReservations, reserveStock, restoreStock } from '../services/inventory.service'
 
 const router = Router()
@@ -330,16 +332,27 @@ router.post('/verify-payment', authenticate, async (req: AuthRequest, res: Respo
         user: updatedOrder.user,
       }
 
-      const invoicePath = await generateInvoicePdf(orderWithUser)
+      // Invoice PDF render + upload blocked the payment-confirmation response.
+      // Queue it; the same job also sends the confirmation email, so the
+      // fire-and-forget email below moved into the handler with real retries
+      // instead of a bare .catch that swallowed failures.
+      const queued = await enqueue<OrderConfirmationPayload>(
+        JOB.ORDER_CONFIRMATION,
+        { orderId }
+      )
 
-      await prisma.order.update({
-        where: { id: orderId },
-        data: { invoiceUrl: invoicePath },
-      })
+      if (!queued) {
+        const invoicePath = await generateInvoicePdf(orderWithUser)
 
-      // Send confirmation email (non-blocking — don't fail the payment if email fails)
-      sendOrderConfirmationEmail(orderWithUser, invoicePath)
-        .catch(err => console.error('[Email] Failed to send order confirmation:', err))
+        await prisma.order.update({
+          where: { id: orderId },
+          data: { invoiceUrl: invoicePath },
+        })
+
+        // Non-blocking — don't fail the payment if email fails.
+        sendOrderConfirmationEmail(orderWithUser, invoicePath)
+          .catch(err => console.error('[Email] Failed to send order confirmation:', err))
+      }
     }
 
     res.json({

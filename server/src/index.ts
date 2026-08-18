@@ -24,6 +24,11 @@ import rmaRoutes from './routes/rma.routes'
 // Import storage provider detection
 import { getActiveProvider } from './services/storage.service'
 
+// Queue layer
+import { isQueueEnabled, jobQueue } from './queues'
+import { JOB } from './queues/jobs'
+import { startWorker } from './queues/worker'
+
 // Import middleware
 import { errorHandler, notFound } from './middleware/error.middleware'
 
@@ -158,6 +163,25 @@ const startServer = async () => {
       )
       console.error('❌ Startup validation failed:', error.message)
       process.exit(1)
+    }
+
+    // Queue worker runs in-process: Render's free tier has no background
+    // worker service type. It therefore stops consuming while the web service
+    // is idle-spun-down and resumes on the next request. See docs/deployment.md.
+    startWorker()
+
+    if (isQueueEnabled && jobQueue) {
+      // Repeatable sweep of lapsed stock reservations. Cleanup only —
+      // availability already ignores expired holds at read time, so a missed
+      // window is harmless.
+      // upsertJobScheduler (not add + repeat, removed in BullMQ v6) is
+      // idempotent, so restarts re-assert the schedule rather than stacking
+      // duplicate repeaters.
+      await jobQueue.upsertJobScheduler(
+        'sweep-reservations',
+        { every: 15 * 60 * 1000 },
+        { name: JOB.SWEEP_RESERVATIONS }
+      )
     }
 
     app.listen(PORT, () => {
