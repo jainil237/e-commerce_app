@@ -58,6 +58,32 @@ export async function enqueue<T>(name: string, data: T, opts?: JobsOptions): Pro
   }
 }
 
+/**
+ * Fire-and-forget variant: enqueue, or run `fallback` inline if there is no
+ * queue — without making the caller wait for either.
+ *
+ * For notification sites that were already non-blocking before the queue
+ * existed. Awaiting `enqueue` there would regress them: a slow or unreachable
+ * Redis would hold the HTTP response open until ioredis gave up, on a path
+ * that previously never waited at all.
+ *
+ * Never throws — a failed notification must not fail the request that
+ * triggered it.
+ */
+export function enqueueOrRun<T>(
+  name: string,
+  data: T,
+  fallback: () => Promise<unknown>,
+  opts?: JobsOptions
+): void {
+  void (async () => {
+    if (await enqueue(name, data, opts)) return
+    await fallback()
+  })().catch((err) => {
+    console.error(`[Queue] "${name}" failed inline after enqueue fell through:`, err)
+  })
+}
+
 export async function closeQueue() {
   await jobQueue?.close()
   await connection?.quit()

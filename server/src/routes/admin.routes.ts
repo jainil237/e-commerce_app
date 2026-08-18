@@ -10,7 +10,7 @@ import { getStoreConfig, getTrackingUrl } from '../utils/config'
 import { uploadProductImages } from '../services/image-upload.service'
 import { sendShippingUpdateEmail } from '../services/email.service'
 import { getActiveProvider } from '../services/storage.service'
-import { enqueue } from '../queues'
+import { enqueueOrRun } from '../queues'
 import { JOB, ShippingUpdatePayload } from '../queues/jobs'
 import { isR2Enabled } from '../services/r2.service'
 import { isCloudinaryEnabled } from '../services/cloudinary.service'
@@ -945,22 +945,28 @@ router.patch('/orders/:id/status', async (req, res: Response, next) => {
         courierPartner: getStoreConfig().courier.defaultPartner,
       }
 
-      // Queued for real retries; the previous bare .catch() logged the failure
-      // and dropped the notification. Falls back to inline when no queue.
-      const queued = await enqueue<ShippingUpdatePayload>(JOB.SHIPPING_UPDATE, {
-        orderId: order.id,
-        shipping: {
-          ...emailDetails,
-          expectedBy: emailDetails.expectedBy?.toISOString() ?? null,
-        },
-      })
+      // Bound before the closure: the enclosing `order.user` narrowing does
+      // not survive into a deferred callback.
+      const recipient = order.user
 
-      if (!queued) {
-        sendShippingUpdateEmail(
-          { id: order.id, orderNumber: order.orderNumber, user: order.user },
-          emailDetails
-        ).catch(err => console.error('Failed to send shipping update email:', err))
-      }
+      // Queued for real retries; the previous bare .catch() logged the failure
+      // and dropped the notification. Fire-and-forget so this stays off the
+      // response path, as it was before the queue existed.
+      enqueueOrRun<ShippingUpdatePayload>(
+        JOB.SHIPPING_UPDATE,
+        {
+          orderId: order.id,
+          shipping: {
+            ...emailDetails,
+            expectedBy: emailDetails.expectedBy?.toISOString() ?? null,
+          },
+        },
+        () =>
+          sendShippingUpdateEmail(
+            { id: order.id, orderNumber: order.orderNumber, user: recipient },
+            emailDetails
+          )
+      )
     }
 
     res.json({
@@ -1081,20 +1087,23 @@ router.put('/shipments/:id', async (req, res: Response, next) => {
         expectedBy: shipment.expectedBy,
       }
 
-      const queued = await enqueue<ShippingUpdatePayload>(JOB.SHIPPING_UPDATE, {
-        orderId: shipment.order.id,
-        shipping: {
-          ...shippingDetails,
-          expectedBy: shipment.expectedBy?.toISOString() ?? null,
-        },
-      })
+      const recipient = shipment.order.user
 
-      if (!queued) {
-        sendShippingUpdateEmail(
-          { id: shipment.order.id, orderNumber: shipment.order.orderNumber, user: shipment.order.user },
-          shippingDetails
-        ).catch(err => console.error('Failed to send shipping update email:', err))
-      }
+      enqueueOrRun<ShippingUpdatePayload>(
+        JOB.SHIPPING_UPDATE,
+        {
+          orderId: shipment.order.id,
+          shipping: {
+            ...shippingDetails,
+            expectedBy: shipment.expectedBy?.toISOString() ?? null,
+          },
+        },
+        () =>
+          sendShippingUpdateEmail(
+            { id: shipment.order.id, orderNumber: shipment.order.orderNumber, user: recipient },
+            shippingDetails
+          )
+      )
     }
 
     res.json({ success: true, data: shipment })
@@ -1136,17 +1145,17 @@ router.post('/shipments/:id/mark-dispatched', async (req, res: Response, next) =
         trackingUrl: getTrackingUrl(courierPartner, awbNumber),
       }
 
-      const queued = await enqueue<ShippingUpdatePayload>(JOB.SHIPPING_UPDATE, {
-        orderId: order.id,
-        shipping: dispatchDetails,
-      })
+      const recipient = order.user
 
-      if (!queued) {
-        sendShippingUpdateEmail(
-          { id: order.id, orderNumber: order.orderNumber, user: order.user },
-          dispatchDetails
-        ).catch(err => console.error('Failed to send dispatch email:', err))
-      }
+      enqueueOrRun<ShippingUpdatePayload>(
+        JOB.SHIPPING_UPDATE,
+        { orderId: order.id, shipping: dispatchDetails },
+        () =>
+          sendShippingUpdateEmail(
+            { id: order.id, orderNumber: order.orderNumber, user: recipient },
+            dispatchDetails
+          )
+      )
     }
 
     res.json({ success: true, data: shipment })

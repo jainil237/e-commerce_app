@@ -26,6 +26,9 @@ const orderInclude = {
   user: true,
 } as const
 
+/** Audit action marking that the confirmation email already went out. */
+const CONFIRMATION_EMAIL_SENT = 'ORDER_CONFIRMATION_EMAIL_SENT'
+
 async function handleOrderConfirmation(data: OrderConfirmationPayload) {
   const order = await prisma.order.findUnique({
     where: { id: data.orderId },
@@ -45,7 +48,30 @@ async function handleOrderConfirmation(data: OrderConfirmationPayload) {
     })
   }
 
+  // A retry can land here after the email already went out — a worker crash
+  // between send and job completion, or Render reclaiming the instance
+  // mid-job. Without this the customer gets a second confirmation.
+  // OrderAuditLog is the repo's append-only record for order events, so the
+  // marker lives there rather than in a new column.
+  const alreadySent = await prisma.orderAuditLog.findFirst({
+    where: { orderId: order.id, action: CONFIRMATION_EMAIL_SENT },
+    select: { id: true },
+  })
+  if (alreadySent) {
+    console.log(`[Queue] confirmation email already sent for ${order.id}, skipping`)
+    return
+  }
+
   await sendOrderConfirmationEmail(order as never, invoiceUrl)
+
+  await prisma.orderAuditLog.create({
+    data: {
+      orderId: order.id,
+      userId: order.userId,
+      action: CONFIRMATION_EMAIL_SENT,
+      metadata: { invoiceUrl },
+    },
+  })
 }
 
 async function handleShippingUpdate(data: ShippingUpdatePayload) {

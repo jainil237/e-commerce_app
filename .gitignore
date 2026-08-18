@@ -1,4 +1,8 @@
 node_modules
+
+# Subagent scratch memory — not project documentation.
+.claude/agent-memory/
+
 *.env*
 # ...but example/template files carry placeholders only, never real values,
 # and are useless to collaborators unless they are committed.

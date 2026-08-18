@@ -165,25 +165,6 @@ const startServer = async () => {
       process.exit(1)
     }
 
-    // Queue worker runs in-process: Render's free tier has no background
-    // worker service type. It therefore stops consuming while the web service
-    // is idle-spun-down and resumes on the next request. See docs/deployment.md.
-    startWorker()
-
-    if (isQueueEnabled && jobQueue) {
-      // Repeatable sweep of lapsed stock reservations. Cleanup only —
-      // availability already ignores expired holds at read time, so a missed
-      // window is harmless.
-      // upsertJobScheduler (not add + repeat, removed in BullMQ v6) is
-      // idempotent, so restarts re-assert the schedule rather than stacking
-      // duplicate repeaters.
-      await jobQueue.upsertJobScheduler(
-        'sweep-reservations',
-        { every: 15 * 60 * 1000 },
-        { name: JOB.SWEEP_RESERVATIONS }
-      )
-    }
-
     app.listen(PORT, () => {
       const provider = getActiveProvider()
       const providerLabels = { r2: '☁️  Cloudflare R2', cloudinary: '🌤️  Cloudinary', local: '💾 Local disk' }
@@ -192,9 +173,47 @@ const startServer = async () => {
       console.log(`🏥 Health check at http://localhost:${PORT}/health`)
       console.log(`📦 Storage provider: ${providerLabels[provider]}`)
     })
+
+    // Queue startup runs AFTER listen and swallows its own errors on purpose.
+    // Redis is a degraded-mode dependency, not a boot dependency: enqueue()
+    // already falls back to inline execution, so a Redis outage must cost
+    // latency, not availability. Awaiting this before listen() would let a
+    // slow or unreachable Upstash delay port binding — which Render reads as a
+    // failed health check, turning a degraded queue into a dead service.
+    void startQueue()
   } catch (error) {
-    console.error('❌ Failed to connect to database:', error)
+    console.error('❌ Failed to start server:', error)
     process.exit(1)
+  }
+}
+
+/**
+ * Start the in-process worker and register the repeatable sweep.
+ *
+ * In-process because Render's free tier has no background worker service type.
+ * The worker therefore stops consuming while the web service is idle-spun-down
+ * and resumes on the next request that wakes it. See docs/deployment.md.
+ */
+const startQueue = async () => {
+  try {
+    startWorker()
+
+    if (isQueueEnabled && jobQueue) {
+      // Cleanup only — availability already ignores lapsed holds at read time,
+      // so a missed window is harmless. upsertJobScheduler (not add + repeat,
+      // removed in BullMQ v6) is idempotent, so restarts re-assert the schedule
+      // rather than stacking duplicate repeaters.
+      await jobQueue.upsertJobScheduler(
+        'sweep-reservations',
+        { every: 15 * 60 * 1000 },
+        { name: JOB.SWEEP_RESERVATIONS }
+      )
+    }
+  } catch (error) {
+    console.error(
+      '⚠️  Queue unavailable — jobs will run inline. The API is still serving traffic:',
+      error
+    )
   }
 }
 

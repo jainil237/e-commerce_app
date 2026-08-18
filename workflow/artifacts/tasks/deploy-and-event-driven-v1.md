@@ -45,6 +45,14 @@ Eight phases implementing production deployment (web, admin, API) with TiDB comp
 - `apps/admin/.env.local.example`
 - `.gitignore`
 
+**Review remediation (P1-1, P2-1, P2-2, P3-1):**
+- `server/src/index.ts`
+- `server/src/queues/index.ts`
+- `server/src/queues/worker.ts`
+- `server/src/routes/admin.routes.ts`
+- `server/tests/services/queue-jobs.test.ts`
+- `.gitignore`
+
 **Phase 5-8 (R4, RI4, RI5, RI10, RI11):**
 - `server/src/queues/index.ts`
 - `server/src/queues/jobs.ts`
