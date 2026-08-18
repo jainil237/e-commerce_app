@@ -38,6 +38,24 @@ Eight phases implementing production deployment (web, admin, API) with TiDB comp
 - `server/src/services/email.service.ts`
 - `server/src/index.ts`
 
+**Phase 3 (R1, RI2, RI3, RI7, RI9):**
+- `server/.env.example`
+- `apps/web/.env.local.example`
+- `apps/admin/.env.local.example`
+
+**Phase 5-8 (R4, RI4, RI5, RI10, RI11):**
+- `server/src/queues/index.ts`
+- `server/src/queues/jobs.ts`
+- `server/src/queues/worker.ts`
+- `server/src/routes/webhook.routes.ts`
+- `server/src/routes/order.routes.ts`
+- `server/src/routes/admin.routes.ts`
+- `server/src/routes/auth.routes.ts`
+- `server/src/services/inventory.service.ts`
+- `server/tests/services/sweeper.test.ts`
+- `server/package.json`
+- `docs/deployment.md`
+
 ## Phase Execution Log
 
 ### Phase 1 — TiDB Compatibility Fix (Locked-Read Remedy)
