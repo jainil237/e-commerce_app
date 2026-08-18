@@ -1,9 +1,6 @@
 import PDFDocument from 'pdfkit'
-import path from 'path'
-import fs from 'fs'
-import { prisma } from '../utils/prisma'
 import { getStoreConfig } from '../utils/config'
-import { uploadBuffer, getActiveProvider } from './storage.service'
+import { uploadBuffer } from './storage.service'
 
 interface OrderWithRelations {
   id: string
@@ -44,14 +41,7 @@ interface OrderWithRelations {
 export async function generateInvoicePdf(order: OrderWithRelations): Promise<string> {
   const config = getStoreConfig()
 
-  // Create invoices directory locally as fallback
-  const invoicesDir = path.join(process.cwd(), 'uploads', 'invoices')
-  if (!fs.existsSync(invoicesDir)) {
-    fs.mkdirSync(invoicesDir, { recursive: true })
-  }
-
   const invoiceFileName = `${order.id}-invoice.pdf`
-  const invoicePath = path.join(invoicesDir, invoiceFileName)
 
   // Get invoice number from config
   const invoiceNumber = `${config.invoice.prefix}-${config.invoice.startNumber}`
@@ -61,13 +51,9 @@ export async function generateInvoicePdf(order: OrderWithRelations): Promise<str
     margins: { top: 50, bottom: 50, left: 50, right: 50 },
   })
 
-  // We capture the PDF chunks in memory so we can upload it directly to Cloudflare R2
+  // Capture PDF chunks in memory for upload to cloud storage
   const chunks: Buffer[] = []
   doc.on('data', chunk => chunks.push(chunk))
-
-  // For fallback, we also write to local disk
-  const stream = fs.createWriteStream(invoicePath)
-  doc.pipe(stream)
 
   // Header
   doc.fontSize(24).font('Helvetica-Bold').text(config.store.name, { align: 'center' })
@@ -201,17 +187,9 @@ export async function generateInvoicePdf(order: OrderWithRelations): Promise<str
     doc.on('end', async () => {
       try {
         const pdfBuffer = Buffer.concat(chunks)
-        const provider = getActiveProvider()
-
-        if (provider === 'local') {
-          // For pure local mode, wait for the local file write stream to finish
-          stream.on('finish', () => resolve(invoicePath))
-          stream.on('error', reject)
-        } else {
-          // Upload to cloud (R2 or Cloudinary)
-          const cloudUrl = await uploadBuffer(pdfBuffer, invoiceFileName, 'application/pdf', 'invoices')
-          resolve(cloudUrl)
-        }
+        // Upload to cloud storage (required; RI1 phase 2)
+        const cloudUrl = await uploadBuffer(pdfBuffer, invoiceFileName, 'application/pdf', 'invoices')
+        resolve(cloudUrl)
       } catch (err) {
         reject(err)
       }

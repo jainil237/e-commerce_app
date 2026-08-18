@@ -29,7 +29,6 @@ import { errorHandler, notFound } from './middleware/error.middleware'
 
 const app = express()
 const PORT = process.env.PORT || 4000
-const uploadsRoot = path.resolve(process.cwd(), 'uploads')
 
 app.disable('x-powered-by')
 
@@ -113,9 +112,6 @@ app.use('/api/v1/webhooks/razorpay', express.raw({ type: 'application/json' }))
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
-// Static files for uploads
-app.use('/uploads', express.static(uploadsRoot))
-
 // Health check
 app.get('/health', (req, res) => {
   res.json({ success: true, message: 'Server is healthy', timestamp: new Date().toISOString() })
@@ -142,6 +138,18 @@ const startServer = async () => {
   try {
     await prisma.$connect()
     console.log('✅ Database connected')
+
+    // RI1: Fail fast in production if no cloud storage is configured
+    const isProduction = process.env.NODE_ENV === 'production'
+    const provider = getActiveProvider()
+    if (isProduction && provider === 'local') {
+      const error = new Error(
+        'Cannot start production server without cloud storage provider configured. ' +
+        'Set R2_* (Cloudflare) or CLOUDINARY_* environment variables.'
+      )
+      console.error('❌ Startup validation failed:', error.message)
+      process.exit(1)
+    }
 
     app.listen(PORT, () => {
       const provider = getActiveProvider()
