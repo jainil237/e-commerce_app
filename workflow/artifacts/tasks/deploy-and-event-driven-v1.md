@@ -42,6 +42,7 @@ Eight phases implementing production deployment (web, admin, API) with TiDB comp
 - `server/.env.example`
 - `apps/web/.env.local.example`
 - `apps/admin/.env.local.example`
+- `.gitignore`
 
 **Phase 5-8 (R4, RI4, RI5, RI10, RI11):**
 - `server/src/queues/index.ts`
