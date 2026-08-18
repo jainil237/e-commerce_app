@@ -131,19 +131,21 @@ full annotated list. Never commit real values.
 
 ### Vercel (`web`)
 
-| Variable | Notes |
-|---|---|
-| `NEXT_PUBLIC_API_URL` | Render API URL + `/api/v1`. SSR fetches only |
-| `NEXT_PUBLIC_RAZORPAY_KEY_ID` | |
-| `NEXT_PUBLIC_STORE_NAME` | |
-| `R2_PUBLIC_URL` | **Build-time.** See above |
+| Variable | Required | Notes |
+|---|---|---|
+| `NEXT_PUBLIC_API_URL` | yes | Render API URL + `/api/v1`. SSR fetches only |
+| `R2_PUBLIC_URL` | yes | **Build-time.** See above |
+
+That is the whole list. No Razorpay key is needed here — checkout receives it
+from the API's create-order response, so the key exists only as the server's
+`RAZORPAY_KEY_ID`. Store name comes from `Store.config.json`, not env.
 
 ### Vercel (`admin`)
 
-| Variable | Notes |
-|---|---|
-| `NEXT_PUBLIC_API_URL` | Render API URL + `/api/v1`. SSR fetches only |
-| `R2_PUBLIC_URL` | **Build-time.** See above |
+| Variable | Required | Notes |
+|---|---|---|
+| `NEXT_PUBLIC_API_URL` | yes | Render API URL + `/api/v1`. SSR fetches only |
+| `R2_PUBLIC_URL` | yes | **Build-time.** See above |
 
 ## Operational behaviour to expect
 
