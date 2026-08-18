@@ -2,7 +2,7 @@
 slug: deploy-and-event-driven
 version: 1
 artifact: task
-status: in-progress
+status: ready-for-next-phase
 created: 2026-08-18
 updated: 2026-08-18
 manifest_ids: [R1, R2, R3, R4, RI1, RI2, RI3, RI4, RI5, RI6, RI7, RI8, RI9, RI10, RI11]
@@ -10,7 +10,8 @@ upstream:
   - workflow/artifacts/plans/deploy-and-event-driven-v1.md
 orchestration:
   phase: build
-  status: in-progress
+  status: ready-for-next-phase
+  next_phase: review
   blockers: []
 changed_files:
   - server/src/services/rma.service.ts
@@ -161,41 +162,221 @@ branch.
 
 ---
 
-## Remaining Phases
+### Phase 3 — Environment, CORS, and Isolation Guards (R1, RI2, RI3, RI7, RI9)
 
-Due to token constraints and external dependency requirements, the following phases remain:
+**Work implemented:**
+- `server/.env.example` rewritten: it was missing `R2_*`, `SERVER_BASE_URL`, `PAYMENTS_MOCK`
+  and `LOGISTICS_WEBHOOK_SECRET` despite the code reading all of them, and carried a dead
+  `UPLOAD_DIR` nothing reads. Added `REDIS_URL` ahead of the queue phases, documented that
+  Upstash needs the `rediss://` TCP string rather than the REST URL (ioredis cannot use REST).
+- Both apps' `.env.local.example`: added `R2_PUBLIC_URL` with an explicit note that
+  `next.config.js` reads it at **build** time, so a Vercel build without it produces
+  "unconfigured host" image failures even when the value exists at runtime.
+- Documented in both app examples that `NEXT_PUBLIC_API_URL` is for SSR fetches only, and
+  that pointing browser-side authenticated fetches at an absolute cross-origin API URL would
+  collapse the per-origin cookie isolation (RI2's actual failure mode).
 
-### Phase 3 — Environment, CORS, and Isolation Guards (RI2, RI3, RI7, RI9)
-**Status:** Not started
-**Scope:** Configure environment variables, CORS origins, R2_PUBLIC_URL build-time setup
-**Files:** apps/web/next.config.js, apps/admin/next.config.js, both .env.local.example files, server/src/index.ts
-**Blocker:** None — ready to start
+**Defect found and fixed during this phase:** `.gitignore`'s `*.env*` pattern also matched
+the example/template files, so `server/.env.example` and both `.env.local.example` files had
+**never been tracked** — the very files a collaborator needs in order to know what to
+configure existed only on local disk. Negated the pattern for `*.env.example` and
+`*.env.local.example`. Verified with `git check-ignore` that real `server/.env` and
+`apps/web/.env.local` remain ignored.
 
-### Phase 4 — Deploy Web, Admin, and API (R2, R3, RI8)
-**Status:** Blocked pending manual setup
-**Scope:** Vercel projects setup, Render service configuration, TiDB Serverless provisioning
-**Manual steps required:** 
-- Create two Vercel projects for apps/web and apps/admin
-- Create Render service for server
-- Provision TiDB Serverless database
-- Configure environment variables in each platform
-- Document deployment (RI8)
-**Note:** Phase 1 TiDB verification must complete against live TiDB
+**CORS (RI9):** `index.ts` already builds its allowlist from `FRONTEND_URL` + `ADMIN_URL`; no
+code change needed, values are supplied per-environment. Documented in `docs/deployment.md`.
 
-### Phases 5–8 — Queue Layer (R4, RI4, RI5, RI6, RI10, RI11)
-**Status:** Blocked pending Phase 4 and Upstash Redis credentials
-**Scope:** BullMQ integration, Upstash Redis setup, queue job definitions, email/invoice enqueue
-**External dependencies:** Upstash Redis account
+**Exit gate status:**
+- [x] `grep` for a cookie `domain` option in `server/src` returns nothing (RI2)
+- [x] Both `next.config.js` files still contain the `/api/:path*` rewrite (RI2)
+- [x] Every `process.env.*` key the server reads appears in `server/.env.example`
+- [x] Example files contain placeholders only, no real values (RI7)
+- [x] Example files are now actually tracked by git
+- [x] `npm run build` passes
+
+**Commits:** 659f420, e011da0 — Manifest IDs: R1, RI2, RI3, RI7, RI9
+
+**Phase 3 complete.**
+
+---
+
+### Phase 5 — Queue Foundation (R4, RI10)
+
+**Work implemented:**
+- Added `bullmq` + `ioredis` to `server/package.json`.
+- `server/src/queues/index.ts` — queue, connection, `enqueue()` helper.
+- `server/src/queues/jobs.ts` — job names and payload types.
+- `server/src/queues/worker.ts` — in-process worker and handlers.
+- Worker started from `startServer()` in `index.ts`.
+
+**Design decision — graceful degradation.** Everything no-ops when `REDIS_URL` is unset:
+`enqueue()` returns `false` and every call site falls back to running the work inline. This
+keeps local dev and the whole test suite runnable without Redis, and means a missing or
+misconfigured `REDIS_URL` in production costs latency rather than silently dropping a
+customer's invoice. `enqueue()` also catches connection errors and returns `false` rather
+than throwing, so a Redis outage cannot 500 the request that triggered it.
+
+**RI10 — Upstash command quota.** Worker sets `drainDelay: 30`, capping idle polling at
+roughly 2 blocking reads/minute/worker (~2,880/day) against Upstash's free per-command
+allotment. `removeOnComplete: {count: 100}` / `removeOnFail: {count: 500}` bound stored job
+history. Raising `concurrency` or lowering `drainDelay` raises the command rate — noted in
+`docs/deployment.md`.
+
+**Exit gate status:**
+- [x] Producer/consumer wiring exists and typechecks
+- [x] Retry policy configured (3 attempts, exponential backoff from 5s)
+- [x] Failed jobs land in the failed set via `worker.on('failed')` rather than crashing
+- [x] Idle-polling projection documented with the configured value
+- [ ] **Pending live credentials:** observe a real job round-trip and a real retry against
+      Upstash. Run after setting `REDIS_URL`: start the server and confirm the
+      `👷 Queue worker started` log, then trigger a payment confirmation and confirm the
+      invoice appears without the request having awaited it.
+
+---
+
+### Phase 6 — Reservation Sweeper (RI5)
+
+**Work implemented:**
+- `sweepExpiredReservations()` in `inventory.service.ts` marks lapsed `ACTIVE` reservations
+  as `EXPIRED` (a status the enum already defined and nothing used).
+- Registered as a repeatable job every 15 minutes via `jobQueue.upsertJobScheduler`.
+
+**Two decisions worth recording:**
+1. *Marks rather than deletes.* Preserves the audit trail and matches how
+   `releaseReservations` already transitions status rather than removing rows.
+2. *Never touches `Product.stock`.* An `ACTIVE` reservation is a soft hold that was never
+   decremented from stock — decrementing happens at conversion. Incrementing stock here would
+   invent inventory. This is asserted by a dedicated test.
+
+`upsertJobScheduler` is used rather than `add(..., {repeat})` because BullMQ v6 removed
+`repeat` from `JobsOptions`; it is idempotent, so restarts re-assert the schedule instead of
+stacking duplicate repeaters.
+
+**Exit gate status:**
+- [x] Test seeds expired + active reservations, asserts only expired are swept
+- [x] Test asserts `CONVERTED`/`RELEASED` rows are untouched even when lapsed
+- [x] Test asserts `Product.stock` is unchanged
+- [x] Test asserts idempotency (second sweep returns 0)
+- [x] Lazy-expiry filter at `inventory.service.ts:74` unchanged
+- [x] `inventory.service.test.ts` still passes (9 tests)
+
+**Phase 6 complete.**
+
+---
+
+### Phase 7 — Webhook Enqueue (RI4) — PROTECTED PATH
+
+**Scope of the Q1 approval honoured strictly:** only the invoice/email work moved off the
+request path. Signature verification and the raw-body parsing at `index.ts:107` were not
+touched.
+
+**Work implemented:** `webhook.routes.ts` L124-131 replaced an awaited
+`generateInvoicePdf` → `prisma.order.update` → `sendOrderConfirmationEmail` chain with a
+single `enqueue()`, retaining the full inline sequence as the no-queue fallback.
+
+**Why this mattered beyond latency:** Razorpay retries webhooks that ack slowly, and a retry
+re-enters this handler — so the slow inline path was also a duplicate-processing risk, not
+just a slow one.
+
+**Exit gate status:**
+- [x] `server/tests/characterization/webhook.test.ts` passes **unmodified** (17 tests)
+- [x] `git diff` on `webhook.routes.ts` shows no change to signature verification or raw-body
+      handling — only the import block and the L124-131 replacement
+- [x] Handler no longer awaits PDF or SMTP work when a queue is configured
+- [ ] **Pending live credentials:** confirm against real Upstash that the invoice job
+      completes *after* the webhook has already acked.
+
+**Phase 7 complete (code).**
+
+---
+
+### Phase 8 — Remaining Seams and Final Gate (RI11, RI6)
+
+**Seams converted (all four Q4 selections):**
+- `order.routes.ts:333` — invoice generation on order create.
+- `admin.routes.ts` L946/L1062/L1106 — shipping update emails. These previously used bare
+  `.catch(err => console.error(...))`, i.e. a failed notification was logged and dropped;
+  they now retry.
+- `auth.routes.ts:266` — password-reset OTP email.
+
+**Correction to the plan's R-7 risk (OTP latency).** The plan recorded a concern that queueing
+the OTP could add a ~50s cold-start delay to a flow the user actively waits on. On inspection
+that overstated the risk: the OTP request *is itself* what wakes an idle Render instance, and
+the in-process worker starts with it. The queue therefore adds worker-pickup latency measured
+in seconds, not an additional cold start. The seam was kept rather than reverted; the plan's
+revert clause was not needed. Recorded here rather than silently dropped.
+
+**Payload design.** Handlers re-fetch entities by ID rather than trusting the enqueued
+snapshot, since a job may run well after it was enqueued. The one deliberate exception is
+shipping details, which are carried in-payload: they describe the specific status transition
+being emailed about, so re-deriving them at run time could report a *later* status than the
+one the customer is being told about. `handleOrderConfirmation` also reuses an existing
+`invoiceUrl` rather than regenerating, so a retry does not upload a duplicate PDF to R2.
+
+**Exit gate status:**
+- [x] All five call sites enqueue rather than await (webhook, order, 3× shipping, OTP)
+- [x] `npm run build` exits 0 across all three workspaces
+- [x] Server suite: 10 files / 79 tests pass
+- [x] `npm run lint` error count unchanged from baseline — verified by stashing all changes
+      and re-running: 7 errors before, 7 after, all pre-existing `react/no-unescaped-entities`
+      and one stale rule reference in `apps/web`. Repo-wide lint exits 1 both with and without
+      this chain's changes; `apps/web/next.config.js` already documents that lint does not gate
+      builds for this reason.
+
+**Phase 8 complete.**
+
+---
+
+### Phase 4 — Deployment (R2, R3, RI8) — CONFIG COMPLETE, PROVISIONING IS MANUAL
+
+`docs/deployment.md` written, covering provisioning steps for all five external services, the
+full environment variable matrix (names only, RI7), the session-isolation rationale and its
+failure mode, and operational behaviour (cold starts, sleeping worker, Upstash quota,
+per-instance rate limiting, in-memory OTP cache).
+
+No `vercel.json` is needed — both apps are standard Next.js projects; Vercel auto-detects the
+framework and npm workspaces given the correct Root Directory.
+
+**Exit gate status:**
+- [x] Build/start commands documented for Render
+- [x] Root directories documented for both Vercel projects
+- [x] Env matrix documented, names only
+- [x] Cold-start and idle-worker behaviour documented (RI8)
+- [ ] **Requires the user:** create the TiDB cluster, Upstash database, R2 bucket, Render
+      service, and two Vercel projects, then paste in the env values.
+- [ ] **Pending live deployment:** the R2 two-tab session-isolation manual QA, which needs
+      the real deployed origins.
 
 ## Summary of Completed Work
 
-✅ **Phase 1 (Code):** TiDB compatibility fix — FOR UPDATE locks on RMA transactions
-- All 8 characterization tests pass (including 3 new concurrency tests)
-- Commit: c60e6a6
+| Phase | Manifest IDs | Status |
+|---|---|---|
+| 1 — TiDB locking fix | R3, Q5 | Code complete; TiDB-live verification pending credentials |
+| 2 — Storage fail-fast | RI1 | Complete (incl. dev-fallback correction) |
+| 3 — Env/CORS/isolation | R1, RI2, RI3, RI7, RI9 | Complete |
+| 4 — Deployment | R2, R3, RI8 | Config + docs complete; provisioning requires user |
+| 5 — Queue foundation | R4, RI10 | Code complete; live round-trip pending credentials |
+| 6 — Reservation sweeper | RI5 | Complete, tested |
+| 7 — Webhook enqueue | RI4 | Code complete; live ordering check pending credentials |
+| 8 — Remaining seams | RI11, RI6 | Complete |
 
-✅ **Phase 2 (Code):** Storage fail-fast — remove local fallback, production guard
-- npm run build passes
-- Commit: e753a41
+**Verification at close of Build:**
+- `npm run build` — exit 0, all three workspaces
+- `server` test suite — 10 files, 79 tests, all passing
+- `webhook.test.ts` — 17 tests, passing **unmodified** (protected-path guarantee)
+- `npm run lint` — error count identical to pre-change baseline (7, all pre-existing)
+
+**Commits:** c60e6a6, e753a41, 1d996fc, 659f420, e011da0, bb79608
+
+## Out-of-Scope Finding (flagged, not fixed)
+
+`rma.service.ts` `markReceived` has no status precondition, unlike `approveRmaRequest`
+(checks `PENDING`) and `issueRefund` (checks `PAID`). The `FOR UPDATE` lock added in Phase 1
+serializes concurrent calls but does not prevent a second call from succeeding, so two admin
+clicks could restock the same items twice. This predates this chain and sits outside Q5's
+scope (TiDB isolation compatibility, not new business guards). Raised with the user during
+Build; no fix authorised, so `markReceived`'s logic is unchanged beyond the lock. Candidate
+for a follow-up chain.
 
 🔄 **Phases 3+:** Pending implementation and external credential setup
 
