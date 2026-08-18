@@ -112,6 +112,15 @@ app.use('/api/v1/webhooks/razorpay', express.raw({ type: 'application/json' }))
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
+// Dev-only local upload serving. Production never writes here — the storage
+// service's local fallback (storage.service.ts) refuses to run when
+// NODE_ENV=production, and the startup guard below refuses to boot without a
+// cloud provider — so this route only exists to serve files the dev-mode
+// fallback wrote.
+if (process.env.NODE_ENV !== 'production') {
+  app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads')))
+}
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ success: true, message: 'Server is healthy', timestamp: new Date().toISOString() })

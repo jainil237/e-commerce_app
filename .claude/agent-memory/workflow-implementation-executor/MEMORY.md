@@ -1,0 +1,1 @@
+- [Database patterns and locking](ecommerce-db-patterns.md) — FOR UPDATE on RMA transactions, TiDB compatibility, storage fallback removal

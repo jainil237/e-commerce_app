@@ -1,3 +1,5 @@
+import fs from 'fs/promises'
+import path from 'path'
 import { isR2Enabled, uploadBufferToR2 } from './r2.service'
 import { isCloudinaryEnabled, uploadBufferToCloudinary } from './cloudinary.service'
 
@@ -52,6 +54,35 @@ export async function uploadBuffer(
     }
   }
 
-  // No fallback to local storage — must have a cloud provider configured
-  throw new Error('No cloud storage provider configured (R2_* or CLOUDINARY_* env vars required)')
+  // No cloud provider configured. index.ts's startup guard already refuses to
+  // boot in production in this state, so reaching here only happens in dev —
+  // fall back to local disk rather than breaking every dev workflow that
+  // touches uploads (product images, invoice generation).
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('No cloud storage provider configured (R2_* or CLOUDINARY_* env vars required)')
+  }
+  return uploadToLocal(buffer, filename, folder)
+}
+
+// ---------------------------------------------------------------------------
+// Local dev fallback only — never reached in production (see guard above).
+// ---------------------------------------------------------------------------
+async function uploadToLocal(
+  buffer: Buffer,
+  filename: string,
+  folder: StorageFolder
+): Promise<string> {
+  const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9)
+  const safeName = filename.replace(/\s+/g, '-')
+  const ext = path.extname(safeName)
+  const finalName = `${uniqueSuffix}${ext}`
+  const uploadDir = path.join(process.cwd(), 'uploads', folder)
+
+  await fs.mkdir(uploadDir, { recursive: true }).catch(() => {})
+
+  const filePath = path.join(uploadDir, finalName)
+  await fs.writeFile(filePath, buffer)
+
+  const serverBase = (process.env.SERVER_BASE_URL || `http://localhost:${process.env.PORT || 4000}`).replace(/\/+$/, '')
+  return `${serverBase}/uploads/${folder}/${finalName}`
 }

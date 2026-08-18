@@ -29,14 +29,14 @@ Eight phases implementing production deployment (web, admin, API) with TiDB comp
 ## Changed Files
 
 **Phase 1 (R3, Q5):**
-- server/src/services/rma.service.ts
-- server/tests/characterization/rma-refund.test.ts
+- `server/src/services/rma.service.ts`
+- `server/tests/characterization/rma-refund.test.ts`
 
 **Phase 2 (RI1):**
-- server/src/services/storage.service.ts
-- server/src/services/invoice.service.ts
-- server/src/services/email.service.ts
-- server/src/index.ts
+- `server/src/services/storage.service.ts`
+- `server/src/services/invoice.service.ts`
+- `server/src/services/email.service.ts`
+- `server/src/index.ts`
 
 ## Phase Execution Log
 
@@ -112,6 +112,20 @@ Eight phases implementing production deployment (web, admin, API) with TiDB comp
 - `npm run build --workspace=server` passes
 - No `express.static` calls found in server/src
 - Production startup guard validates config
+
+**Correction (post-Build review):** the pass above removed the local-disk fallback and
+`/uploads` static serving unconditionally, not gated to production. That contradicts this
+phase's own RI1 acceptance criterion — "in dev with no vars the local path still works
+unchanged" — and broke every dev workflow touching uploads (product images, invoice
+generation) without cloud credentials configured. Restored `uploadToLocal` in
+`storage.service.ts` and `/uploads` static serving in `index.ts`, both gated to
+`NODE_ENV !== 'production'`. Production behavior is unchanged — the startup guard already
+refuses to boot without a cloud provider, so production never reaches the local-fallback
+branch.
+- Re-verified: `npm run build --workspace=server` passes; full server suite (9 files, 75
+  tests) passes, including `webhook.test.ts` unmodified.
+- Changed files (this correction): `server/src/services/storage.service.ts`,
+  `server/src/index.ts`
 
 **Commit:** e753a41
 - Manifest ID: RI1
