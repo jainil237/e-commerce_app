@@ -127,3 +127,117 @@ describe('TD-7 — GST asymmetry between order pricing and refund calculation (f
     expect(Number(refund.amount)).toBeCloseTo(unitPrice, 2)
   })
 })
+
+describe('TiDB compatibility — FOR UPDATE locking prevents write skew (R3/Q5, Phase 1)', () => {
+  it('concurrent approveRmaRequest calls on the same RMA result in only one winner', async () => {
+    const { user, order, orderItem } = await createDeliveredOrder(1000, 18)
+    const admin1 = await createAdmin()
+    const admin2 = await createAdmin()
+
+    const rma = await RmaService.createRmaRequest({
+      orderId: order.id,
+      userId: user.id,
+      type: 'RETURN',
+      reason: 'DAMAGED',
+      items: [{ orderItemId: orderItem.id, quantity: 1 }],
+      images: [],
+    })
+
+    // Fire two concurrent approveRmaRequest calls
+    const results = await Promise.allSettled([
+      RmaService.approveRmaRequest(rma.id, admin1.id),
+      RmaService.approveRmaRequest(rma.id, admin2.id),
+    ])
+
+    // Exactly one must succeed
+    const succeeded = results.filter((r) => r.status === 'fulfilled')
+    const failed = results.filter((r) => r.status === 'rejected')
+
+    expect(succeeded).toHaveLength(1)
+    expect(failed).toHaveLength(1)
+    expect(failed[0]).toMatchObject({ status: 'rejected' })
+    expect((failed[0] as PromiseRejectedResult).reason?.message).toMatch(/Only PENDING requests can be approved/i)
+
+    // Verify the RMA is in APPROVED status (exactly once)
+    const updated = await prisma.rMARequest.findUniqueOrThrow({ where: { id: rma.id } })
+    expect(updated.status).toBe('APPROVED')
+  })
+
+  it('concurrent markReceived calls on the same RMA are serialized by the lock', async () => {
+    const { user, order, orderItem } = await createDeliveredOrder(1000, 18)
+    const admin = await createAdmin()
+
+    const rma = await RmaService.createRmaRequest({
+      orderId: order.id,
+      userId: user.id,
+      type: 'RETURN',
+      reason: 'DAMAGED',
+      items: [{ orderItemId: orderItem.id, quantity: 1 }],
+      images: [],
+    })
+
+    await RmaService.approveRmaRequest(rma.id, admin.id)
+
+    // Fire two concurrent markReceived calls
+    const results = await Promise.allSettled([
+      RmaService.markReceived(rma.id, admin.id, false),
+      RmaService.markReceived(rma.id, admin.id, false),
+    ])
+
+    // Both should succeed (the lock serializes them, no status check to fail)
+    const succeeded = results.filter((r) => r.status === 'fulfilled')
+    const failed = results.filter((r) => r.status === 'rejected')
+
+    expect(succeeded).toHaveLength(2)
+    expect(failed).toHaveLength(0)
+
+    // Verify the RMA is in ITEM_RECEIVED status (idempotent)
+    const updated = await prisma.rMARequest.findUniqueOrThrow({ where: { id: rma.id } })
+    expect(updated.status).toBe('ITEM_RECEIVED')
+  })
+
+  it('concurrent issueRefund calls on the same RMA result in only one winner', async () => {
+    const { user, order, orderItem } = await createDeliveredOrder(1000, 18)
+    const admin = await createAdmin()
+
+    // Set up RMA and bring it to ITEM_RECEIVED status (ready for refund)
+    const rma = await RmaService.createRmaRequest({
+      orderId: order.id,
+      userId: user.id,
+      type: 'RETURN',
+      reason: 'DAMAGED',
+      items: [{ orderItemId: orderItem.id, quantity: 1 }],
+      images: [],
+    })
+
+    await RmaService.approveRmaRequest(rma.id, admin.id)
+    await RmaService.markReceived(rma.id, admin.id, false)
+    // Do NOT call issueRefund yet — we want to test concurrent issueRefund calls
+
+    const admin1 = await createAdmin()
+    const admin2 = await createAdmin()
+
+    // Fire two concurrent issueRefund calls
+    const results = await Promise.allSettled([
+      RmaService.issueRefund(rma.id, admin1.id),
+      RmaService.issueRefund(rma.id, admin2.id),
+    ])
+
+    // Exactly one must succeed
+    const succeeded = results.filter((r) => r.status === 'fulfilled')
+    const failed = results.filter((r) => r.status === 'rejected')
+
+    expect(succeeded).toHaveLength(1)
+    expect(failed).toHaveLength(1)
+    expect((failed[0] as PromiseRejectedResult).reason?.message).toMatch(/already been issued/i)
+
+    // Verify only one Refund.status = PAID transition occurred
+    const refund = await prisma.refund.findUniqueOrThrow({ where: { rmaRequestId: rma.id } })
+    expect(refund.status).toBe('PAID')
+    expect(refund.paymentId).toBeDefined()
+
+    // Verify the RMA is in REFUND_COMPLETED status (exactly once)
+    const updated = await prisma.rMARequest.findUniqueOrThrow({ where: { id: rma.id } })
+    expect(updated.status).toBe('REFUND_COMPLETED')
+  })
+})

@@ -24,12 +24,16 @@ import rmaRoutes from './routes/rma.routes'
 // Import storage provider detection
 import { getActiveProvider } from './services/storage.service'
 
+// Queue layer
+import { isQueueEnabled, jobQueue } from './queues'
+import { JOB } from './queues/jobs'
+import { startWorker } from './queues/worker'
+
 // Import middleware
 import { errorHandler, notFound } from './middleware/error.middleware'
 
 const app = express()
 const PORT = process.env.PORT || 4000
-const uploadsRoot = path.resolve(process.cwd(), 'uploads')
 
 app.disable('x-powered-by')
 
@@ -113,8 +117,14 @@ app.use('/api/v1/webhooks/razorpay', express.raw({ type: 'application/json' }))
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
-// Static files for uploads
-app.use('/uploads', express.static(uploadsRoot))
+// Dev-only local upload serving. Production never writes here — the storage
+// service's local fallback (storage.service.ts) refuses to run when
+// NODE_ENV=production, and the startup guard below refuses to boot without a
+// cloud provider — so this route only exists to serve files the dev-mode
+// fallback wrote.
+if (process.env.NODE_ENV !== 'production') {
+  app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads')))
+}
 
 // Health check
 app.get('/health', (req, res) => {
@@ -142,6 +152,37 @@ const startServer = async () => {
   try {
     await prisma.$connect()
     console.log('✅ Database connected')
+
+    // RI1: Fail fast in production if no cloud storage is configured
+    const isProduction = process.env.NODE_ENV === 'production'
+    const provider = getActiveProvider()
+    if (isProduction && provider === 'local') {
+      const error = new Error(
+        'Cannot start production server without cloud storage provider configured. ' +
+        'Set R2_* (Cloudflare) or CLOUDINARY_* environment variables.'
+      )
+      console.error('❌ Startup validation failed:', error.message)
+      process.exit(1)
+    }
+
+    // Queue worker runs in-process: Render's free tier has no background
+    // worker service type. It therefore stops consuming while the web service
+    // is idle-spun-down and resumes on the next request. See docs/deployment.md.
+    startWorker()
+
+    if (isQueueEnabled && jobQueue) {
+      // Repeatable sweep of lapsed stock reservations. Cleanup only —
+      // availability already ignores expired holds at read time, so a missed
+      // window is harmless.
+      // upsertJobScheduler (not add + repeat, removed in BullMQ v6) is
+      // idempotent, so restarts re-assert the schedule rather than stacking
+      // duplicate repeaters.
+      await jobQueue.upsertJobScheduler(
+        'sweep-reservations',
+        { every: 15 * 60 * 1000 },
+        { name: JOB.SWEEP_RESERVATIONS }
+      )
+    }
 
     app.listen(PORT, () => {
       const provider = getActiveProvider()

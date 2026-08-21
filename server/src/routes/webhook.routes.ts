@@ -8,6 +8,8 @@ import { RmaService } from '../services/rma.service'
 import { ShipmentStatus } from '@prisma/client'
 import { confirmPayment } from '../services/payment-confirmation.service'
 import { restoreStock, releaseReservations } from '../services/inventory.service'
+import { enqueue } from '../queues'
+import { JOB, OrderConfirmationPayload } from '../queues/jobs'
 
 const router = Router()
 
@@ -120,15 +122,27 @@ router.post('/razorpay', async (req, res: Response) => {
 
         const validOrder = updatedOrder as typeof updatedOrder & { user: NonNullable<typeof updatedOrder.user> }
 
-        // Generate invoice
-        const invoicePath = await generateInvoicePdf(validOrder as any)
-        await prisma.order.update({
-          where: { id: order.id },
-          data: { invoiceUrl: invoicePath },
-        })
+        // Invoice generation (PDF render + R2 upload) and the confirmation
+        // email used to run inline here. Razorpay retries webhooks that ack
+        // slowly, and a retry re-enters this handler — so the slow path was
+        // also a duplicate-processing risk. Hand it to the queue and ack now.
+        //
+        // Falls back to inline when no queue is configured, so a missing
+        // REDIS_URL degrades to the old latency rather than dropping the
+        // customer's invoice.
+        const queued = await enqueue<OrderConfirmationPayload>(
+          JOB.ORDER_CONFIRMATION,
+          { orderId: order.id }
+        )
 
-        // Send email
-        await sendOrderConfirmationEmail(validOrder as any, invoicePath)
+        if (!queued) {
+          const invoicePath = await generateInvoicePdf(validOrder as any)
+          await prisma.order.update({
+            where: { id: order.id },
+            data: { invoiceUrl: invoicePath },
+          })
+          await sendOrderConfirmationEmail(validOrder as any, invoicePath)
+        }
         break
       }
 

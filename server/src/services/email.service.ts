@@ -119,7 +119,7 @@ class MockTransporter {
               options.attachments && options.attachments.length > 0
                 ? `
               <div class="metadata-row">
-                <span class="metadata-label">Attachments:</span> 
+                <span class="metadata-label">Attachments:</span>
                 ${options.attachments
                   .map(
                     (a) =>
@@ -138,13 +138,18 @@ class MockTransporter {
         </html>
       `
 
-      fs.writeFileSync(filePath, previewHtml)
+      // Guard mock-preview disk write — only in development (RI1 — no ephemeral disk in production)
+      if (process.env.NODE_ENV !== 'production') {
+        fs.writeFileSync(filePath, previewHtml)
 
-      console.log('╔═══════════════════════════════════════════════════════════════════╗')
-      console.log(`║ 📧 [Mock Email] Sent successfully to ${options.to}`)
-      console.log(`║ Subject: ${options.subject}`)
-      console.log(`║ Saved Preview to: ${filePath}`)
-      console.log('╚═══════════════════════════════════════════════════════════════════╝')
+        console.log('╔═══════════════════════════════════════════════════════════════════╗')
+        console.log(`║ 📧 [Mock Email] Sent successfully to ${options.to}`)
+        console.log(`║ Subject: ${options.subject}`)
+        console.log(`║ Saved Preview to: ${filePath}`)
+        console.log('╚═══════════════════════════════════════════════════════════════════╝')
+      } else {
+        console.log(`[Mock Email] Email to ${options.to} - Subject: ${options.subject} (preview not saved in production)`)
+      }
 
       return {
         messageId: `mock-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,

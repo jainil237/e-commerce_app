@@ -4,7 +4,8 @@ import { isR2Enabled, uploadBufferToR2 } from './r2.service'
 import { isCloudinaryEnabled, uploadBufferToCloudinary } from './cloudinary.service'
 
 // ---------------------------------------------------------------------------
-// Storage provider priority:  R2  →  Cloudinary  →  Local disk
+// Storage provider priority:  R2  →  Cloudinary
+// Production requires cloud storage; local fallback removed per RI1
 // ---------------------------------------------------------------------------
 export type StorageFolder = 'products' | 'invoices'
 
@@ -22,8 +23,10 @@ export function getActiveProvider(): StorageProvider {
 
 /**
  * Upload a buffer to the best available storage backend.
+ * In production, at least one cloud provider must be configured.
  *
- * @returns The public URL (or local file path for the local fallback).
+ * @returns The public URL
+ * @throws If no cloud provider is configured
  */
 export async function uploadBuffer(
   buffer: Buffer,
@@ -31,32 +34,38 @@ export async function uploadBuffer(
   mimetype: string,
   folder: StorageFolder = 'products'
 ): Promise<string> {
-  // 1. Cloudflare R2 — production priority
+  // 1. Cloudflare R2 — primary
   if (isR2Enabled) {
     try {
       return await uploadBufferToR2(buffer, filename, mimetype, folder)
     } catch (err) {
-      console.error('[Storage] R2 upload failed, falling back:', err)
-      // fall through
+      console.error('[Storage] R2 upload failed:', err)
+      throw err
     }
   }
 
-  // 2. Cloudinary — secondary / demo cloud storage
+  // 2. Cloudinary — secondary
   if (isCloudinaryEnabled) {
     try {
       return await uploadBufferToCloudinary(buffer, filename, mimetype, folder)
     } catch (err) {
-      console.error('[Storage] Cloudinary upload failed, falling back to local:', err)
-      // fall through
+      console.error('[Storage] Cloudinary upload failed:', err)
+      throw err
     }
   }
 
-  // 3. Local filesystem — dev fallback
+  // No cloud provider configured. index.ts's startup guard already refuses to
+  // boot in production in this state, so reaching here only happens in dev —
+  // fall back to local disk rather than breaking every dev workflow that
+  // touches uploads (product images, invoice generation).
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('No cloud storage provider configured (R2_* or CLOUDINARY_* env vars required)')
+  }
   return uploadToLocal(buffer, filename, folder)
 }
 
 // ---------------------------------------------------------------------------
-// Local helper (mirrors old logic from image-upload.service.ts)
+// Local dev fallback only — never reached in production (see guard above).
 // ---------------------------------------------------------------------------
 async function uploadToLocal(
   buffer: Buffer,
@@ -74,8 +83,6 @@ async function uploadToLocal(
   const filePath = path.join(uploadDir, finalName)
   await fs.writeFile(filePath, buffer)
 
-  // Return a fully-qualified URL so the frontend can load it from any origin.
-  // FRONTEND_URL is not used here — we need the *server's* own base URL.
   const serverBase = (process.env.SERVER_BASE_URL || `http://localhost:${process.env.PORT || 4000}`).replace(/\/+$/, '')
   return `${serverBase}/uploads/${folder}/${finalName}`
 }

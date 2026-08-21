@@ -1,5 +1,9 @@
 node_modules
 *.env*
+# ...but example/template files carry placeholders only, never real values,
+# and are useless to collaborators unless they are committed.
+!*.env.example
+!*.env.local.example
 *.agents
 *test-rzp.js
 .prisma/

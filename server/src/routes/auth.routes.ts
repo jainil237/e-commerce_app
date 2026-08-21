@@ -8,6 +8,8 @@ import { createError } from '../middleware/error.middleware'
 import { z } from 'zod'
 import NodeCache from 'node-cache'
 import { sendOtpEmail } from '../services/email.service'
+import { enqueue } from '../queues'
+import { JOB, OtpEmailPayload } from '../queues/jobs'
 import { getStoreConfig } from '../utils/config'
 
 import rateLimit from 'express-rate-limit'
@@ -263,7 +265,21 @@ router.post('/forgot-password', authLimiter, async (req, res: Response, next) =>
     otpCache.set(`pwd_reset_${user.email}`, otp)
 
     if (config.features.emailService) {
-      await sendOtpEmail(user.email, otp, 'password-reset')
+      // Queued so a slow/failing SMTP send does not hold the response open,
+      // and so a transient failure retries instead of stranding the user with
+      // no code. Cold-start risk is not additive here: this very request is
+      // what wakes an idle instance, and the in-process worker starts with it —
+      // so the queue adds worker-pickup latency (~seconds), not another
+      // cold start. Falls back to inline when no queue is configured.
+      const queued = await enqueue<OtpEmailPayload>(JOB.OTP_EMAIL, {
+        email: user.email,
+        otp,
+        purpose: 'password-reset',
+      })
+
+      if (!queued) {
+        await sendOtpEmail(user.email, otp, 'password-reset')
+      }
     } else {
       // TODO: Remove console log once email service is purchased
       console.log(`[PASSWORD RESET] OTP for ${user.email}: ${otp}`)

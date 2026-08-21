@@ -10,6 +10,8 @@ import { getStoreConfig, getTrackingUrl } from '../utils/config'
 import { uploadProductImages } from '../services/image-upload.service'
 import { sendShippingUpdateEmail } from '../services/email.service'
 import { getActiveProvider } from '../services/storage.service'
+import { enqueue } from '../queues'
+import { JOB, ShippingUpdatePayload } from '../queues/jobs'
 import { isR2Enabled } from '../services/r2.service'
 import { isCloudinaryEnabled } from '../services/cloudinary.service'
 import adminRmaRoutes from './admin.rma.routes'
@@ -943,10 +945,22 @@ router.patch('/orders/:id/status', async (req, res: Response, next) => {
         courierPartner: getStoreConfig().courier.defaultPartner,
       }
 
-      sendShippingUpdateEmail(
-        { id: order.id, orderNumber: order.orderNumber, user: order.user },
-        emailDetails
-      ).catch(err => console.error('Failed to send shipping update email:', err))
+      // Queued for real retries; the previous bare .catch() logged the failure
+      // and dropped the notification. Falls back to inline when no queue.
+      const queued = await enqueue<ShippingUpdatePayload>(JOB.SHIPPING_UPDATE, {
+        orderId: order.id,
+        shipping: {
+          ...emailDetails,
+          expectedBy: emailDetails.expectedBy?.toISOString() ?? null,
+        },
+      })
+
+      if (!queued) {
+        sendShippingUpdateEmail(
+          { id: order.id, orderNumber: order.orderNumber, user: order.user },
+          emailDetails
+        ).catch(err => console.error('Failed to send shipping update email:', err))
+      }
     }
 
     res.json({
@@ -1059,16 +1073,28 @@ router.put('/shipments/:id', async (req, res: Response, next) => {
 
     // Send email if status changed
     if (status && oldShipment && status !== oldShipment.status && shipment.order.user) {
-      sendShippingUpdateEmail(
-        { id: shipment.order.id, orderNumber: shipment.order.orderNumber, user: shipment.order.user },
-        {
-          status,
-          courierPartner: shipment.courierPartner,
-          awbNumber: shipment.awbNumber,
-          trackingUrl: shipment.trackingUrl,
-          expectedBy: shipment.expectedBy,
-        }
-      ).catch(err => console.error('Failed to send shipping update email:', err))
+      const shippingDetails = {
+        status,
+        courierPartner: shipment.courierPartner,
+        awbNumber: shipment.awbNumber,
+        trackingUrl: shipment.trackingUrl,
+        expectedBy: shipment.expectedBy,
+      }
+
+      const queued = await enqueue<ShippingUpdatePayload>(JOB.SHIPPING_UPDATE, {
+        orderId: shipment.order.id,
+        shipping: {
+          ...shippingDetails,
+          expectedBy: shipment.expectedBy?.toISOString() ?? null,
+        },
+      })
+
+      if (!queued) {
+        sendShippingUpdateEmail(
+          { id: shipment.order.id, orderNumber: shipment.order.orderNumber, user: shipment.order.user },
+          shippingDetails
+        ).catch(err => console.error('Failed to send shipping update email:', err))
+      }
     }
 
     res.json({ success: true, data: shipment })
@@ -1103,15 +1129,24 @@ router.post('/shipments/:id/mark-dispatched', async (req, res: Response, next) =
 
     // Send dispatch notification email
     if (order.user) {
-      sendShippingUpdateEmail(
-        { id: order.id, orderNumber: order.orderNumber, user: order.user },
-        {
-          status: 'DISPATCHED',
-          courierPartner,
-          awbNumber,
-          trackingUrl: getTrackingUrl(courierPartner, awbNumber),
-        }
-      ).catch(err => console.error('Failed to send dispatch email:', err))
+      const dispatchDetails = {
+        status: 'DISPATCHED',
+        courierPartner,
+        awbNumber,
+        trackingUrl: getTrackingUrl(courierPartner, awbNumber),
+      }
+
+      const queued = await enqueue<ShippingUpdatePayload>(JOB.SHIPPING_UPDATE, {
+        orderId: order.id,
+        shipping: dispatchDetails,
+      })
+
+      if (!queued) {
+        sendShippingUpdateEmail(
+          { id: order.id, orderNumber: order.orderNumber, user: order.user },
+          dispatchDetails
+        ).catch(err => console.error('Failed to send dispatch email:', err))
+      }
     }
 
     res.json({ success: true, data: shipment })

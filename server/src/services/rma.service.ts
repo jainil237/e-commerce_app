@@ -167,6 +167,12 @@ export class RmaService {
    */
   static async approveRmaRequest(rmaId: string, adminId: string, adminNote?: string) {
     return prisma.$transaction(async (tx) => {
+      // Lock the RMA row for update before checking status (TiDB compatibility fix for R3/Q5)
+      const lockedRma = await tx.$queryRaw<Array<{ id: string }>>(
+        Prisma.sql`SELECT id FROM RMARequest WHERE id = ${rmaId} FOR UPDATE`
+      )
+      if (!lockedRma[0]) throw new Error('RMA not found')
+
       const rma = await tx.rMARequest.findUnique({
         where: { id: rmaId },
         include: { items: true },
@@ -204,7 +210,7 @@ export class RmaService {
       })
 
       return updated
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
+    })
   }
 
   /**
@@ -273,6 +279,12 @@ export class RmaService {
    */
   static async markReceived(rmaId: string, adminId: string | null, restockItems: boolean) {
     return prisma.$transaction(async (tx) => {
+      // Lock the RMA row for update before checking status (TiDB compatibility fix for R3/Q5)
+      const lockedRma = await tx.$queryRaw<Array<{ id: string }>>(
+        Prisma.sql`SELECT id FROM RMARequest WHERE id = ${rmaId} FOR UPDATE`
+      )
+      if (!lockedRma[0]) throw new Error('RMA not found')
+
       const rma = await tx.rMARequest.findUnique({
         where: { id: rmaId },
         include: { items: { include: { orderItem: true } } },
@@ -304,7 +316,7 @@ export class RmaService {
       })
 
       return updated
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
+    })
   }
 
   /**
@@ -312,6 +324,12 @@ export class RmaService {
    */
   static async issueRefund(rmaId: string, adminId: string | null, paymentId?: string) {
     return prisma.$transaction(async (tx) => {
+      // Lock the RMA row for update before checking status (TiDB compatibility fix for R3/Q5)
+      const lockedRma = await tx.$queryRaw<Array<{ id: string }>>(
+        Prisma.sql`SELECT id FROM RMARequest WHERE id = ${rmaId} FOR UPDATE`
+      )
+      if (!lockedRma[0]) throw new Error('RMA not found')
+
       const rma = await tx.rMARequest.findUnique({
         where: { id: rmaId },
         include: { refund: true },
@@ -344,7 +362,7 @@ export class RmaService {
               })
               actualPaymentId = refundResponse.id
             } catch (error: any) {
-              throw new Error(`Refund failed: ${error.message}`)
+              throw new Error(`Refund failed: ${error?.message || JSON.stringify(error)}`)
             }
           } else {
             actualPaymentId = paymentId || `rfnd_mock_${Date.now()}`
@@ -372,7 +390,7 @@ export class RmaService {
       })
 
       return updated
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
+    })
   }
 
   /**
