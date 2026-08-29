@@ -64,6 +64,13 @@ If `REDIS_URL` is unset the app still runs: every queue producer falls back to
 doing the work inline, so behavior degrades to the pre-queue latency rather than
 dropping jobs.
 
+Redis also backs three request-path stores — rate-limit counters, password-reset
+OTPs, and the product/category response cache. All three fall back to in-process
+memory when `REDIS_URL` is unset **or when Redis is unreachable**, so an outage
+costs shared state, not availability. Unsetting `REDIS_URL` reverts every one of
+them to the pre-Redis behaviour with no code change; that is the escape hatch if
+the command budget below becomes a problem.
+
 ### 3. Cloudflare R2
 
 Create a bucket and an API token, and expose the bucket publicly. `R2_PUBLIC_URL`
@@ -116,7 +123,7 @@ full annotated list. Never commit real values.
 | `REDIS_URL` | recommended | Upstash `rediss://`. Unset ⇒ jobs run inline |
 | `FRONTEND_URL` | yes | Real Vercel origin of `web`; feeds the CORS allowlist |
 | `ADMIN_URL` | yes | Real Vercel origin of `admin`; feeds the CORS allowlist |
-| `SERVER_BASE_URL` | yes | The Render service URL |
+| `SERVER_BASE_URL` | no | Only read by the local-disk storage branch, which production never reaches. Harmless to set; nothing on Render reads it |
 | `R2_ACCOUNT_ID` | yes\* | \*R2 or Cloudinary required in production |
 | `R2_ACCESS_KEY_ID` | yes\* | |
 | `R2_SECRET_ACCESS_KEY` | yes\* | |
@@ -126,7 +133,7 @@ full annotated list. Never commit real values.
 | `CLOUDINARY_API_KEY` | alt | |
 | `CLOUDINARY_API_SECRET` | alt | |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` | optional | Email no-ops if unset |
-| `LOGISTICS_WEBHOOK_SECRET` | optional | |
+| `LOGISTICS_WEBHOOK_SECRET` | optional | Verifier fails closed — while unset, `/webhooks/logistics` rejects every request |
 | `PAYMENTS_MOCK` | **must be unset** | Dev/test only — bypasses signature verification |
 
 ### Vercel (`web`)
@@ -162,19 +169,48 @@ service. Nothing depends on punctual execution:
 - Order confirmation and shipping emails are queued with retries and backoff, so
   a delayed pickup means a late email, not a lost one.
 
-**Upstash command quota.** BullMQ polls Redis continuously and Upstash bills per
-command. The worker sets `drainDelay: 30`, capping idle polling at roughly 2
-blocking reads per minute per worker (~2,880/day), which sits inside the free
-daily allotment. Raising concurrency or lowering `drainDelay` raises that
-number — check the quota before changing either.
+**Upstash command quota — this is now a traffic ceiling, not just a worker
+budget.** The free tier allows **500,000 commands/month** (≈16,700/day).
 
-**Rate limiting is per-instance.** `express-rate-limit` keeps counters in memory.
-With a single free-tier instance this is accurate; it would under-enforce if the
-service were ever scaled out.
+The worker's `drainDelay: 30` caps idle polling at roughly 2 blocking reads per
+minute (~2,880/day ≈ 86,400/month), leaving ≈413,600/month for everything else.
+Since rate limiting moved to Redis, **every `/api/v1/*` request spends at least
+one command**, and product/category requests spend a second on the response
+cache:
 
-**OTPs are held in memory.** Password-reset OTPs live in an in-process
-`NodeCache`, so a restart or spin-down discards pending codes and the user must
-request a new one.
+| Consumer | Commands |
+|---|---|
+| Worker idle polling | ~2,880/day |
+| Rate limiter (every API request) | 1 |
+| Response cache (product/category) | 1 hit, 2 on miss |
+| OTP set/verify | 1–2 per password reset |
+
+At a blended ~1.5 commands per request that is roughly **9,200 API requests/day**,
+and since a storefront page view makes 4–6 API calls, roughly **1,800 page
+views/day**.
+
+This ceiling did not exist before these stores moved to Redis, and it is a
+deliberate, accepted trade. If you approach it, in order of preference: revert
+the response cache to in-process (it has no correctness value — the cache is a
+latency optimisation and behaves identically either way), then the rate limiter,
+or move off the free tier. Unsetting `REDIS_URL` reverts everything at once.
+
+Raising worker concurrency or lowering `drainDelay` also raises the number —
+check the quota before changing either.
+
+**Rate limiting is shared across instances when `REDIS_URL` is set.** Counters
+live in Redis via a single Lua `EVAL` per request (one command, not three). If
+Redis is unreachable the limiter **fails open** to per-instance memory counting:
+enforcement degrades to what it was before, rather than locking users out of a
+working store because a cache is down. That is a deliberate choice — see the
+`redis-shared-state-v1` plan artifact.
+
+**OTPs survive restarts when `REDIS_URL` is set.** Password-reset OTPs are
+written to Redis with a 600s TTL *and* to in-process memory. Previously they were
+memory-only, which was actively broken on this topology: the 10-minute OTP TTL is
+shorter than the ~15-minute idle spin-down, so the sequence "request OTP → open
+email → return" routinely woke a fresh instance holding no code, and the user got
+`INVALID_OTP` for a code that had not expired.
 
 ## Verification after deploying
 

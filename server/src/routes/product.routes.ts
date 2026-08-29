@@ -1,12 +1,10 @@
 import { Router, Response } from 'express'
 import { prisma } from '../utils/prisma'
+import { cacheGet, cacheSet } from '../utils/response.cache'
 import { optionalAuth, AuthRequest } from '../middleware/auth.middleware'
-import NodeCache from 'node-cache'
 
 const router = Router()
 
-// Cache for 60 seconds
-const cache = new NodeCache({ stdTTL: 60, checkperiod: 120 })
 
 // Get all products with filters
 router.get('/', optionalAuth, async (req, res: Response, next) => {
@@ -86,7 +84,7 @@ router.get('/', optionalAuth, async (req, res: Response, next) => {
 
     // Check cache
     const cacheKey = `products:${JSON.stringify({ page, limit, category, search, sort, minPrice, maxPrice, inStock })}`
-    const cached = cache.get(cacheKey)
+    const cached = await cacheGet(cacheKey)
     if (cached) {
       res.json(cached)
       return
@@ -122,7 +120,7 @@ router.get('/', optionalAuth, async (req, res: Response, next) => {
       },
     }
 
-    cache.set(cacheKey, response)
+    await cacheSet(cacheKey, response)
     res.json(response)
   } catch (error) {
     next(error)
@@ -133,7 +131,7 @@ router.get('/', optionalAuth, async (req, res: Response, next) => {
 router.get('/price-range', async (_req, res: Response, next) => {
   try {
     const cacheKey = 'products:price-range'
-    const cached = cache.get(cacheKey)
+    const cached = await cacheGet(cacheKey)
     if (cached) {
       res.json(cached)
       return
@@ -153,7 +151,7 @@ router.get('/price-range', async (_req, res: Response, next) => {
       },
     }
 
-    cache.set(cacheKey, response)
+    await cacheSet(cacheKey, response)
     res.json(response)
   } catch (error) {
     next(error)
@@ -164,7 +162,7 @@ router.get('/price-range', async (_req, res: Response, next) => {
 router.get('/featured', optionalAuth, async (_req, res: Response, next) => {
   try {
     const cacheKey = 'products:featured'
-    const cached = cache.get(cacheKey)
+    const cached = await cacheGet(cacheKey)
     if (cached) {
       res.json(cached)
       return
@@ -193,7 +191,7 @@ router.get('/featured', optionalAuth, async (_req, res: Response, next) => {
       })),
     }
 
-    cache.set(cacheKey, response)
+    await cacheSet(cacheKey, response)
     res.json(response)
   } catch (error) {
     next(error)
@@ -215,7 +213,7 @@ router.get('/suggestions', optionalAuth, async (req, res: Response, next) => {
     }
 
     const cacheKey = `products:suggestions:${q.toLowerCase()}:${limit}`
-    const cached = cache.get(cacheKey)
+    const cached = await cacheGet(cacheKey)
     if (cached) {
       res.json(cached)
       return
@@ -255,7 +253,7 @@ router.get('/suggestions', optionalAuth, async (req, res: Response, next) => {
       })),
     }
 
-    cache.set(cacheKey, response)
+    await cacheSet(cacheKey, response)
     res.json(response)
   } catch (error) {
     next(error)

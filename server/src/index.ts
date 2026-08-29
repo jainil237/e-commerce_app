@@ -31,6 +31,7 @@ import { startWorker } from './queues/worker'
 
 // Import middleware
 import { errorHandler, notFound } from './middleware/error.middleware'
+import { FailOpenRedisStore } from './utils/rate-limit.store'
 
 const app = express()
 const PORT = process.env.PORT || 4000
@@ -99,6 +100,10 @@ const generalLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many requests, please try again later', code: 'RATE_LIMITED' },
+  // Shared across instances when REDIS_URL is set; per-instance otherwise.
+  // Costs one Redis command per API request — the largest single consumer of the
+  // Upstash budget. See docs/deployment.md "Upstash command quota".
+  store: new FailOpenRedisStore('rl:general:'),
 })
 
 // Logging
