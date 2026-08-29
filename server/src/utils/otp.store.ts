@@ -1,5 +1,5 @@
 import NodeCache from 'node-cache'
-import { tryRedis } from './redis'
+import { tryRedis, nsKey } from './redis'
 
 /**
  * Password-reset OTP storage.
@@ -17,7 +17,7 @@ export const OTP_TTL_SECONDS = 600
 // exactly as this code did before Redis existed — never worse than the status quo.
 const memory = new NodeCache({ stdTTL: OTP_TTL_SECONDS })
 
-const key = (email: string) => `pwd_reset_${email}`
+const key = (email: string) => nsKey(`pwd_reset_${email}`)
 
 /**
  * Written to BOTH backends on purpose. Password resets are far too low-volume for

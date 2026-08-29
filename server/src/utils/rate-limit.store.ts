@@ -1,5 +1,5 @@
 import { MemoryStore, type ClientRateLimitInfo, type Options, type Store } from 'express-rate-limit'
-import { redis } from './redis'
+import { redis, nsKey } from './redis'
 import { trace } from './observability'
 
 /**
@@ -65,7 +65,10 @@ export class FailOpenRedisStore implements Store {
   // double-count detection must not treat this as a per-instance store.
   localKeys = false
 
-  constructor(private readonly keyPrefix: string) {
+  private readonly keyPrefix: string
+
+  constructor(prefix: string) {
+    this.keyPrefix = nsKey(prefix)
     if (!redis) this.localKeys = true
   }
 

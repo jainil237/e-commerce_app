@@ -1,5 +1,5 @@
 import NodeCache from 'node-cache'
-import { tryRedis } from './redis'
+import { tryRedis, nsKey } from './redis'
 import { trace } from './observability'
 
 /**
@@ -20,7 +20,8 @@ const memory = new NodeCache({ stdTTL: DEFAULT_TTL_SECONDS, checkperiod: 120 })
 
 export async function cacheGet<T>(key: string): Promise<T | undefined> {
   const started = Date.now()
-  const attempt = await tryRedis('cache.get', (c) => c.get(key))
+  const k = nsKey(key)
+  const attempt = await tryRedis('cache.get', (c) => c.get(k))
   if (attempt.ok) {
     if (attempt.value === null) {
       trace('Cache', 'MISS', { key, backend: 'redis', ms: Date.now() - started })
@@ -44,7 +45,8 @@ export async function cacheGet<T>(key: string): Promise<T | undefined> {
 
 export async function cacheSet(key: string, value: unknown, ttlSeconds = DEFAULT_TTL_SECONDS): Promise<void> {
   const payload = JSON.stringify(value)
-  const attempt = await tryRedis('cache.set', (c) => c.setex(key, ttlSeconds, payload))
+  const k = nsKey(key)
+  const attempt = await tryRedis('cache.set', (c) => c.setex(k, ttlSeconds, payload))
   if (!attempt.ok) {
     memory.set(key, value, ttlSeconds)
     trace('Cache', 'SET', { key, backend: 'memory', ttl: ttlSeconds, bytes: payload.length, reason: 'redis-unavailable' })

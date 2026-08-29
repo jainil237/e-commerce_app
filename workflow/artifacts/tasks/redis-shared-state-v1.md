@@ -61,6 +61,14 @@ its pre-Build state.
 - `docs/deployment.md`
 - `server/.env.example`
 
+**Environment-namespacing addendum, 2026-08-29:**
+- `server/src/utils/redis.ts`
+- `server/src/utils/response.cache.ts`
+- `server/src/utils/otp.store.ts`
+- `server/src/utils/rate-limit.store.ts`
+- `server/src/queues/index.ts`
+- `docs/deployment.md`
+
 **Instrumentation addendum, 2026-08-29:**
 - `server/src/utils/observability.ts`
 - `server/tests/services/email-provider.test.ts`

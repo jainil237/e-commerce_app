@@ -11,7 +11,13 @@ import { trace } from '../utils/observability'
  * dropping work on the floor: callers fall back to doing the work inline.
  */
 
-export const JOB_QUEUE_NAME = 'ecom-jobs'
+/**
+ * Namespaced by environment so a developer's worker cannot consume production
+ * jobs off a shared Redis. Changing this orphans any jobs queued under the old
+ * unnamespaced name — acceptable here because that queue held only failures.
+ */
+// Hyphen, not colon: BullMQ rejects ':' in queue names ("Queue name cannot contain :").
+export const JOB_QUEUE_NAME = `ecom-jobs-${process.env.NODE_ENV || 'development'}`
 
 const redisUrl = process.env.REDIS_URL
 

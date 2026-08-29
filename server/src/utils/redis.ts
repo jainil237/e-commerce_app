@@ -15,6 +15,22 @@ import IORedis from 'ioredis'
  * [OPTIONAL] in .env.example.
  */
 
+/**
+ * Every Redis key this app writes is namespaced by environment.
+ *
+ * Without this, any machine pointed at the same REDIS_URL shares one keyspace.
+ * That is not hypothetical: during testing a local server run with a LOCAL
+ * database but the production REDIS_URL wrote local rows into the production
+ * response cache, which was then served to API clients as if it were real data
+ * — while the production database was empty. The same collision applies to
+ * rate-limit counters and, worst of all, the BullMQ queue: a developer's worker
+ * will happily consume and fail production jobs.
+ */
+export const REDIS_NAMESPACE = process.env.NODE_ENV || 'development'
+
+/** Prefix a key with the current environment. */
+export const nsKey = (key: string) => `${REDIS_NAMESPACE}:${key}`
+
 const url = process.env.REDIS_URL
 
 export const isRedisEnabled = Boolean(url)

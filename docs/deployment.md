@@ -72,6 +72,14 @@ Set it as `REDIS_URL` on Render.
   Eviction is designed for cache data; this database also holds BullMQ job state,
   and evicting it drops queued work. Upstash rejects writes once the 256 MB limit
   is reached rather than evicting — the correct behaviour here.
+- **Keys are namespaced by `NODE_ENV`.** Every cache entry, rate-limit counter,
+  OTP, and the BullMQ queue name carries the environment as a prefix
+  (`production:categories:all`, queue `ecom-jobs-production`). Without this a
+  developer pointed at this `REDIS_URL` shares one keyspace with production — which
+  during testing caused local rows to be written into the production response cache
+  and served to API clients while the production database was empty, and let a local
+  worker consume production jobs. Set `NODE_ENV=production` on Render or the
+  namespace will read `development`.
 - **A malformed `REDIS_URL` degrades, it does not crash.** Both clients are
   constructed defensively, so pasting the REST URL disables Redis and logs an
   error rather than failing the boot.

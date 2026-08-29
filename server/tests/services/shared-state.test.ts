@@ -71,13 +71,13 @@ describe('OTP store (R1)', () => {
     await otp.setOtp('del@example.com', '999999')
     await otp.delOtp('del@example.com')
     expect(await otp.getOtp('del@example.com')).toBeNull()
-    expect(await probe.get('pwd_reset_del@example.com')).toBeNull()
+    expect(await probe.get('test:pwd_reset_del@example.com')).toBeNull()
   })
 
   it('sets a TTL rather than persisting forever', async () => {
     const { otp } = await loadStores(TEST_REDIS_URL)
     await otp.setOtp('ttl@example.com', '222222')
-    const ttl = await probe.ttl('pwd_reset_ttl@example.com')
+    const ttl = await probe.ttl('test:pwd_reset_ttl@example.com')
     expect(ttl).toBeGreaterThan(0)
     expect(ttl).toBeLessThanOrEqual(600)
   })
@@ -113,7 +113,7 @@ describe('Response cache (R3)', () => {
 
   it('treats a corrupt entry as a miss rather than throwing', async () => {
     const { cache } = await loadStores(TEST_REDIS_URL)
-    await probe.set('corrupt:key', '{not-json')
+    await probe.set('test:corrupt:key', '{not-json')
     expect(await cache.cacheGet('corrupt:key')).toBeUndefined()
   })
 
@@ -126,7 +126,7 @@ describe('Response cache (R3)', () => {
   it('expires entries', async () => {
     const { cache } = await loadStores(TEST_REDIS_URL)
     await cache.cacheSet('ttl:key', { a: 1 })
-    const ttl = await probe.ttl('ttl:key')
+    const ttl = await probe.ttl('test:ttl:key')
     expect(ttl).toBeGreaterThan(0)
     expect(ttl).toBeLessThanOrEqual(60)
   })
@@ -258,5 +258,47 @@ describe('Malformed REDIS_URL must not crash boot (P1-1)', () => {
     const q = await import('../../src/queues/index')
     expect(q.connection).toBeUndefined()
     expect(q.isQueueEnabled).toBe(false)
+  })
+})
+
+describe('Environment namespacing (cross-env contamination guard)', () => {
+  async function keysFor(nodeEnv: string) {
+    vi.resetModules()
+    process.env.REDIS_URL = TEST_REDIS_URL
+    const prev = process.env.NODE_ENV
+    process.env.NODE_ENV = nodeEnv
+    const { cacheSet } = await import('../../src/utils/response.cache')
+    const { setOtp } = await import('../../src/utils/otp.store')
+    const { JOB_QUEUE_NAME } = await import('../../src/queues/index')
+    await cacheSet('categories:all', { env: nodeEnv })
+    await setOtp('ns@example.com', '424242')
+    process.env.NODE_ENV = prev
+    return { queue: JOB_QUEUE_NAME }
+  }
+
+  it('keeps development and production cache entries separate', async () => {
+    await keysFor('development')
+    await keysFor('production')
+    const dev = await probe.get('development:categories:all')
+    const prod = await probe.get('production:categories:all')
+    expect(JSON.parse(dev as string)).toEqual({ env: 'development' })
+    expect(JSON.parse(prod as string)).toEqual({ env: 'production' })
+  })
+
+  it('keeps OTPs separate per environment', async () => {
+    await keysFor('development')
+    await keysFor('production')
+    expect(await probe.get('development:pwd_reset_ns@example.com')).toBe('424242')
+    expect(await probe.get('production:pwd_reset_ns@example.com')).toBe('424242')
+    // Same value here, but distinct keys — a prod OTP is not readable via the dev key.
+    expect(await probe.get('pwd_reset_ns@example.com')).toBeNull()
+  })
+
+  it('gives each environment its own BullMQ queue', async () => {
+    const dev = await keysFor('development')
+    const prod = await keysFor('production')
+    expect(dev.queue).toBe('ecom-jobs-development')
+    expect(prod.queue).toBe('ecom-jobs-production')
+    expect(dev.queue).not.toBe(prod.queue)
   })
 })
