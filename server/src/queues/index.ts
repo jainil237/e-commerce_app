@@ -14,13 +14,29 @@ export const JOB_QUEUE_NAME = 'ecom-jobs'
 
 const redisUrl = process.env.REDIS_URL
 
-export const isQueueEnabled = Boolean(redisUrl)
-
 // BullMQ requires maxRetriesPerRequest: null on the connection it uses for
 // blocking commands, otherwise ioredis aborts long blocking reads.
-export const connection = redisUrl
-  ? new IORedis(redisUrl, { maxRetriesPerRequest: null })
-  : undefined
+// Constructed defensively for the same reason as utils/redis.ts: IORedis throws
+// synchronously on a malformed URL, and this module is imported by index.ts. A
+// typo'd REDIS_URL must disable the queue (jobs then run inline), not crash boot.
+function createQueueConnection(connectionUrl: string): IORedis | undefined {
+  try {
+    return new IORedis(connectionUrl, { maxRetriesPerRequest: null })
+  } catch (err) {
+    console.error(
+      '❌ REDIS_URL is not a valid Redis connection string — queue disabled, jobs ' +
+      'will run inline. Error:',
+      (err as Error)?.message ?? err
+    )
+    return undefined
+  }
+}
+
+export const connection = redisUrl ? createQueueConnection(redisUrl) : undefined
+
+// Derived from the client, not the raw env var: a malformed REDIS_URL leaves the
+// variable set but the connection undefined, and that must read as "no queue".
+export const isQueueEnabled = Boolean(connection)
 
 /**
  * Default job options.

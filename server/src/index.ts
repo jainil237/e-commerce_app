@@ -32,6 +32,7 @@ import { startWorker } from './queues/worker'
 // Import middleware
 import { errorHandler, notFound } from './middleware/error.middleware'
 import { FailOpenRedisStore } from './utils/rate-limit.store'
+import { reportRedisTarget } from './utils/redis'
 
 const app = express()
 const PORT = process.env.PORT || 4000
@@ -177,6 +178,7 @@ const startServer = async () => {
       console.log(`📡 API available at http://localhost:${PORT}/api/v1`)
       console.log(`🏥 Health check at http://localhost:${PORT}/health`)
       console.log(`📦 Storage provider: ${providerLabels[provider]}`)
+      reportRedisTarget()
     })
 
     // Queue startup runs AFTER listen and swallows its own errors on purpose.

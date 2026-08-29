@@ -195,3 +195,68 @@ describe('OTP store — recovery edge case (review finding V1)', () => {
     expect(await otp.getOtp('recover@example.com')).toBe('444444')
   })
 })
+
+describe('Upstash target reporting', () => {
+  async function describe_(url: string | undefined) {
+    vi.resetModules()
+    if (url) process.env.REDIS_URL = url
+    else delete process.env.REDIS_URL
+    const { describeRedisTarget } = await import('../../src/utils/redis')
+    return describeRedisTarget()
+  }
+
+  it('recognises an Upstash TLS endpoint', async () => {
+    expect(await describe_('rediss://default:tok@apn1-fake-12345.upstash.io:6379')).toEqual({
+      host: 'apn1-fake-12345.upstash.io',
+      tls: true,
+      upstash: true,
+    })
+  })
+
+  it('flags a plaintext URL — Upstash requires TLS', async () => {
+    const t = await describe_('redis://default:tok@apn1-fake-12345.upstash.io:6379')
+    expect(t?.tls).toBe(false)
+    expect(t?.upstash).toBe(true)
+  })
+
+  it('flags a non-Upstash host', async () => {
+    const t = await describe_('redis://localhost:6379')
+    expect(t?.upstash).toBe(false)
+  })
+
+  it('never exposes credentials — host only', async () => {
+    const t = await describe_('rediss://default:supersecrettoken@apn1-fake-12345.upstash.io:6379')
+    expect(JSON.stringify(t)).not.toContain('supersecrettoken')
+  })
+
+  it('returns null when unset, and does not throw on a malformed URL', async () => {
+    expect(await describe_(undefined)).toBeNull()
+    expect(await describe_('not a url')).toBeNull()
+  })
+})
+
+describe('Malformed REDIS_URL must not crash boot (P1-1)', () => {
+  it('importing the store module survives an unparseable URL', async () => {
+    vi.resetModules()
+    process.env.REDIS_URL = 'not a url'
+    const mod = await import('../../src/utils/redis')
+    expect(mod.redis).toBeUndefined()
+    expect(mod.describeRedisTarget()).toBeNull()
+  })
+
+  it('stores still work, on memory, with an unparseable URL', async () => {
+    vi.resetModules()
+    process.env.REDIS_URL = 'not a url'
+    const { setOtp, getOtp } = await import('../../src/utils/otp.store')
+    await setOtp('broken@example.com', '555555')
+    expect(await getOtp('broken@example.com')).toBe('555555')
+  })
+
+  it('disables the queue rather than throwing', async () => {
+    vi.resetModules()
+    process.env.REDIS_URL = 'not a url'
+    const q = await import('../../src/queues/index')
+    expect(q.connection).toBeUndefined()
+    expect(q.isQueueEnabled).toBe(false)
+  })
+})

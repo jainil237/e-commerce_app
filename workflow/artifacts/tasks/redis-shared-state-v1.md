@@ -61,6 +61,51 @@ its pre-Build state.
 - `docs/deployment.md`
 - `server/.env.example`
 
+**Upstash verification addendum, 2026-08-29:**
+- `server/src/utils/redis.ts`
+- `server/src/queues/index.ts`
+- `server/src/index.ts`
+- `server/tests/services/shared-state.test.ts`
+- `docs/deployment.md`
+- `server/.env.example`
+
+## Upstash verification addendum (2026-08-29)
+
+Follow-up on a request to confirm the Redis layer actually targets Upstash. The code was
+provider-agnostic — it read `REDIS_URL` and nothing more — so a wrong value produced silent
+degradation rather than a visible error. Three gaps closed:
+
+**1. A malformed `REDIS_URL` could crash the server at boot (P1-1 violation).**
+`new IORedis(url)` throws synchronously on some malformed connection strings, and both
+`utils/redis.ts` and `queues/index.ts` construct their client at module scope — modules that
+`index.ts` imports. A typo would therefore kill the deploy, directly contradicting the P1-1
+decision that Redis is a degraded-mode dependency and never a boot dependency. Both constructions
+are now wrapped; a bad value disables Redis, logs an error, and the app serves on memory.
+
+Found by a test, not by review: the existing suite passed with the defect present.
+
+`isQueueEnabled` now derives from the constructed client rather than from `Boolean(process.env.REDIS_URL)`,
+since a malformed URL leaves the variable set but the connection undefined.
+
+**2. No visible confirmation of the Redis target.** `reportRedisTarget()` logs one line at startup —
+`🔴 Redis: <host> (Upstash|non-Upstash, TLS|PLAINTEXT)` — with credentials stripped. Verified
+against six configurations: unset, local plaintext, Upstash plaintext, Upstash TLS, malformed, and
+production with a non-Upstash host.
+
+Two self-inflicted defects were found and fixed during that verification: the malformed case
+originally reported "not configured" (conflating unset with unparseable, while a client had in fact
+been created and the worker started), and the TLS warning originally fired on plaintext localhost,
+which is the normal local-dev setup — training the reader to ignore the line. The TLS warning is
+now scoped to Upstash hosts and to production.
+
+**3. Upstash-specific operational settings were undocumented.** `docs/deployment.md` §2 now records
+that TLS is mandatory, that eviction must stay disabled (it is off by default; it is designed for
+cache data, and this database also holds BullMQ job state), and Upstash's own published guidance
+that BullMQ polls continuously and suits a Fixed plan over Pay-As-You-Go.
+
+Verification: root `npm run build` exit 0, root `npm run lint` exit 0, `npm test --workspace=server`
+109 passing across 12 files (8 new here, zero regressions).
+
 ## Steps
 
 | # | Step | Manifest | Status | Evidence |

@@ -60,6 +60,28 @@ REST URL — BullMQ uses ioredis, which cannot speak Upstash's REST API.
 
 Set it as `REDIS_URL` on Render.
 
+**Required Upstash settings:**
+
+- **TLS is mandatory.** The connection string must start with `rediss://`, not
+  `redis://`. A plaintext URL will not connect, and because every store falls
+  back to in-process memory, that failure is silent — the app keeps serving with
+  per-instance state and nothing says why. The server logs its Redis target at
+  startup (`🔴 Redis: <host> (Upstash, TLS)`) so this is visible; check that line
+  after deploying.
+- **Leave eviction disabled.** It is off by default, and it must stay off.
+  Eviction is designed for cache data; this database also holds BullMQ job state,
+  and evicting it drops queued work. Upstash rejects writes once the 256 MB limit
+  is reached rather than evicting — the correct behaviour here.
+- **A malformed `REDIS_URL` degrades, it does not crash.** Both clients are
+  constructed defensively, so pasting the REST URL disables Redis and logs an
+  error rather than failing the boot.
+
+**On plan choice:** Upstash's own BullMQ guidance warns that "BullMQ accesses
+Redis regularly, even when there is no queue activity. This can incur extra costs
+because Upstash charges per request on the Pay-As-You-Go plan," and recommends a
+Fixed plan for BullMQ workloads. That is why `drainDelay: 30` is tuned the way it
+is — see the command-quota section below before changing it.
+
 If `REDIS_URL` is unset the app still runs: every queue producer falls back to
 doing the work inline, so behavior degrades to the pre-queue latency rather than
 dropping jobs.
