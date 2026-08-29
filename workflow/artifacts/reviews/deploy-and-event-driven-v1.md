@@ -4,7 +4,7 @@ version: 1
 artifact: review
 status: ready-for-next-phase
 created: 2026-08-18
-updated: 2026-08-18
+updated: 2026-08-21
 manifest_ids: [R1, R2, R3, R4, RI1, RI2, RI3, RI4, RI5, RI6, RI7, RI8, RI9, RI10, RI11]
 upstream:
   - workflow/artifacts/briefs/deploy-and-event-driven-v1.md
@@ -22,6 +22,30 @@ orchestration:
 
 Review target: `git diff inventory-reservation..HEAD` — 27 files, +2420/−99, commits
 c60e6a6, e753a41, 1d996fc, 659f420, e011da0, bb79608, 55703a2.
+
+## Phase 3 Documentation Addendum Review (2026-08-21)
+
+**Findings:** none.
+
+Reviewed `server/.env.example` against the static environment-variable inventory and
+`server/tests/helpers/test-db-url.ts`. `TEST_DATABASE_URL` was the only omitted key; it is
+now present with an empty placeholder and accurately marked optional and test-only. Its
+documentation requires a disposable `_test` database and explicitly prohibits production or
+Render use, so it cannot be mistaken for a deployment setting.
+
+**Evidence reviewed:**
+
+- `npm run build --workspace=server` — passed on 2026-08-21.
+- `git diff --check` — passed on 2026-08-21.
+- `server/tests/helpers/test-db-url.ts` — confirms the variable is optional and overrides the
+  test harness database only.
+
+**Coverage delta:** R1 and RI7 gain complete example coverage for the test harness. No other
+manifest row changes. The live deployment risks already recorded below and in
+`workflow/artifacts/verify/deploy-and-event-driven-v1.md` remain unresolved.
+
+**Recommendation:** pass-with-risk. The documentation addendum is correct; Test remains
+blocked by unprovisioned hosting infrastructure and the pre-existing root lint failure.
 
 ## Remediation Status
 
