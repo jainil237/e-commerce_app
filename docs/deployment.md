@@ -93,7 +93,24 @@ costs shared state, not availability. Unsetting `REDIS_URL` reverts every one of
 them to the pre-Redis behaviour with no code change; that is the escape hatch if
 the command budget below becomes a problem.
 
-### 3. Cloudflare R2
+### 3. Resend (email)
+
+Create an API key, then **add and verify a sending domain** — this is the step
+that gates real email. Until a domain is verified, Resend only accepts
+`onboarding@resend.dev` as the sender and only delivers to the address that owns
+the account, which is enough for a smoke test and useless for customers.
+
+Set `RESEND_API_KEY` and `EMAIL_FROM` (an address on the verified domain) on Render.
+
+The free tier allows **100 emails/day**. Order confirmations, shipping updates,
+and password-reset codes all draw on that budget, so a busy day of orders is the
+constraint to watch, not the monthly total.
+
+Provider precedence is `RESEND_API_KEY` → SMTP → dev mock, mirroring the storage
+service. Leaving all of them unset is supported: the mock writes `.html` files to
+`./uploads/emails` and the app runs normally.
+
+### 4. Cloudflare R2
 
 Create a bucket and an API token, and expose the bucket publicly. `R2_PUBLIC_URL`
 is the public base URL.
@@ -103,7 +120,7 @@ ephemeral, so a local-disk fallback would return URLs that 404 after the next
 restart. The server exits non-zero at startup if `NODE_ENV=production` and
 neither R2 nor Cloudinary is configured.
 
-### 4. Render (API)
+### 5. Render (API)
 
 | Setting | Value |
 |---|---|
@@ -112,7 +129,7 @@ neither R2 nor Cloudinary is configured.
 | Start command | `npm start --workspace=server` |
 | Health check path | `/health` |
 
-### 5. Vercel (web and admin)
+### 6. Vercel (web and admin)
 
 Two separate projects from the same repository.
 
@@ -154,7 +171,9 @@ full annotated list. Never commit real values.
 | `CLOUDINARY_CLOUD_NAME` | alt | Fallback if R2 unset |
 | `CLOUDINARY_API_KEY` | alt | |
 | `CLOUDINARY_API_SECRET` | alt | |
-| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` | optional | Email no-ops if unset |
+| `RESEND_API_KEY` | yes\*\* | \*\*Preferred email provider. Unset ⇒ falls back to SMTP, then to a dev mock |
+| `EMAIL_FROM` | yes\*\* | Must be on a domain verified in Resend |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` | optional | Fallback only, used when `RESEND_API_KEY` is unset. Email no-ops if neither is set |
 | `LOGISTICS_WEBHOOK_SECRET` | optional | Verifier fails closed — while unset, `/webhooks/logistics` rejects every request |
 | `PAYMENTS_MOCK` | **must be unset** | Dev/test only — bypasses signature verification |
 
