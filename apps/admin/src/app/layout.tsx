@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/components/providers'
 import { ErrorBoundary } from '@shared/components/ErrorBoundary'
+import { ClerkProvider } from '@clerk/nextjs'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 
@@ -19,11 +20,14 @@ export default function RootLayout({
   return (
     <html lang="en" className={inter.variable} suppressHydrationWarning>
       <body suppressHydrationWarning>
-        <ErrorBoundary>
-          <Providers>
-            {children}
-          </Providers>
-        </ErrorBoundary>
+        {/* Inside <body>, not wrapping <html> — ClerkProvider renders elements. */}
+        <ClerkProvider>
+          <ErrorBoundary>
+            <Providers>
+              {children}
+            </Providers>
+          </ErrorBoundary>
+        </ClerkProvider>
       </body>
     </html>
   )
