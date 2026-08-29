@@ -36,6 +36,38 @@ orchestration:
 - `apps/admin/.env.local.example`
 - `apps/web/package.json`
 - `apps/admin/package.json`
+- `server/src/middleware/clerk.middleware.ts`
+- `server/src/index.ts`
+- `server/.env.example`
+- `server/package.json`
+
+## Phase 2 addendum — Express API (2026-08-29)
+
+Added at the user's direction so the Clerk keys could be set on frontend and backend in
+one pass, and so `CLERK_SECRET_KEY` is genuinely *read* rather than documented-but-unused
+(the `CLOUDINARY_FOLDER` anti-pattern this repo already removed once).
+
+`@clerk/express@2.1.64` — peer range `^4.17.0 || ^5.0.0`, and the repo's
+`express: ^5.0.0-beta.1` resolves to **5.2.1 stable**, so it is compatible.
+
+`server/src/middleware/clerk.middleware.ts` mounts `clerkMiddleware()` **passively**,
+matching the frontend phase: attaches auth context, protects nothing. It no-ops entirely
+when `CLERK_SECRET_KEY` is unset, following the degraded-mode contract Redis and storage
+already use in this codebase.
+
+`getClerkUserId()` deliberately returns the Clerk id (`user_...`), never a local
+`User.id`. Keeping those distinct is what makes the approved mapping strategy work:
+`User.id` remains the FK for orders, addresses, wishlists, RMAs and audit logs, with a
+`clerkUserId` column to be added in a later phase.
+
+**How the session reaches Express, and why isolation survives:** the browser only ever
+calls its own Next.js origin; `next.config.js` rewrites `/api/*` server-side and Next
+forwards the incoming `Cookie` header, so Clerk's `__session` cookie arrives at the API
+without any cross-origin authenticated request. The host-only cookie split that
+`docs/deployment.md` calls load-bearing is preserved.
+
+**One shared secret key, three consumers.** Both frontends and the API use the same
+`CLERK_SECRET_KEY` from a single Clerk application.
 
 ## Scope of this phase
 
@@ -74,6 +106,8 @@ rewrite and passes through, which is the intended behaviour.
 | `next build --workspace=apps/web` | pass — `ƒ Middleware 78.5 kB` present |
 | `next build --workspace=apps/admin` | pass — `ƒ Middleware 78.5 kB` present |
 | `npm run lint` (root) | pass, exit 0 |
+| `npm run build --workspace=server` | pass — phase 2 |
+| Server startup log for Clerk mode | **not verified** — the API cannot boot, see blocker 2 |
 
 Both builds were run with a **throwaway** publishable key of valid format, purely to get
 past `ClerkProvider`'s build-time key requirement and prove the integration compiles and

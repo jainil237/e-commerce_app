@@ -33,6 +33,7 @@ import { startWorker } from './queues/worker'
 import { errorHandler, notFound } from './middleware/error.middleware'
 import { FailOpenRedisStore } from './utils/rate-limit.store'
 import { reportRedisTarget } from './utils/redis'
+import { clerkSession, isClerkConfigured } from './middleware/clerk.middleware'
 
 const app = express()
 const PORT = process.env.PORT || 4000
@@ -123,6 +124,11 @@ app.use('/api/v1/webhooks/razorpay', express.raw({ type: 'application/json' }))
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
+// Clerk session context. Passive during the migration: attaches auth, protects
+// nothing. Mounted after body parsing so it sees a fully-formed request, and
+// before routes so handlers can read it.
+app.use(clerkSession())
+
 // Dev-only local upload serving. Production never writes here — the storage
 // service's local fallback (storage.service.ts) refuses to run when
 // NODE_ENV=production, and the startup guard below refuses to boot without a
@@ -179,6 +185,11 @@ const startServer = async () => {
       console.log(`🏥 Health check at http://localhost:${PORT}/health`)
       console.log(`📦 Storage provider: ${providerLabels[provider]}`)
       reportRedisTarget()
+      console.log(
+        isClerkConfigured
+          ? '🔐 Clerk: session verification active (passive — JWT auth is still authoritative)'
+          : '🔐 Clerk: CLERK_SECRET_KEY unset — Clerk session verification disabled'
+      )
     })
 
     // Queue startup runs AFTER listen and swallows its own errors on purpose.
