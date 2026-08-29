@@ -16,7 +16,17 @@ import { clerkMiddleware, getAuth } from '@clerk/express'
  * keeps the web/admin host-only cookie isolation intact — see docs/deployment.md.
  */
 
-export const isClerkConfigured = Boolean(process.env.CLERK_SECRET_KEY)
+const secretKey = process.env.CLERK_SECRET_KEY
+const publishableKey = process.env.CLERK_PUBLISHABLE_KEY
+
+/**
+ * BOTH keys are required. @clerk/express's clerkMiddleware() throws
+ * "Publishable key is missing" on every request when only the secret is present —
+ * and because it is mounted app-wide, that turns into a 500 on every route,
+ * including /health. Gating on the secret alone made a half-configured Clerk
+ * break the entire API instead of disabling itself.
+ */
+export const isClerkConfigured = Boolean(secretKey && publishableKey)
 
 /**
  * Mount once, before routes. No-ops when CLERK_SECRET_KEY is unset so the API
@@ -25,9 +35,17 @@ export const isClerkConfigured = Boolean(process.env.CLERK_SECRET_KEY)
  */
 export function clerkSession(): RequestHandler {
   if (!isClerkConfigured) {
+    // Half-configured is a mistake worth shouting about: it looks like Clerk is
+    // set up, but no session will ever be verified.
+    if (secretKey || publishableKey) {
+      console.warn(
+        `⚠️  Clerk is half-configured — ${secretKey ? 'CLERK_PUBLISHABLE_KEY' : 'CLERK_SECRET_KEY'} is missing. ` +
+        'Session verification is DISABLED. Both keys are required.'
+      )
+    }
     return (_req, _res, next) => next()
   }
-  return clerkMiddleware()
+  return clerkMiddleware({ secretKey, publishableKey })
 }
 
 /**
