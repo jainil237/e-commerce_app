@@ -288,7 +288,6 @@ export default function CheckoutPage() {
             // orderInFlight and isLoading stuck true with no error shown and no
             // way to retry short of a reload.
             try {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               new (window as any).Razorpay(options).open()
             } catch {
               showToast('error', 'Could not open the payment gateway')

@@ -98,7 +98,7 @@ function LoginContent() {
           </form>
 
           <div className="ms-auth-card__footer">
-            <span className="ms-auth-card__footer-text">Don't have an account?</span>{' '}
+            <span className="ms-auth-card__footer-text">Don&apos;t have an account?</span>{' '}
             <Link href="/account/register" className="ms-auth-card__footer-link">
               Sign up
             </Link>
