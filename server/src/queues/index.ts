@@ -1,5 +1,6 @@
 import { Queue, JobsOptions } from 'bullmq'
 import IORedis from 'ioredis'
+import { trace } from '../utils/observability'
 
 /**
  * Queue layer — BullMQ over Redis (Upstash in production).
@@ -62,14 +63,20 @@ export const jobQueue = connection
  * fall back to inline execution.
  */
 export async function enqueue<T>(name: string, data: T, opts?: JobsOptions): Promise<boolean> {
-  if (!jobQueue) return false
+  if (!jobQueue) {
+    trace('Queue', 'ENQUEUE SKIPPED', { job: name, reason: 'no-queue-configured', fallback: 'inline' })
+    return false
+  }
   try {
-    await jobQueue.add(name, data, opts)
+    const started = Date.now()
+    const job = await jobQueue.add(name, data, opts)
+    trace('Queue', 'ENQUEUED', { job: name, jobId: job.id, ms: Date.now() - started })
     return true
   } catch (err) {
     // Never let a queue outage break the request that triggered it — the
     // caller's inline fallback is strictly better than a 500 here.
     console.error(`[Queue] enqueue "${name}" failed, caller will run inline:`, err)
+    trace('Queue', 'ENQUEUE FAILED', { job: name, error: (err as Error)?.message, fallback: 'inline' })
     return false
   }
 }
@@ -94,6 +101,7 @@ export function enqueueOrRun<T>(
 ): void {
   void (async () => {
     if (await enqueue(name, data, opts)) return
+    trace('Queue', 'INLINE FALLBACK', { job: name })
     await fallback()
   })().catch((err) => {
     console.error(`[Queue] "${name}" failed inline after enqueue fell through:`, err)

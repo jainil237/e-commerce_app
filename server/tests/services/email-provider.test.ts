@@ -14,15 +14,28 @@ const saved = {
   EMAIL_FROM: process.env.EMAIL_FROM,
 }
 
+/**
+ * Clears by assigning '' rather than `delete`.
+ *
+ * These tests re-import the service through vi.resetModules(), which re-runs
+ * src/config/env.ts and therefore dotenv.config(). dotenv skips keys already
+ * present in process.env but repopulates deleted ones from server/.env — so
+ * `delete process.env.RESEND_API_KEY` silently came back as the real key once one
+ * was configured, and the test asserted against the developer's own .env instead
+ * of the case it names. An empty string keeps the key present and falsy.
+ */
 function setEnv(vars: Record<string, string | undefined>) {
   for (const [k, v] of Object.entries(vars)) {
-    if (v === undefined) delete process.env[k]
-    else process.env[k] = v
+    process.env[k] = v ?? ''
   }
 }
 
 afterEach(() => {
-  setEnv(saved)
+  // Restore exactly, including keys that were genuinely absent before.
+  for (const [k, v] of Object.entries(saved)) {
+    if (v === undefined) delete process.env[k]
+    else process.env[k] = v
+  }
   vi.resetModules()
 })
 

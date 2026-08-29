@@ -14,6 +14,7 @@ import {
   sendOtpEmail,
 } from '../services/email.service'
 import { sweepExpiredReservations } from '../services/inventory.service'
+import { trace } from '../utils/observability'
 
 /**
  * The order shape the invoice/email services expect. Re-fetched inside the
@@ -98,6 +99,25 @@ async function handleOtpEmail(data: OtpEmailPayload) {
 }
 
 export async function processJob(job: Job) {
+  const started = Date.now()
+  trace('Worker', 'JOB START', { job: job.name, jobId: job.id, attempt: job.attemptsMade + 1 })
+  try {
+    const result = await runJob(job)
+    trace('Worker', 'JOB OK', { job: job.name, jobId: job.id, ms: Date.now() - started })
+    return result
+  } catch (err) {
+    trace('Worker', 'JOB FAILED', {
+      job: job.name,
+      jobId: job.id,
+      attempt: job.attemptsMade + 1,
+      ms: Date.now() - started,
+      error: (err as Error)?.message,
+    })
+    throw err
+  }
+}
+
+async function runJob(job: Job) {
   switch (job.name) {
     case JOB.ORDER_CONFIRMATION:
       return handleOrderConfirmation(job.data as OrderConfirmationPayload)
@@ -136,6 +156,10 @@ export function startWorker() {
     // (~2,880/day), well inside Upstash's free daily command allotment,
     // while costing at most 30s of extra latency on an empty queue.
     drainDelay: 30,
+  })
+
+  worker.on('completed', (job) => {
+    trace('Worker', 'COMPLETED', { job: job?.name, jobId: job?.id })
   })
 
   worker.on('failed', (job, err) => {

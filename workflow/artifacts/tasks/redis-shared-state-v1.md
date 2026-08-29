@@ -61,6 +61,10 @@ its pre-Build state.
 - `docs/deployment.md`
 - `server/.env.example`
 
+**Instrumentation addendum, 2026-08-29:**
+- `server/src/utils/observability.ts`
+- `server/tests/services/email-provider.test.ts`
+
 **Upstash verification addendum, 2026-08-29:**
 - `server/src/utils/redis.ts`
 - `server/src/queues/index.ts`
@@ -105,6 +109,38 @@ that BullMQ polls continuously and suits a Fixed plan over Pay-As-You-Go.
 
 Verification: root `npm run build` exit 0, root `npm run lint` exit 0, `npm test --workspace=server`
 109 passing across 12 files (8 new here, zero regressions).
+
+## Instrumentation and live verification (2026-08-29)
+
+Added `QUEUE_CACHE_DEBUG`-gated tracing to the cache, rate limiter, queue producer and
+worker, then exercised all of it against a live local Redis and cross-checked every
+claim against Redis state rather than trusting the logs.
+
+Gated rather than always-on because the cache and rate limiter run on every request;
+unconditional logging would bury the log and cost money in a hosted drain.
+
+| Check | Trace | Independent verification |
+|---|---|---|
+| Cache miss → set → hit | `MISS` → `SET bytes=312 ttl=60` → `HIT bytes=312` | `redis-cli strlen categories:all` = **312**, `ttl` counting 60→58 |
+| Rate limiter accuracy | `INCR hits=1..7 commands=1` | `redis-cli get rl:general:::1` = **7** after exactly 7 requests |
+| Single-command design (RI4) | `commands=1` per request | Confirms the Lua `EVAL` claim the budget rests on |
+| Queue producer → worker | `ENQUEUED job=otp-email jobId=3 ms=1` → `JOB START` → `JOB OK ms=12` → `COMPLETED` | `bull:ecom-jobs:3` present, `zcard bull:ecom-jobs:completed` = 2 |
+| Repeatable sweeper | `JOB START/OK/COMPLETED sweep-reservations ms=2` | `bull:ecom-jobs:repeat:sweep-reservations` scheduled |
+| OTP persistence (R1) | — | `pwd_reset_...` key, **ttl=580s, len=6** — a 6-digit code surviving in Redis, which is the spin-down bug this chain fixed |
+| Redis outage | `backend=memory reason=redis-unavailable` for cache and limiter | Two requests returned **HTTP 200** with Redis dead |
+| Recovery | `backend=redis` resumes, `resetInMs=900000` | Keys repopulated; counter matches trace |
+
+**The recovery result matters most.** It confirms the Build-phase decision to drop
+`rate-limit-redis`: that library caches its script SHA as a promise, so a Redis outage
+would have left it permanently rejected and shared counting silently disabled for the
+process lifetime. The `ioredis.defineCommand` implementation resumes on its own.
+
+**Test bug found and fixed.** `tests/services/email-provider.test.ts` cleared variables
+with `delete process.env.X`. Because each case re-imports through `vi.resetModules()`,
+`dotenv.config()` re-runs and repopulates deleted keys from `server/.env` — so once a real
+`RESEND_API_KEY` existed, three cases asserted against the developer's own environment
+instead of the case they name. They now clear by assigning `''`, which keeps the key
+present and falsy so dotenv leaves it alone.
 
 ## Steps
 

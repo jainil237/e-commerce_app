@@ -1,5 +1,6 @@
 import { MemoryStore, type ClientRateLimitInfo, type Options, type Store } from 'express-rate-limit'
 import { redis } from './redis'
+import { trace } from './observability'
 
 /**
  * A rate-limit store backed by Redis, falling back to the in-process MemoryStore.
@@ -87,6 +88,13 @@ export class FailOpenRedisStore implements Store {
     if (c) {
       try {
         const [totalHits, pttl] = await c.rateLimitIncrement(this.keyPrefix + key, String(this.windowMs))
+        trace('RateLimit', 'INCR', {
+          key: this.keyPrefix + key,
+          backend: 'redis',
+          hits: totalHits,
+          resetInMs: pttl >= 0 ? pttl : this.windowMs,
+          commands: 1,
+        })
         return {
           totalHits,
           // PTTL returns -1 for a key with no expiry; fall back to a full window
@@ -97,7 +105,9 @@ export class FailOpenRedisStore implements Store {
         this.fallback(err)
       }
     }
-    return this.memory.increment(key)
+    const info = await this.memory.increment(key)
+    trace('RateLimit', 'INCR', { key: this.keyPrefix + key, backend: 'memory', hits: info.totalHits })
+    return info
   }
 
   async decrement(key: string): Promise<void> {
