@@ -11,6 +11,20 @@ export const isQueueCacheDebugEnabled = process.env.QUEUE_CACHE_DEBUG === 'true'
 
 type Fields = Record<string, unknown>
 
+/**
+ * Errors do not reliably carry a useful `.message`. Prisma and some driver errors
+ * surface an empty string, which logged as a bare `error=` and told us nothing —
+ * the failure mode that made a queue backlog undiagnosable during live testing.
+ * Falls through message → String(err) → constructor name.
+ */
+export function describeError(err: unknown): string {
+  const message = (err as Error)?.message
+  if (typeof message === 'string' && message.trim() !== '') return message
+  const asString = String(err)
+  if (asString && asString !== '[object Object]' && asString !== 'Error') return asString
+  return (err as object)?.constructor?.name ?? 'unknown error'
+}
+
 function render(fields?: Fields): string {
   if (!fields) return ''
   return ' ' + Object.entries(fields)
@@ -46,7 +60,7 @@ export async function traced<T>(
     trace(scope, event, { ms: Date.now() - started, ...describe?.(result) })
     return result
   } catch (err) {
-    trace(scope, `${event} THREW`, { ms: Date.now() - started, error: (err as Error)?.message })
+    trace(scope, `${event} THREW`, { ms: Date.now() - started, error: describeError(err) })
     throw err
   }
 }

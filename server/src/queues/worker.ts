@@ -14,7 +14,7 @@ import {
   sendOtpEmail,
 } from '../services/email.service'
 import { sweepExpiredReservations } from '../services/inventory.service'
-import { trace } from '../utils/observability'
+import { trace, describeError } from '../utils/observability'
 
 /**
  * The order shape the invoice/email services expect. Re-fetched inside the
@@ -111,7 +111,7 @@ export async function processJob(job: Job) {
       jobId: job.id,
       attempt: job.attemptsMade + 1,
       ms: Date.now() - started,
-      error: (err as Error)?.message,
+      error: describeError(err),
     })
     throw err
   }
@@ -163,7 +163,9 @@ export function startWorker() {
   })
 
   worker.on('failed', (job, err) => {
-    console.error(`[Queue] job ${job?.name} (${job?.id}) failed:`, err.message)
+    // describeError, not err.message: some driver and Prisma errors carry an empty
+    // message, which logged as a bare "failed:" with nothing after it.
+    console.error(`[Queue] job ${job?.name} (${job?.id}) failed:`, describeError(err))
   })
 
   console.log('👷 Queue worker started')
