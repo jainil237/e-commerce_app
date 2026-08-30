@@ -39,6 +39,26 @@ Eight phases implementing production deployment (web, admin, API) with TiDB comp
 
 ## Changed Files
 
+**Admin password reveal + strength, 2026-08-30:**
+- `apps/admin/src/components/ui/PasswordField.tsx`
+- `apps/admin/src/app/login/page.tsx`
+
+**Password reveal + strength, swipe advance, 2026-08-30:**
+- `apps/web/src/components/molecules/PasswordInput/PasswordInput.tsx`
+- `apps/web/src/components/molecules/PasswordInput/password-input.scss`
+- `apps/web/src/app/account/register/page.tsx`
+- `apps/web/src/app/account/login/page.tsx`
+- `shared/utils/index.ts`
+
+**Mobile swipe browsing, 2026-08-30:**
+- `apps/web/src/components/atoms/Switch/Switch.tsx`
+- `apps/web/src/components/atoms/Switch/switch.scss`
+- `apps/web/src/components/organisms/SwipeDeck/SwipeDeck.tsx`
+- `apps/web/src/components/organisms/SwipeDeck/swipe-deck.scss`
+- `apps/web/src/app/products/products-client.tsx`
+- `apps/web/src/app/products/plp.scss`
+- `docs/drafts/swipe-browsing-large-screens.md`
+
 **Hero carousel + search category filter, 2026-08-30:**
 - `apps/web/src/components/organisms/HeroCarousel/HeroCarousel.tsx`
 - `apps/web/src/components/organisms/HeroCarousel/hero-carousel.scss`

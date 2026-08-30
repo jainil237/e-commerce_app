@@ -1,0 +1,68 @@
+@use '../../../styles/mixins' as m;
+
+.ms-switch-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4, 1rem);
+
+  &__text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+
+  &__label {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    cursor: pointer;
+  }
+
+  &__description {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+  }
+}
+
+.ms-switch {
+  // iOS proportions: a 2:1 track with the thumb inset by 2px.
+  flex: 0 0 auto;
+  position: relative;
+  width: 3.25rem;
+  height: 1.875rem;
+  padding: 0;
+  border: none;
+  border-radius: 1rem;
+  background: var(--surface-3);
+  cursor: pointer;
+  @include m.motion { transition: background 200ms ease; }
+
+  &:focus-visible { @include m.focus-ring; }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &__thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: calc(1.875rem - 4px);
+    height: calc(1.875rem - 4px);
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 30%);
+    @include m.motion { transition: transform 200ms ease; }
+  }
+
+  &--on {
+    background: var(--brand-primary, #2563eb);
+
+    .ms-switch__thumb {
+      transform: translateX(calc(3.25rem - 1.875rem));
+    }
+  }
+}

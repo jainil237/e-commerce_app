@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/auth.context'
 import { useToast } from '@/contexts/toast.context'
 import { Button } from '@/components/atoms/Button/Button'
 import { Input } from '@/components/atoms/Input/Input'
+import { PasswordInput } from '@/components/molecules/PasswordInput/PasswordInput'
 import { safeRedirect } from '@/lib/safe-redirect'
 import '../auth.scss'
 
@@ -62,14 +63,19 @@ function LoginContent() {
               required
             />
 
-            <Input
-              type="password"
+            {/*
+              No strength rules here on purpose: an existing account's password
+              must keep working even if it predates them, and telling someone
+              their password is weak at sign-in helps an attacker, not them.
+            */}
+            <PasswordInput
               label="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               leftIcon={<Lock className="w-5 h-5 text-[var(--text-tertiary)]" />}
               required
+              autoComplete="current-password"
             />
 
             <div className="ms-auth-card__remember-row">
