@@ -245,3 +245,44 @@
     &:focus-visible { @include m.focus-ring; outline-offset: -2px; }
   }
 }
+
+// Search scope: category picker sitting flush against the search input.
+.ms-search-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  width: 100%;
+
+  // The Input atom wraps itself in a field div; let it take the space left.
+  > *:last-child {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+}
+
+.ms-search-scope {
+  flex: 0 0 auto;
+  max-width: 9.5rem;
+  padding: 0 var(--space-3, 0.75rem);
+  border: 1px solid var(--border-default);
+  border-right: none;
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  cursor: pointer;
+  // Room for the native chevron without crowding the label.
+  padding-right: var(--space-6, 1.5rem);
+
+  &:focus-visible { @include m.focus-ring; }
+
+  &:hover {
+    color: var(--text-primary);
+  }
+
+  // Square off the input's leading edge so the two read as one control.
+  + * :is(input, .ms-input) {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+}

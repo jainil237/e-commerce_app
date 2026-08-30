@@ -39,6 +39,14 @@ Eight phases implementing production deployment (web, admin, API) with TiDB comp
 
 ## Changed Files
 
+**Hero carousel + search category filter, 2026-08-30:**
+- `apps/web/src/components/organisms/HeroCarousel/HeroCarousel.tsx`
+- `apps/web/src/components/organisms/HeroCarousel/hero-carousel.scss`
+- `apps/web/src/app/page.tsx`
+- `apps/web/src/components/organisms/Topbar/Topbar.tsx`
+- `apps/web/src/components/organisms/Topbar/topbar.scss`
+- `server/src/routes/product.routes.ts`
+
 **Seed stale config path, 2026-08-30:**
 - `server/scripts/seed.ts`
 - `server/scripts/seed.js`
