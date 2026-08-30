@@ -39,6 +39,15 @@ Eight phases implementing production deployment (web, admin, API) with TiDB comp
 
 ## Changed Files
 
+**Mobile swipe browsing, 2026-08-30:**
+- `apps/web/src/components/atoms/Switch/Switch.tsx`
+- `apps/web/src/components/atoms/Switch/switch.scss`
+- `apps/web/src/components/organisms/SwipeDeck/SwipeDeck.tsx`
+- `apps/web/src/components/organisms/SwipeDeck/swipe-deck.scss`
+- `apps/web/src/app/products/products-client.tsx`
+- `apps/web/src/app/products/plp.scss`
+- `docs/drafts/swipe-browsing-large-screens.md`
+
 **Hero carousel + search category filter, 2026-08-30:**
 - `apps/web/src/components/organisms/HeroCarousel/HeroCarousel.tsx`
 - `apps/web/src/components/organisms/HeroCarousel/hero-carousel.scss`
