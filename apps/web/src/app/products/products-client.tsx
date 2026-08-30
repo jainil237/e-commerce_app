@@ -86,21 +86,27 @@ export function ProductsClient({ initialProductsData, categories }: ProductsClie
     try {
       await addItem(product.id, 1, { price: Number(product.price), name: product.name })
       showToast('success', `${product.name} added to cart`)
+      return true
     } catch (error) {
       showToast('error', error instanceof Error ? error.message : 'Could not add to cart')
+      return false
     }
   }, [addItem, showToast])
 
   const handleSwipeAddToWishlist = useCallback(async (product: Product) => {
+    // Already saved counts as success — the product is where the customer
+    // wanted it, so the deck should still move on.
     if (isInWishlist(product.id)) {
       showToast('info', `${product.name} is already in your wishlist`)
-      return
+      return true
     }
     try {
       await addToWishlist(product.id)
       showToast('success', `${product.name} saved to wishlist`)
+      return true
     } catch (error) {
       showToast('error', error instanceof Error ? error.message : 'Could not save to wishlist')
+      return false
     }
   }, [addToWishlist, isInWishlist, showToast])
 

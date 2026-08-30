@@ -7,6 +7,8 @@ import { User, Mail, Phone, Lock, Loader2 } from 'lucide-react'
 import { useAuth, useToast } from '@/contexts'
 import { Button } from '@/components/atoms/Button/Button'
 import { Input } from '@/components/atoms/Input/Input'
+import { PasswordInput } from '@/components/molecules/PasswordInput/PasswordInput'
+import { checkPassword } from '@shared/utils'
 import '../auth.scss'
 
 export default function RegisterPage() {
@@ -36,8 +38,10 @@ export default function RegisterPage() {
       return
     }
 
-    if (formData.password.length < 8) {
-      showToast('error', 'Password must be at least 8 characters')
+    const passwordCheck = checkPassword(formData.password)
+    if (!passwordCheck.valid) {
+      // Name the first unmet rule rather than a generic "too weak".
+      showToast('error', `Password needs: ${passwordCheck.failed.map(r => r.label.toLowerCase()).join(', ')}`)
       return
     }
 
@@ -98,25 +102,30 @@ export default function RegisterPage() {
               required
             />
 
-            <Input
+            <PasswordInput
               label="Password"
-              type="password"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               placeholder="••••••••"
               leftIcon={<Lock className="w-5 h-5 text-[var(--text-tertiary)]" />}
               required
-              minLength={8}
+              showRequirements
+              autoComplete="new-password"
             />
 
-            <Input
+            <PasswordInput
               label="Confirm Password"
-              type="password"
               value={formData.confirmPassword}
               onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
               placeholder="••••••••"
               leftIcon={<Lock className="w-5 h-5 text-[var(--text-tertiary)]" />}
               required
+              autoComplete="new-password"
+              error={
+                formData.confirmPassword && formData.confirmPassword !== formData.password
+                  ? 'Passwords do not match'
+                  : undefined
+              }
             />
 
             <Button

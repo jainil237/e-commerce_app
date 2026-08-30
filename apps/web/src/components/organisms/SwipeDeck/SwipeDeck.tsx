@@ -11,8 +11,9 @@ type SwipeAction = 'prev' | 'next' | 'cart' | 'wishlist'
 
 export interface SwipeDeckProps {
   products: Product[]
-  onAddToCart: (product: Product) => void | Promise<void>
-  onAddToWishlist: (product: Product) => void | Promise<void>
+  /** Resolve false if the action failed — the deck only advances on success. */
+  onAddToCart: (product: Product) => Promise<boolean>
+  onAddToWishlist: (product: Product) => Promise<boolean>
 }
 
 // Distance in px before a drag counts as a swipe. Below this the card springs
@@ -44,10 +45,13 @@ export function SwipeDeck({ products, onAddToCart, onAddToWishlist }: SwipeDeckP
     if (action === 'prev') { if (!atStart) go(-1); return }
     if (action === 'next') { if (!atEnd) go(1); return }
 
-    // Cart and wishlist keep the card in place — the customer is acting on this
-    // product, not dismissing it, and auto-advancing would hide what they did.
-    if (action === 'cart') void onAddToCart(current)
-    if (action === 'wishlist') void onAddToWishlist(current)
+    // Cart and wishlist advance to the next product once the action lands, so a
+    // swipe both acts and moves on. A failed add stays put: advancing past a
+    // product that was never saved would hide the failure.
+    const run = action === 'cart' ? onAddToCart : onAddToWishlist
+    void run(current).then(ok => {
+      if (ok && !atEnd) go(1)
+    })
   }, [products, index, atStart, atEnd, go, onAddToCart, onAddToWishlist])
 
   const finish = useCallback((action: SwipeAction | null) => {
