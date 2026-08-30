@@ -133,9 +133,23 @@ neither R2 nor Cloudinary is configured.
 | Setting | Value |
 |---|---|
 | Root directory | *(repo root — the build uses npm workspaces)* |
-| Build command | `npm install && npm run build --workspace=server` |
+| Build command | `npm install --include=dev && npm run build --workspace=server` |
 | Start command | `npm start --workspace=server` |
 | Health check path | `/health` |
+
+`--include=dev` is load-bearing. `typescript`, `prisma`, and every `@types/*`
+package are `devDependencies`, and npm omits those when `NODE_ENV=production` —
+which this service sets. Without the flag the install drops from 418 packages to
+303, taking `tsc` and `@types/node` with it, and the build dies in a wall of
+`Cannot find name 'process'` / `Cannot find name 'console'` errors that look like
+a tsconfig problem rather than a missing-install one.
+
+If you set the root directory to `server` instead of the repo root, drop the
+`--workspace=server` flag from both commands (`npm install --include=dev &&
+npm run build`, and `npm start`) — `server/` is not a workspace root, so the flag
+fails there with `No workspaces found`. That variant installs 418 packages rather
+than the whole monorepo, but `server/` has no lockfile, so versions resolve fresh
+on every build.
 
 ### 6. Vercel (web and admin)
 
