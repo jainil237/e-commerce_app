@@ -17,7 +17,7 @@
     "paths": {
       "@/*": ["./src/*"],
       "@shared/*": ["../../shared/*"],
-      "@config/*": ["../../config/*"]
+      "@config/*": ["../../server/config/*"]
     },
     "baseUrl": "."
   },

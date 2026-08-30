@@ -1,12 +1,13 @@
 # Backend image for Render.
 #
-# IMPORTANT: build context is the REPO ROOT, not server/.
-#   Dockerfile path:  ./server/Dockerfile
+# Root directory / build context: server/  (this directory)
+#   Dockerfile path:  ./Dockerfile
 #   Build context:    .
-# src/utils/config.ts reads `../config/store.config.json` relative to cwd, so the
-# container mirrors the repo layout — /app/server is the workdir and /app/config
-# sits beside it. A context of server/ cannot see config/ and the app would exit
-# at startup with "Store configuration file not found or invalid".
+#
+# Everything the API needs lives under server/, including config/store.config.json,
+# which src/utils/config.ts loads from `<cwd>/config/store.config.json`. Nothing
+# outside this directory is referenced, so the context stays small and the image
+# does not depend on the surrounding monorepo.
 
 FROM node:20-slim
 
@@ -14,16 +15,15 @@ FROM node:20-slim
 RUN apt-get update && apt-get install -y --no-install-recommends openssl \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app/server
+WORKDIR /app
 
 # Dependencies first so edits to src/ do not invalidate the install layer.
 # --include=dev is required: typescript, prisma, and every @types/* package are
 # devDependencies, and npm omits those whenever NODE_ENV=production is set.
-COPY server/package.json ./
+COPY package.json ./
 RUN npm install --include=dev --no-audit --no-fund
 
-COPY server/ ./
-COPY config/ /app/config/
+COPY . .
 
 # `prisma generate && tsc` — the client must be generated before compiling.
 RUN npm run build

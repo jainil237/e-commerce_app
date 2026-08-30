@@ -102,7 +102,12 @@ export function getStoreConfig(): StoreConfig {
     return cachedConfig
   }
 
-  const configPath = path.join(process.cwd(), '..', 'config', 'store.config.json')
+  // The config lives inside server/ so that it is reachable from a Docker build
+  // whose context is server/ — the deployable root. STORE_CONFIG_PATH overrides
+  // it for layouts where cwd is not the server directory.
+  const configPath =
+    process.env.STORE_CONFIG_PATH ||
+    path.join(process.cwd(), 'config', 'store.config.json')
   
   try {
     const configFile = fs.readFileSync(configPath, 'utf-8')
