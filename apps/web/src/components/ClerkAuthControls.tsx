@@ -15,7 +15,14 @@ import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton } from '@cl
  * can be compared — this component goes away, or the old one does, when the
  * server side is cut over.
  */
+// Renders nothing when Clerk is not configured. Without a publishable key there
+// is no ClerkProvider above this component (see the root layout), and these
+// components throw outside a provider. The JWT-cookie controls remain either way.
+const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY)
+
 export function ClerkAuthControls() {
+  if (!clerkEnabled) return null
+
   return (
     <div className="flex items-center gap-2" data-testid="clerk-auth-controls">
       <SignedOut>

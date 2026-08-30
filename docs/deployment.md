@@ -151,6 +151,15 @@ Two separate projects from the same repository.
 build time. If it is missing during the build, every product image fails with an
 "unconfigured host" error even though the value is present at runtime.
 
+**Clerk is optional and mounts only when `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` is
+set.** Clerk throws on a missing key, and because the integration is still
+passive — the JWT-cookie auth remains the system of record — an unconditional
+provider failed the prerender of every static page on any environment without the
+key, which is exactly what CI is. Both apps now guard the provider, the
+middleware, and the sign-in controls on that variable, mirroring the API. Set it
+in Vercel to show the Clerk controls; leave it unset and the apps build and run
+on JWT-cookie auth alone.
+
 ## Environment variables
 
 Names only — see each service's `.env.example` / `.env.local.example` for the
@@ -191,8 +200,11 @@ full annotated list. Never commit real values.
 |---|---|---|
 | `NEXT_PUBLIC_API_URL` | yes | Render API URL + `/api/v1`. SSR fetches only |
 | `R2_PUBLIC_URL` | yes | **Build-time.** See above |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | no | Enables the Clerk sign-in controls. Unset ⇒ Clerk does not mount and the JWT-cookie auth is used alone |
+| `CLERK_SECRET_KEY` | no | Required only if the publishable key is set |
+| `NEXT_PUBLIC_CLERK_SIGN_IN_URL` / `NEXT_PUBLIC_CLERK_SIGN_UP_URL` | no | Optional overrides |
 
-That is the whole list. No Razorpay key is needed here — checkout receives it
+Clerk is optional — see above. No Razorpay key is needed here — checkout receives it
 from the API's create-order response, so the key exists only as the server's
 `RAZORPAY_KEY_ID`. Store name comes from `Store.config.json`, not env.
 
@@ -202,6 +214,9 @@ from the API's create-order response, so the key exists only as the server's
 |---|---|---|
 | `NEXT_PUBLIC_API_URL` | yes | Render API URL + `/api/v1`. SSR fetches only |
 | `R2_PUBLIC_URL` | yes | **Build-time.** See above |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | no | Enables the Clerk sign-in controls. Unset ⇒ Clerk does not mount and the JWT-cookie auth is used alone |
+| `CLERK_SECRET_KEY` | no | Required only if the publishable key is set |
+| `NEXT_PUBLIC_CLERK_SIGN_IN_URL` / `NEXT_PUBLIC_CLERK_SIGN_UP_URL` | no | Optional overrides |
 
 ## Operational behaviour to expect
 
