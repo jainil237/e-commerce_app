@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { ArrowRight, Truck, ShieldCheck, RotateCcw, FileText } from 'lucide-react'
 import { ProductCard } from '@/components/molecules/ProductCard/ProductCard'
 import { Button } from '@/components/atoms/Button/Button'
+import { HeroCarousel } from '@/components/organisms/HeroCarousel/HeroCarousel'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'
 
@@ -48,20 +49,26 @@ export default async function HomePage() {
         </p>
       </div>
 
-      {/* Hero */}
-      <section className="ms-hero">
-        <div className="ms-hero__inner">
-          <h1 className="ms-hero__title">Discover Amazing Products</h1>
-          <p className="ms-hero__sub">
-            Experience the best shopping curated just for you. Quality materials, stunning designs, and fast delivery over ₹499.
-          </p>
-          <Link href="/products">
-            <Button size="lg" variant="secondary" rightIcon={<ArrowRight width={20} height={20} />}>
-              Shop Collection
-            </Button>
-          </Link>
-        </div>
-      </section>
+      {/* Hero — featured products as a carousel, falling back to the static
+          hero when nothing is flagged isFeatured (an empty catalogue, or a
+          store that has not curated anything yet). */}
+      {featuredProducts.length > 0 ? (
+        <HeroCarousel products={featuredProducts} />
+      ) : (
+        <section className="ms-hero">
+          <div className="ms-hero__inner">
+            <h1 className="ms-hero__title">Discover Amazing Products</h1>
+            <p className="ms-hero__sub">
+              Experience the best shopping curated just for you. Quality materials, stunning designs, and fast delivery over ₹499.
+            </p>
+            <Link href="/products">
+              <Button size="lg" variant="secondary" rightIcon={<ArrowRight width={20} height={20} />}>
+                Shop Collection
+              </Button>
+            </Link>
+          </div>
+        </section>
+      )}
 
       {/* Categories */}
       {categories.length > 0 && (
