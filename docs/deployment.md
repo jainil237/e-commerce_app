@@ -133,13 +133,19 @@ neither R2 nor Cloudinary is configured.
 | Setting | Value |
 |---|---|
 | Root directory | `server` |
-| Runtime | Docker |
-| Dockerfile path | `./Dockerfile` |
-| Docker build context | `.` |
+| Runtime | Node |
+| Build command | `npm install && npm run build` |
+| Start command | `npm start` |
 | Health check path | `/health` |
 
-The API deploys as a container; `server/Dockerfile` owns the build and start
-commands, so Render's own build/start fields do not apply.
+`server/` is self-contained, so it works as the root directory directly. Set the
+health check path — an empty one leaves Render unable to tell a live container
+from a crashed one.
+
+A `server/Dockerfile` also exists for running the API as a container. It builds
+with `server/` as both root directory and context and owns the build and start
+commands itself. Render fixes a service's runtime at creation, so switching an
+existing Node service to Docker means creating a new one.
 
 Everything the image needs lives under `server/`, including
 `server/config/store.config.json`. That file used to sit at `config/` in the repo
@@ -151,19 +157,18 @@ at `../../server/config/*`.
 `STORE_CONFIG_PATH` overrides the location if you ever run the server with a
 working directory other than `server/`.
 
-`--include=dev` is load-bearing. `typescript`, `prisma`, and every `@types/*`
-package are `devDependencies`, and npm omits those when `NODE_ENV=production` —
-which this service sets. Without the flag the install drops from 418 packages to
-303, taking `tsc` and `@types/node` with it, and the build dies in a wall of
-`Cannot find name 'process'` / `Cannot find name 'console'` errors that look like
-a tsconfig problem rather than a missing-install one.
+Build-time tooling — `typescript`, `prisma`, and the `@types/*` packages the
+compile needs — lives in `dependencies`, not `devDependencies`. npm omits
+`devDependencies` whenever `NODE_ENV=production` is set, which this service sets,
+and a build that loses `tsc` and `@types/node` fails in a wall of
+`Cannot find name 'process'` errors that read like a tsconfig problem rather than
+a missing install. Keeping them as real dependencies is what makes a plain
+`npm install` sufficient. Only test-only packages (vitest, supertest, tsx) are
+devDependencies.
 
-If you set the root directory to `server` instead of the repo root, drop the
-`--workspace=server` flag from both commands (`npm install --include=dev &&
-npm run build`, and `npm start`) — `server/` is not a workspace root, so the flag
-fails there with `No workspaces found`. That variant installs 418 packages rather
-than the whole monorepo, but `server/` has no lockfile, so versions resolve fresh
-on every build.
+With root directory `server`, the `--workspace=server` flag must not appear in
+either command — `server/` is not a workspace root and the flag fails there with
+`No workspaces found`.
 
 ### 6. Vercel (web and admin)
 

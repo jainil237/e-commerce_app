@@ -18,10 +18,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends openssl \
 WORKDIR /app
 
 # Dependencies first so edits to src/ do not invalidate the install layer.
-# --include=dev is required: typescript, prisma, and every @types/* package are
-# devDependencies, and npm omits those whenever NODE_ENV=production is set.
+# typescript, prisma and the @types/* packages the compile needs are regular
+# dependencies, so a production install is enough — no --include=dev needed.
 COPY package.json ./
-RUN npm install --include=dev --no-audit --no-fund
+RUN npm install --no-audit --no-fund
 
 COPY . .
 
@@ -34,7 +34,7 @@ ENV NODE_ENV=production
 # Cosmetic; Render injects PORT and the app reads process.env.PORT.
 EXPOSE 4000
 
-# ponytail: single stage keeps devDependencies in the final image (~418 pkgs).
-# Pruning them risks deleting the generated client in node_modules/.prisma, so
-# if image size ever matters, split into a builder stage rather than pruning.
+# ponytail: single stage keeps the compiler and types in the final image
+# (~326 pkgs). Pruning risks deleting the generated client in
+# node_modules/.prisma, so split into a builder stage if size ever matters.
 CMD ["npm", "start"]
