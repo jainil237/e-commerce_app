@@ -1,16 +1,10 @@
 import bcrypt from 'bcrypt'
 import { PrismaClient } from '@prisma/client'
-import fs from 'fs'
-import path from 'path'
 
 const prisma = new PrismaClient()
 
 async function main() {
   console.log('🌱 Starting seed...')
-
-  // Load store config
-  const configPath = path.join(process.cwd(), '..', 'config', 'store.config.json')
-  const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'))
 
   // Create admin user
   const adminPasswordHash = await bcrypt.hash('Admin@123', 12)
