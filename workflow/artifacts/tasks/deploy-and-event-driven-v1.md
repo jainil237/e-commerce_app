@@ -39,6 +39,13 @@ Eight phases implementing production deployment (web, admin, API) with TiDB comp
 
 ## Changed Files
 
+**Deploy provisioning, 2026-08-30 (Vercel project setup):**
+- `apps/web/.gitignore`
+- `apps/admin/.gitignore`
+
+Added by `vercel link` when the two Vercel projects were created. Neither
+`.vercel` (project and org ids) nor `.env*` was ignored at the repo root.
+
 **Phase 1 (R3, Q5):**
 - `server/src/services/rma.service.ts`
 - `server/tests/characterization/rma-refund.test.ts`
