@@ -9,6 +9,7 @@ import { useCart } from '@/contexts/cart.context'
 import { useTheme } from '@/contexts/theme.context'
 import { useStoreConfig } from '@/contexts/store-config.context'
 import { Input } from '@/components/atoms/Input/Input'
+import { ClerkAuthControls } from '@/components/ClerkAuthControls'
 
 interface Category {
   name: string
@@ -214,6 +215,8 @@ export function Topbar() {
           <Link href="/account" className="ms-btn ms-btn--ghost ms-btn--icon ms-btn--sm" aria-label="Account">
             <User width={20} height={20} />
           </Link>
+
+          <ClerkAuthControls />
 
           <button
             className="ms-topbar__hamburger"

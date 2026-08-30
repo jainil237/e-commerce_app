@@ -6,16 +6,16 @@ import { prisma } from '../utils/prisma'
 import { authenticate, AuthRequest, JWT_VERIFY_OPTIONS } from '../middleware/auth.middleware'
 import { createError } from '../middleware/error.middleware'
 import { z } from 'zod'
-import NodeCache from 'node-cache'
 import { sendOtpEmail } from '../services/email.service'
 import { enqueue } from '../queues'
 import { JOB, OtpEmailPayload } from '../queues/jobs'
 import { getStoreConfig } from '../utils/config'
+import { getOtp, setOtp, delOtp } from '../utils/otp.store'
+import { FailOpenRedisStore } from '../utils/rate-limit.store'
 
 import rateLimit from 'express-rate-limit'
 
 const router = Router()
-const otpCache = new NodeCache({ stdTTL: 600 }) // 10 minutes OTP expiration
 
 // Rate limiting for authentication attempts with environment-based limits
 const isDevelopment = process.env.NODE_ENV === 'development'
@@ -25,6 +25,7 @@ const authLimiter = rateLimit({
   message: { success: false, message: 'Too many requests, please try again later', code: 'RATE_LIMITED' },
   standardHeaders: true,
   legacyHeaders: false,
+  store: new FailOpenRedisStore('rl:auth:'),
 })
 const registerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -262,7 +263,7 @@ router.post('/forgot-password', authLimiter, async (req, res: Response, next) =>
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString()
-    otpCache.set(`pwd_reset_${user.email}`, otp)
+    await setOtp(user.email, otp)
 
     if (config.features.emailService) {
       // Queued so a slow/failing SMTP send does not hold the response open,
@@ -302,7 +303,7 @@ router.post('/reset-password', authLimiter, async (req, res: Response, next) => 
   try {
     const validatedData = resetPasswordSchema.parse(req.body)
 
-    const storedOtp = otpCache.get(`pwd_reset_${validatedData.email}`)
+    const storedOtp = await getOtp(validatedData.email)
     if (!storedOtp || storedOtp !== validatedData.otp) {
       throw createError(400, 'Invalid or expired OTP', 'INVALID_OTP')
     }
@@ -323,7 +324,7 @@ router.post('/reset-password', authLimiter, async (req, res: Response, next) => 
     })
 
     // Invalidate OTP and revoke all active sessions for security
-    otpCache.del(`pwd_reset_${user.email}`)
+    await delOtp(user.email)
     await prisma.refreshToken.deleteMany({ where: { userId: user.id } })
 
     res.json({ success: true, message: 'Password reset successfully' })

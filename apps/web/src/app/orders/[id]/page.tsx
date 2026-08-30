@@ -101,7 +101,7 @@ export default function OrderDetailPage() {
     <>
       {isSuccess && (
         <div className="ms-order-banner ms-order-banner--success">
-          Order placed successfully! We've sent a confirmation email.
+          Order placed successfully! We&apos;ve sent a confirmation email.
         </div>
       )}
       {canTrack && (

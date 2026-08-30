@@ -11,6 +11,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@clerk/nextjs": "^6.39.6",
     "@ecom/shared": "*",
     "clsx": "^2.1.0",
     "lucide-react": "^0.312.0",

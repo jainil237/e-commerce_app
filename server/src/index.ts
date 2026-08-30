@@ -31,6 +31,9 @@ import { startWorker } from './queues/worker'
 
 // Import middleware
 import { errorHandler, notFound } from './middleware/error.middleware'
+import { FailOpenRedisStore } from './utils/rate-limit.store'
+import { reportRedisTarget } from './utils/redis'
+import { clerkSession, isClerkConfigured } from './middleware/clerk.middleware'
 
 const app = express()
 const PORT = process.env.PORT || 4000
@@ -99,6 +102,10 @@ const generalLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many requests, please try again later', code: 'RATE_LIMITED' },
+  // Shared across instances when REDIS_URL is set; per-instance otherwise.
+  // Costs one Redis command per API request — the largest single consumer of the
+  // Upstash budget. See docs/deployment.md "Upstash command quota".
+  store: new FailOpenRedisStore('rl:general:'),
 })
 
 // Logging
@@ -116,6 +123,11 @@ app.use('/api/v1/webhooks/razorpay', express.raw({ type: 'application/json' }))
 // Body parsing
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
+
+// Clerk session context. Passive during the migration: attaches auth, protects
+// nothing. Mounted after body parsing so it sees a fully-formed request, and
+// before routes so handlers can read it.
+app.use(clerkSession())
 
 // Dev-only local upload serving. Production never writes here — the storage
 // service's local fallback (storage.service.ts) refuses to run when
@@ -165,25 +177,6 @@ const startServer = async () => {
       process.exit(1)
     }
 
-    // Queue worker runs in-process: Render's free tier has no background
-    // worker service type. It therefore stops consuming while the web service
-    // is idle-spun-down and resumes on the next request. See docs/deployment.md.
-    startWorker()
-
-    if (isQueueEnabled && jobQueue) {
-      // Repeatable sweep of lapsed stock reservations. Cleanup only —
-      // availability already ignores expired holds at read time, so a missed
-      // window is harmless.
-      // upsertJobScheduler (not add + repeat, removed in BullMQ v6) is
-      // idempotent, so restarts re-assert the schedule rather than stacking
-      // duplicate repeaters.
-      await jobQueue.upsertJobScheduler(
-        'sweep-reservations',
-        { every: 15 * 60 * 1000 },
-        { name: JOB.SWEEP_RESERVATIONS }
-      )
-    }
-
     app.listen(PORT, () => {
       const provider = getActiveProvider()
       const providerLabels = { r2: '☁️  Cloudflare R2', cloudinary: '🌤️  Cloudinary', local: '💾 Local disk' }
@@ -191,10 +184,54 @@ const startServer = async () => {
       console.log(`📡 API available at http://localhost:${PORT}/api/v1`)
       console.log(`🏥 Health check at http://localhost:${PORT}/health`)
       console.log(`📦 Storage provider: ${providerLabels[provider]}`)
+      reportRedisTarget()
+      console.log(
+        isClerkConfigured
+          ? '🔐 Clerk: session verification active (passive — JWT auth is still authoritative)'
+          : '🔐 Clerk: CLERK_SECRET_KEY unset — Clerk session verification disabled'
+      )
     })
+
+    // Queue startup runs AFTER listen and swallows its own errors on purpose.
+    // Redis is a degraded-mode dependency, not a boot dependency: enqueue()
+    // already falls back to inline execution, so a Redis outage must cost
+    // latency, not availability. Awaiting this before listen() would let a
+    // slow or unreachable Upstash delay port binding — which Render reads as a
+    // failed health check, turning a degraded queue into a dead service.
+    void startQueue()
   } catch (error) {
-    console.error('❌ Failed to connect to database:', error)
+    console.error('❌ Failed to start server:', error)
     process.exit(1)
+  }
+}
+
+/**
+ * Start the in-process worker and register the repeatable sweep.
+ *
+ * In-process because Render's free tier has no background worker service type.
+ * The worker therefore stops consuming while the web service is idle-spun-down
+ * and resumes on the next request that wakes it. See docs/deployment.md.
+ */
+const startQueue = async () => {
+  try {
+    startWorker()
+
+    if (isQueueEnabled && jobQueue) {
+      // Cleanup only — availability already ignores lapsed holds at read time,
+      // so a missed window is harmless. upsertJobScheduler (not add + repeat,
+      // removed in BullMQ v6) is idempotent, so restarts re-assert the schedule
+      // rather than stacking duplicate repeaters.
+      await jobQueue.upsertJobScheduler(
+        'sweep-reservations',
+        { every: 15 * 60 * 1000 },
+        { name: JOB.SWEEP_RESERVATIONS }
+      )
+    }
+  } catch (error) {
+    console.error(
+      '⚠️  Queue unavailable — jobs will run inline. The API is still serving traffic:',
+      error
+    )
   }
 }
 

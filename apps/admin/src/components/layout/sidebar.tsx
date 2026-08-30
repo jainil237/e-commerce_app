@@ -17,6 +17,7 @@ import {
 import clsx from 'clsx'
 import { useAuth, useTheme } from '@/components/providers'
 import { getFirstLetter } from '@/utils/initials'
+import { ClerkAuthControls } from '@/components/ClerkAuthControls'
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -91,6 +92,10 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
             </>
           )}
         </button>
+
+        <div className="ms-sidebar__link" style={{ pointerEvents: 'auto' }}>
+          <ClerkAuthControls />
+        </div>
 
         <button type="button" onClick={logout} className="ms-sidebar__link">
           <LogOut className="w-4 h-4" />

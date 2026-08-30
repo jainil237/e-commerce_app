@@ -14,6 +14,7 @@ import {
   sendOtpEmail,
 } from '../services/email.service'
 import { sweepExpiredReservations } from '../services/inventory.service'
+import { trace, describeError } from '../utils/observability'
 
 /**
  * The order shape the invoice/email services expect. Re-fetched inside the
@@ -25,6 +26,9 @@ const orderInclude = {
   address: true,
   user: true,
 } as const
+
+/** Audit action marking that the confirmation email already went out. */
+const CONFIRMATION_EMAIL_SENT = 'ORDER_CONFIRMATION_EMAIL_SENT'
 
 async function handleOrderConfirmation(data: OrderConfirmationPayload) {
   const order = await prisma.order.findUnique({
@@ -45,7 +49,30 @@ async function handleOrderConfirmation(data: OrderConfirmationPayload) {
     })
   }
 
+  // A retry can land here after the email already went out — a worker crash
+  // between send and job completion, or Render reclaiming the instance
+  // mid-job. Without this the customer gets a second confirmation.
+  // OrderAuditLog is the repo's append-only record for order events, so the
+  // marker lives there rather than in a new column.
+  const alreadySent = await prisma.orderAuditLog.findFirst({
+    where: { orderId: order.id, action: CONFIRMATION_EMAIL_SENT },
+    select: { id: true },
+  })
+  if (alreadySent) {
+    console.log(`[Queue] confirmation email already sent for ${order.id}, skipping`)
+    return
+  }
+
   await sendOrderConfirmationEmail(order as never, invoiceUrl)
+
+  await prisma.orderAuditLog.create({
+    data: {
+      orderId: order.id,
+      userId: order.userId,
+      action: CONFIRMATION_EMAIL_SENT,
+      metadata: { invoiceUrl },
+    },
+  })
 }
 
 async function handleShippingUpdate(data: ShippingUpdatePayload) {
@@ -72,6 +99,25 @@ async function handleOtpEmail(data: OtpEmailPayload) {
 }
 
 export async function processJob(job: Job) {
+  const started = Date.now()
+  trace('Worker', 'JOB START', { job: job.name, jobId: job.id, attempt: job.attemptsMade + 1 })
+  try {
+    const result = await runJob(job)
+    trace('Worker', 'JOB OK', { job: job.name, jobId: job.id, ms: Date.now() - started })
+    return result
+  } catch (err) {
+    trace('Worker', 'JOB FAILED', {
+      job: job.name,
+      jobId: job.id,
+      attempt: job.attemptsMade + 1,
+      ms: Date.now() - started,
+      error: describeError(err),
+    })
+    throw err
+  }
+}
+
+async function runJob(job: Job) {
   switch (job.name) {
     case JOB.ORDER_CONFIRMATION:
       return handleOrderConfirmation(job.data as OrderConfirmationPayload)
@@ -112,8 +158,14 @@ export function startWorker() {
     drainDelay: 30,
   })
 
+  worker.on('completed', (job) => {
+    trace('Worker', 'COMPLETED', { job: job?.name, jobId: job?.id })
+  })
+
   worker.on('failed', (job, err) => {
-    console.error(`[Queue] job ${job?.name} (${job?.id}) failed:`, err.message)
+    // describeError, not err.message: some driver and Prisma errors carry an empty
+    // message, which logged as a bare "failed:" with nothing after it.
+    console.error(`[Queue] job ${job?.name} (${job?.id}) failed:`, describeError(err))
   })
 
   console.log('👷 Queue worker started')

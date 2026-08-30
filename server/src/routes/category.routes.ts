@@ -1,16 +1,15 @@
 import { Router, Response } from 'express'
 import { prisma } from '../utils/prisma'
-import NodeCache from 'node-cache'
+import { cacheGet, cacheSet } from '../utils/response.cache'
 
 const router = Router()
 
-const cache = new NodeCache({ stdTTL: 60, checkperiod: 120 })
 
 // Get all categories
 router.get('/', async (_req, res: Response, next) => {
   try {
     const cacheKey = 'categories:all'
-    const cached = cache.get(cacheKey)
+    const cached = await cacheGet(cacheKey)
     if (cached) {
       res.json(cached)
       return
@@ -34,7 +33,7 @@ router.get('/', async (_req, res: Response, next) => {
       })),
     }
 
-    cache.set(cacheKey, response)
+    await cacheSet(cacheKey, response)
     res.json(response)
   } catch (error) {
     next(error)

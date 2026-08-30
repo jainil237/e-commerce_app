@@ -1,5 +1,7 @@
 import nodemailer from 'nodemailer'
 import fs from 'fs'
+import path from 'path'
+import { Resend } from 'resend'
 import { PrismaClient } from '@prisma/client'
 import { getStoreConfig } from '../utils/config'
 import { getTrackingUrl } from '../utils/tracking'
@@ -162,10 +164,99 @@ class MockTransporter {
   }
 }
 
+/**
+ * The From address for every outgoing email.
+ *
+ * Previously each send site interpolated SMTP_USER directly, which only worked
+ * because SMTP_USER happened to be a mailbox. Resend sends from a verified
+ * DOMAIN, not from the credential, so the two are no longer the same thing and
+ * the address needs its own variable.
+ */
+function getFromAddress(displayNameSuffix?: string): string {
+  const config = getStoreConfig()
+  // EMAIL_FROM is required for Resend. SMTP_USER remains the fallback so an
+  // existing SMTP-configured deployment keeps working untouched.
+  const address = process.env.EMAIL_FROM || process.env.SMTP_USER || 'onboarding@resend.dev'
+  const name = displayNameSuffix ? `${config.store.name} ${displayNameSuffix}` : config.store.name
+  return `"${name}" <${address}>`
+}
+
+/**
+ * Resend-backed transport exposing the same sendMail shape as Nodemailer, so the
+ * seven send functions did not have to change.
+ *
+ * Preferred over SMTP because this service runs on a free-tier instance that
+ * spins down: an HTTPS call has no connection to establish and reports failures
+ * as a structured response rather than an SMTP timeout the queue can only retry
+ * blindly.
+ */
+class ResendTransporter {
+  private readonly client: Resend
+
+  constructor(apiKey: string) {
+    this.client = new Resend(apiKey)
+  }
+
+  async sendMail(options: {
+    from?: string
+    to?: string | string[]
+    subject?: string
+    html?: string
+    text?: string
+    attachments?: Array<{ filename: string; path?: string; href?: string }>
+  }): Promise<{ messageId: string; response: string }> {
+    // Nodemailer distinguishes `path` (local file) from `href` (remote URL);
+    // Resend takes `path` for a URL and `content` for bytes. In production the
+    // invoice is always a remote URL, because the startup guard forbids local
+    // storage there — the readFile branch only runs in local dev.
+    const attachments = options.attachments?.map((a) => {
+      const remote = a.href ?? (a.path?.startsWith('http') ? a.path : undefined)
+      if (remote) return { filename: a.filename, path: remote }
+      return { filename: a.filename, content: fs.readFileSync(path.resolve(a.path!)) }
+    })
+
+    const { data, error } = await this.client.emails.send({
+      from: options.from ?? getFromAddress(),
+      to: Array.isArray(options.to) ? options.to : [options.to as string],
+      subject: options.subject ?? '',
+      html: options.html ?? '',
+      ...(options.text ? { text: options.text } : {}),
+      ...(attachments?.length ? { attachments } : {}),
+    } as never)
+
+    // Resend returns errors in the response body rather than throwing. Throwing
+    // here is deliberate: these sends run inside BullMQ jobs, and a job must fail
+    // to be retried.
+    if (error) {
+      throw new Error(`Resend refused the message: ${error.message ?? JSON.stringify(error)}`)
+    }
+
+    return { messageId: data?.id ?? 'unknown', response: 'sent via Resend' }
+  }
+}
+
+export type EmailProvider = 'resend' | 'smtp' | 'mock'
+
+/**
+ * Which provider is active. Mirrors storage.service.ts's precedence chain:
+ * a configured cloud provider wins, with a local fallback for development.
+ */
+export function getActiveEmailProvider(): EmailProvider {
+  if (process.env.RESEND_API_KEY) return 'resend'
+  if (isSmtpConfigured()) return 'smtp'
+  return 'mock'
+}
+
 // Create transporter
 function createTransporter(): any {
-  if (!isSmtpConfigured()) {
-    console.log('[Email] SMTP is not fully configured. Using development Mock Email fallback.')
+  const provider = getActiveEmailProvider()
+
+  if (provider === 'resend') {
+    return new ResendTransporter(process.env.RESEND_API_KEY as string)
+  }
+
+  if (provider === 'mock') {
+    console.log('[Email] No email provider configured. Using development Mock Email fallback.')
     return new MockTransporter()
   }
 
@@ -286,7 +377,7 @@ export async function sendOrderConfirmationEmail(
   `
 
   await transporter.sendMail({
-    from: `"${config.store.name}" <${process.env.SMTP_USER}>`,
+    from: getFromAddress(),
     to: order.user.email,
     subject: `Order Confirmed - ${order.orderNumber} | ${config.store.name}`,
     html,
@@ -355,7 +446,7 @@ export async function sendInvoiceEmail(
   `
 
   await transporter.sendMail({
-    from: `"${config.store.name}" <${process.env.SMTP_USER}>`,
+    from: getFromAddress(),
     to: order.user.email,
     subject: `Invoice - ${order.orderNumber} | ${config.store.name}`,
     html,
@@ -406,7 +497,7 @@ export async function sendOtpEmail(
   `
 
   await transporter.sendMail({
-    from: `"${config.store.name}" <${process.env.SMTP_USER}>`,
+    from: getFromAddress(),
     to: email,
     subject: `${subject} | ${config.store.name}`,
     html,
@@ -515,7 +606,7 @@ export async function sendShippingUpdateEmail(
   `
 
   await transporter.sendMail({
-    from: `"${config.store.name}" <${process.env.SMTP_USER}>`,
+    from: getFromAddress(),
     to: order.user.email,
     subject: `Order ${order.orderNumber} — ${statusLabel} | ${config.store.name}`,
     html,
@@ -585,7 +676,7 @@ export async function sendOrderCancelledEmail(
   `
 
   await transporter.sendMail({
-    from: `"${config.store.name}" <${process.env.SMTP_USER}>`,
+    from: getFromAddress(),
     to: order.user.email,
     subject: `Order Cancelled — ${order.orderNumber} | ${config.store.name}`,
     html,
@@ -713,7 +804,7 @@ export async function sendRmaCreatedAdminNotificationEmail(
 
   try {
     await transporter.sendMail({
-      from: `"${config.store.name} Support" <${process.env.SMTP_USER}>`,
+      from: getFromAddress('Support'),
       to: config.store.contact.email,
       subject: `[New RMA] #${rma.rmaNumber} - ${rma.type} Request for Order #${rma.order.orderNumber} | ${config.store.name}`,
       html,
@@ -850,7 +941,7 @@ export async function sendRmaApprovedCustomerNotificationEmail(
 
   try {
     await transporter.sendMail({
-      from: `"${config.store.name}" <${process.env.SMTP_USER}>`,
+      from: getFromAddress(),
       to: rma.user.email,
       subject: `Your ${rma.type === 'RETURN' ? 'Return' : 'Replacement'} Request #${rma.rmaNumber} has been Approved | ${config.store.name}`,
       html,

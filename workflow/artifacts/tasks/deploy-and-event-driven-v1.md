@@ -4,7 +4,7 @@ version: 1
 artifact: task
 status: ready-for-next-phase
 created: 2026-08-18
-updated: 2026-08-18
+updated: 2026-08-21
 manifest_ids: [R1, R2, R3, R4, RI1, RI2, RI3, RI4, RI5, RI6, RI7, RI8, RI9, RI10, RI11]
 upstream:
   - workflow/artifacts/plans/deploy-and-event-driven-v1.md
@@ -14,6 +14,16 @@ orchestration:
   next_phase: review
   blockers: []
 changed_files:
+  - apps/web/src/app/account/login/page.tsx
+  - apps/web/src/app/cancellation/page.tsx
+  - apps/web/src/app/checkout/page.tsx
+  - apps/web/src/app/orders/[id]/page.tsx
+  - apps/web/src/app/terms/page.tsx
+  - package.json
+  - docs/deployment.md
+  - server/.env.example
+  - apps/web/.env.local.example
+  - apps/admin/.env.local.example
   - server/src/services/rma.service.ts
   - server/tests/characterization/rma-refund.test.ts
   - server/src/services/storage.service.ts
@@ -28,6 +38,13 @@ changed_files:
 Eight phases implementing production deployment (web, admin, API) with TiDB compatibility fix and an event-driven queue layer. This artifact tracks progress through all phases, evidence of each exit gate, and any blockers encountered.
 
 ## Changed Files
+
+**Deploy provisioning, 2026-08-30 (Vercel project setup):**
+- `apps/web/.gitignore`
+- `apps/admin/.gitignore`
+
+Added by `vercel link` when the two Vercel projects were created. Neither
+`.vercel` (project and org ids) nor `.env*` was ignored at the repo root.
 
 **Phase 1 (R3, Q5):**
 - `server/src/services/rma.service.ts`
@@ -45,6 +62,38 @@ Eight phases implementing production deployment (web, admin, API) with TiDB comp
 - `apps/admin/.env.local.example`
 - `.gitignore`
 
+**Review remediation (P1-1, P2-1, P2-2, P3-1):**
+- `server/src/index.ts`
+- `server/src/queues/index.ts`
+- `server/src/queues/worker.ts`
+- `server/src/routes/admin.routes.ts`
+- `server/tests/services/queue-jobs.test.ts`
+- `.gitignore`
+
+**Test-phase remediation, 2026-08-29 (RI6 — lint gate):**
+- `apps/web/src/app/account/login/page.tsx`
+- `apps/web/src/app/cancellation/page.tsx`
+- `apps/web/src/app/checkout/page.tsx`
+- `apps/web/src/app/orders/[id]/page.tsx`
+- `apps/web/src/app/terms/page.tsx`
+- `package.json`
+
+Six JSX entity escapes, one stale `@typescript-eslint/no-explicit-any` disable comment for a rule
+the config never defined, and `--if-present` on the root lint script so the two workspaces without
+a lint script are skipped rather than aborting the run. `npm run lint` now exits 0.
+
+**Test-phase remediation, 2026-08-29 (R1, RI7 — env example completeness):**
+- `server/.env.example`
+- `apps/web/.env.local.example`
+- `apps/admin/.env.local.example`
+- `docs/deployment.md`
+
+Every `process.env` read across the repo was inventoried and diffed against the three example
+files; the sets are now exactly equal. Removed `CLOUDINARY_FOLDER` (read nowhere), corrected
+`SERVER_BASE_URL` from `[REQUIRED-PROD]` to `[OPTIONAL]` in both the example and the deployment
+doc, stated that the logistics webhook fails closed while its secret is unset, and blanked the
+SMTP placeholders that `email.service.ts` could not detect as placeholders.
+
 **Phase 5-8 (R4, RI4, RI5, RI10, RI11):**
 - `server/src/queues/index.ts`
 - `server/src/queues/jobs.ts`
@@ -59,6 +108,39 @@ Eight phases implementing production deployment (web, admin, API) with TiDB comp
 - `docs/deployment.md`
 
 ## Phase Execution Log
+
+### Phase 3 Documentation Addendum — Test Database Variable (R1, RI7)
+
+**Entry evidence (2026-08-21):** `agentsmyth check --phase build --slug
+deploy-and-event-driven` passed. The approved Phase 3 scope already owns
+`server/.env.example` and requires documentation of every environment variable read by the
+application. A static inventory found `TEST_DATABASE_URL` is read only by
+`server/tests/helpers/test-db-url.ts`; it was the sole omitted environment-variable name.
+
+**Planned change:** add `TEST_DATABASE_URL` to `server/.env.example`, explicitly marked as
+test-only and optional. It must never be used for a deployed Render service and must reference
+a disposable database whose name ends in `_test`.
+
+**Pre-existing workspace state:** `workflow/artifacts/verify/deploy-and-event-driven-v1.md`
+is an untracked Test artifact from the current lifecycle session. It is outside this Phase 3
+documentation addendum and will be preserved unchanged.
+
+**Implementation evidence:** Added the optional, test-only `TEST_DATABASE_URL` entry to
+`server/.env.example`. The 2026-08-21 static inventory confirms that every variable read by
+the server is represented there; the frontend-only `NEXT_PUBLIC_API_URL` remains documented
+in each app's own `.env.local.example`.
+
+**Verification:** `npm run build --workspace=server` passed on 2026-08-21. `git diff --check`
+also passed. No database test was run because the configured local MySQL instance remains
+unavailable, as recorded in `workflow/artifacts/verify/deploy-and-event-driven-v1.md`.
+
+**Scope fence:** passed. `server/.env.example` is an approved Phase 3 touch. This task
+artifact is mandatory Build evidence; the pre-existing verify artifact is explicitly
+preserved and excluded from this addendum's implementation scope.
+
+**Phase status:** Complete. The change is within approved Phase 3 scope and is ready for
+Review.
+
 
 ### Phase 1 — TiDB Compatibility Fix (Locked-Read Remedy)
 
@@ -379,4 +461,3 @@ Build; no fix authorised, so `markReceived`'s logic is unchanged beyond the lock
 for a follow-up chain.
 
 🔄 **Phases 3+:** Pending implementation and external credential setup
-
