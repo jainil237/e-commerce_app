@@ -26,7 +26,19 @@ const publishableKey = process.env.CLERK_PUBLISHABLE_KEY
  * including /health. Gating on the secret alone made a half-configured Clerk
  * break the entire API instead of disabling itself.
  */
-export const isClerkConfigured = Boolean(secretKey && publishableKey)
+// Clerk is PARKED until the auth migration is planned properly — see
+// docs/drafts/clerk-auth-plan.md. Set to false to resume; the key checks below
+// are left intact so it picks up where it left off.
+const CLERK_PARKED = true
+
+export const isClerkConfigured = !CLERK_PARKED && Boolean(secretKey && publishableKey)
+
+/** One line for the startup banner, so "disabled" always says which kind. */
+export function clerkStatusLine(): string {
+  if (CLERK_PARKED) return '🔐 Clerk: PARKED pending planned auth migration (docs/drafts/clerk-auth-plan.md)'
+  if (isClerkConfigured) return '🔐 Clerk: session verification active (passive — JWT auth is still authoritative)'
+  return '🔐 Clerk: keys not configured — session verification disabled'
+}
 
 /**
  * Mount once, before routes. No-ops when CLERK_SECRET_KEY is unset so the API
@@ -36,8 +48,9 @@ export const isClerkConfigured = Boolean(secretKey && publishableKey)
 export function clerkSession(): RequestHandler {
   if (!isClerkConfigured) {
     // Half-configured is a mistake worth shouting about: it looks like Clerk is
-    // set up, but no session will ever be verified.
-    if (secretKey || publishableKey) {
+    // set up, but no session will ever be verified. Silent while parked, since
+    // then it is disabled on purpose rather than by accident.
+    if (!CLERK_PARKED && (secretKey || publishableKey)) {
       console.warn(
         `⚠️  Clerk is half-configured — ${secretKey ? 'CLERK_PUBLISHABLE_KEY' : 'CLERK_SECRET_KEY'} is missing. ` +
         'Session verification is DISABLED. Both keys are required.'
