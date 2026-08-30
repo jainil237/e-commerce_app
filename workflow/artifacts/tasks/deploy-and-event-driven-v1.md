@@ -39,6 +39,14 @@ Eight phases implementing production deployment (web, admin, API) with TiDB comp
 
 ## Changed Files
 
+**Build deps for production install, 2026-08-30:**
+- `server/package.json`
+- `server/Dockerfile`
+- `docs/deployment.md`
+
+Moves build-time tooling out of devDependencies so Render's production install
+leaves `tsc` and the `@types/*` packages in place.
+
 **Docker context = server/, 2026-08-30:**
 - `server/Dockerfile`
 - `server/.dockerignore`
