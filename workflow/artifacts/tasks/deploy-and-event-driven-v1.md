@@ -47,6 +47,12 @@ Eight phases implementing production deployment (web, admin, API) with TiDB comp
 - `apps/web/src/components/organisms/Topbar/topbar.scss`
 - `server/src/routes/product.routes.ts`
 
+**Seed stale config path, 2026-08-30:**
+- `server/scripts/seed.ts`
+- `server/scripts/seed.js`
+
+Removes a dead store-config load left pointing at the pre-move `../config/` path.
+
 **Build deps for production install, 2026-08-30:**
 - `server/package.json`
 - `server/Dockerfile`
