@@ -11,8 +11,6 @@ const prisma = new client_1.PrismaClient();
 async function main() {
     console.log('🌱 Starting seed...');
     // Load store config
-    const configPath = path_1.default.join(process.cwd(), '..', 'config', 'store.config.json');
-    const config = JSON.parse(fs_1.default.readFileSync(configPath, 'utf-8'));
     // Create admin user
     const adminPasswordHash = await bcrypt_1.default.hash('Admin@123', 12);
     const admin = await prisma.user.upsert({
