@@ -364,12 +364,3 @@
   }
 }
 
-// Swipe-mode toggle. Only rendered under $bp-md, so it needs no media query of
-// its own — the component decides whether it exists at all.
-.ms-plp__swipe-toggle {
-  margin-bottom: var(--space-4, 1rem);
-  padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-lg);
-  background: var(--surface-2);
-}

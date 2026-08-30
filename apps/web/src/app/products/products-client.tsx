@@ -110,6 +110,10 @@ export function ProductsClient({ initialProductsData, categories }: ProductsClie
     }
   }, [addToWishlist, isInWishlist, showToast])
 
+  // Swipe mode is a focused, one-card-at-a-time view; everything that competes
+  // with the card is hidden while it is on.
+  const swipeActive = isSmallScreen && swipeMode
+
   const category = searchParams.get('category')
   const search = searchParams.get('search')
   const sort = searchParams.get('sort') || 'newest'
@@ -235,6 +239,23 @@ export function ProductsClient({ initialProductsData, categories }: ProductsClie
         </div>
       </div>
 
+      {/* Swipe mode lives in the filter drawer rather than the listing: on a
+          phone it is a preference you set once, not a control worth a
+          permanent band above the results. */}
+      {isSmallScreen && (
+        <>
+          <hr className="ms-filter-sidebar__divider" />
+          <div className="ms-filter-sidebar__section">
+            <Switch
+              checked={swipeMode}
+              onCheckedChange={toggleSwipeMode}
+              label="Swipe browsing"
+              description="One product at a time — swipe to browse, save or add to cart"
+            />
+          </div>
+        </>
+      )}
+
       <hr className="ms-filter-sidebar__divider" />
 
       <div className="ms-filter-sidebar__section">
@@ -265,7 +286,7 @@ export function ProductsClient({ initialProductsData, categories }: ProductsClie
                   ? categories.find(c => c.slug === category)?.name || 'Products'
                   : 'All Products'}
             </h1>
-            <p className="ms-plp__subtitle">{total} products found</p>
+            {!swipeActive && <p className="ms-plp__subtitle">{total} products found</p>}
           </div>
           <div className="ms-filter-trigger">
             <Button
@@ -279,7 +300,7 @@ export function ProductsClient({ initialProductsData, categories }: ProductsClie
         </div>
 
         {/* Active filter chips */}
-        {activeFilters.length > 0 && (
+        {activeFilters.length > 0 && !swipeActive && (
           <div className="ms-plp__chips">
             {activeFilters.map(f => (
               <button
@@ -366,17 +387,6 @@ export function ProductsClient({ initialProductsData, categories }: ProductsClie
               </div>
             ) : (
               <>
-                {isSmallScreen && (
-                  <div className="ms-plp__swipe-toggle">
-                    <Switch
-                      checked={swipeMode}
-                      onCheckedChange={toggleSwipeMode}
-                      label="Swipe browsing"
-                      description="Swipe left/right to browse, up to save, down to add to cart"
-                    />
-                  </div>
-                )}
-
                 {isSmallScreen && swipeMode ? (
                   <SwipeDeck
                     products={products}
@@ -391,7 +401,7 @@ export function ProductsClient({ initialProductsData, categories }: ProductsClie
                   </div>
                 )}
 
-                {total > 12 && (
+                {total > 12 && !swipeActive && (
                   <div className="ms-pagination">
                     <Button
                       variant="outline"

@@ -39,6 +39,12 @@ Eight phases implementing production deployment (web, admin, API) with TiDB comp
 
 ## Changed Files
 
+**Swipe UX polish, 2026-08-30:**
+- `apps/web/src/components/organisms/SwipeDeck/SwipeDeck.tsx`
+- `apps/web/src/components/organisms/SwipeDeck/swipe-deck.scss`
+- `apps/web/src/app/products/products-client.tsx`
+- `apps/web/src/app/products/plp.scss`
+
 **Park Clerk, 2026-08-30:**
 - `apps/web/src/app/layout.tsx`, `apps/web/src/middleware.ts`, `apps/web/src/components/ClerkAuthControls.tsx`
 - `apps/admin/src/app/layout.tsx`, `apps/admin/src/middleware.ts`, `apps/admin/src/components/ClerkAuthControls.tsx`
