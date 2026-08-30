@@ -1,0 +1,33 @@
+# Build context is the repo root so that config/ is reachable (see
+# server/Dockerfile). Only server/ and config/ are needed — everything else is
+# excluded to keep the context small.
+node_modules
+**/node_modules
+apps
+shared
+adapters
+extras
+everything-claude-code
+graphify-out
+workflow
+docs
+.git
+.github
+.claude
+.agent
+.agents
+.continue
+.cursor
+.vscode
+.rtk
+**/dist
+**/.next
+**/.vercel
+.env
+.env.*
+**/.env
+**/.env.*
+server/uploads
+server/tests
+*.zip
+*.log

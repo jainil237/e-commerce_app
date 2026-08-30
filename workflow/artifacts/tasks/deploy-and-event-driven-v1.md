@@ -39,6 +39,14 @@ Eight phases implementing production deployment (web, admin, API) with TiDB comp
 
 ## Changed Files
 
+**Render Docker deployment, 2026-08-30:**
+- `server/Dockerfile`
+- `.dockerignore`
+
+Containerises the API for Render. Build context is the repo root so that
+`config/store.config.json` — which `src/utils/config.ts` resolves as
+`../config/...` — is reachable; the root `.dockerignore` keeps that context small.
+
 **Deploy provisioning, 2026-08-30 (Vercel project setup):**
 - `apps/web/.gitignore`
 - `apps/admin/.gitignore`
