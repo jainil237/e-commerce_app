@@ -132,10 +132,24 @@ neither R2 nor Cloudinary is configured.
 
 | Setting | Value |
 |---|---|
-| Root directory | *(repo root — the build uses npm workspaces)* |
-| Build command | `npm install --include=dev && npm run build --workspace=server` |
-| Start command | `npm start --workspace=server` |
+| Root directory | `server` |
+| Runtime | Docker |
+| Dockerfile path | `./Dockerfile` |
+| Docker build context | `.` |
 | Health check path | `/health` |
+
+The API deploys as a container; `server/Dockerfile` owns the build and start
+commands, so Render's own build/start fields do not apply.
+
+Everything the image needs lives under `server/`, including
+`server/config/store.config.json`. That file used to sit at `config/` in the repo
+root, which no Docker build rooted at `server/` could reach — `COPY` cannot read
+outside its context. It moved rather than being duplicated so there is still one
+source of truth; `apps/web` reaches it through the `@config/*` alias, now pointed
+at `../../server/config/*`.
+
+`STORE_CONFIG_PATH` overrides the location if you ever run the server with a
+working directory other than `server/`.
 
 `--include=dev` is load-bearing. `typescript`, `prisma`, and every `@types/*`
 package are `devDependencies`, and npm omits those when `NODE_ENV=production` —

@@ -39,6 +39,18 @@ Eight phases implementing production deployment (web, admin, API) with TiDB comp
 
 ## Changed Files
 
+**Docker context = server/, 2026-08-30:**
+- `server/Dockerfile`
+- `server/.dockerignore`
+- `server/config/store.config.json` (moved from `config/`)
+- `server/src/utils/config.ts`
+- `apps/web/tsconfig.json`
+- `CLAUDE.md`
+
+Makes `server/` self-contained so Render can use it as both root directory and
+Docker build context. The store config moved rather than being duplicated;
+apps/web follows it via the `@config/*` alias.
+
 **Render Docker deployment, 2026-08-30:**
 - `server/Dockerfile`
 - `.dockerignore`

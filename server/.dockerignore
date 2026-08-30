@@ -1,0 +1,8 @@
+# Context is server/, so this sits at the context root where Docker reads it.
+node_modules
+dist
+.env
+.env.*
+uploads
+tests
+*.log

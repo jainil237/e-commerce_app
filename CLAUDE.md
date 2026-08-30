@@ -77,7 +77,7 @@ npm run dev --workspace=server
 
 **Storage provider** (`server/src/services/storage.service.ts`): auto-selects at startup via env vars — Cloudflare R2 → Cloudinary → local disk fallback. Never hardcode a storage path.
 
-**Store config** (`Store.config.json` at repo root): loaded at runtime by `server/src/utils/config.ts`. Controls store name, feature flags, courier partners, shipping thresholds, invoice settings, etc. Avoid hardcoding values that belong here.
+**Store config** (`server/config/store.config.json`): loaded at runtime by `server/src/utils/config.ts` from `<cwd>/config/store.config.json`, overridable with `STORE_CONFIG_PATH`. It lives under `server/` so the Docker build context can be `server/` alone; `apps/web` imports the same file via the `@config/*` alias. Controls store name, feature flags, courier partners, shipping thresholds, invoice settings, etc. Avoid hardcoding values that belong here.
 
 **Email service** (`server/src/services/email.service.ts`): sends transactional emails (order confirmation, shipping updates, OTP) via Nodemailer. Silently no-ops if SMTP is not fully configured — dev environments work without email setup.
 
