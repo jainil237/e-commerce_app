@@ -16,7 +16,7 @@ export interface HeroCarouselProduct {
   category?: { name: string }
 }
 
-const AUTOPLAY_MS = 5000
+const AUTOPLAY_MS = 3500
 
 export function HeroCarousel({ products }: { products: HeroCarouselProduct[] }) {
   const [index, setIndex] = useState(0)
