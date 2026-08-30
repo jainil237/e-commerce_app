@@ -39,6 +39,10 @@ Eight phases implementing production deployment (web, admin, API) with TiDB comp
 
 ## Changed Files
 
+**Admin password reveal + strength, 2026-08-30:**
+- `apps/admin/src/components/ui/PasswordField.tsx`
+- `apps/admin/src/app/login/page.tsx`
+
 **Password reveal + strength, swipe advance, 2026-08-30:**
 - `apps/web/src/components/molecules/PasswordInput/PasswordInput.tsx`
 - `apps/web/src/components/molecules/PasswordInput/password-input.scss`
