@@ -17,7 +17,12 @@ export const metadata: Metadata = {
 // an integration that is still passive — the JWT-cookie auth is the system of
 // record and the app is fully functional without Clerk. Mirrors the API, which
 // likewise mounts Clerk only when its keys are present.
-const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY)
+// Clerk is PARKED until the auth migration is planned properly — see
+// docs/drafts/clerk-auth-plan.md. It currently creates a Clerk session that does
+// not authenticate against the API, so the controls look functional and are not.
+// Set CLERK_PARKED to false to resume; the env check below is left intact.
+const CLERK_PARKED = true
+const clerkEnabled = !CLERK_PARKED && Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY)
 
 export default function RootLayout({
   children,

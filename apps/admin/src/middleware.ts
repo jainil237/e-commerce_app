@@ -18,7 +18,13 @@ import { NextResponse } from 'next/server'
  * Route protection gets added when the server side is migrated — see
  * workflow/artifacts/ for the clerk-auth chain.
  */
-export default process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+// Clerk is PARKED until the auth migration is planned properly — see
+// docs/drafts/clerk-auth-plan.md. It currently creates a Clerk session that does
+// not authenticate against the API, so the controls look functional and are not.
+// Set CLERK_PARKED to false to resume; the env check below is left intact.
+const CLERK_PARKED = true
+
+export default !CLERK_PARKED && process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
   ? clerkMiddleware()
   : () => NextResponse.next()
 

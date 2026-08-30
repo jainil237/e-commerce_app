@@ -39,6 +39,12 @@ Eight phases implementing production deployment (web, admin, API) with TiDB comp
 
 ## Changed Files
 
+**Park Clerk, 2026-08-30:**
+- `apps/web/src/app/layout.tsx`, `apps/web/src/middleware.ts`, `apps/web/src/components/ClerkAuthControls.tsx`
+- `apps/admin/src/app/layout.tsx`, `apps/admin/src/middleware.ts`, `apps/admin/src/components/ClerkAuthControls.tsx`
+- `server/src/middleware/clerk.middleware.ts`, `server/src/index.ts`
+- `docs/drafts/clerk-auth-plan.md`
+
 **Admin password reveal + strength, 2026-08-30:**
 - `apps/admin/src/components/ui/PasswordField.tsx`
 - `apps/admin/src/app/login/page.tsx`
