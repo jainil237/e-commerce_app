@@ -39,6 +39,12 @@ Eight phases implementing production deployment (web, admin, API) with TiDB comp
 
 ## Changed Files
 
+**Swipe acknowledgement + toast z-index, 2026-08-31:**
+- `apps/web/src/components/organisms/SwipeDeck/SwipeDeck.tsx`
+- `apps/web/src/components/organisms/SwipeDeck/swipe-deck.scss`
+- `apps/web/src/contexts/toast.context.tsx`
+- `apps/web/tailwind.config.ts`
+
 **Swipe UX polish, 2026-08-30:**
 - `apps/web/src/components/organisms/SwipeDeck/SwipeDeck.tsx`
 - `apps/web/src/components/organisms/SwipeDeck/swipe-deck.scss`
