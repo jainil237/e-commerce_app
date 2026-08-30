@@ -6,12 +6,18 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Filter, X } from 'lucide-react'
 import { ProductCard } from '@/components/molecules/ProductCard/ProductCard'
-import { useStoreConfig } from '@/contexts'
+import { SwipeDeck } from '@/components/organisms/SwipeDeck/SwipeDeck'
+import { Switch } from '@/components/atoms/Switch/Switch'
+import { useStoreConfig, useCart, useWishlist, useToast } from '@/contexts'
 import { Button } from '@/components/atoms/Button/Button'
 import { Input } from '@/components/atoms/Input/Input'
 import { Select } from '@/components/atoms/Select/Select'
 import { useGetProductsQuery } from '@shared/api/productsApi'
 import type { Product } from '@shared/types'
+
+// Matches $bp-md; the deck is designed for one-handed use on a phone.
+const SWIPE_MAX_WIDTH_PX = 768
+const SWIPE_MODE_KEY = 'ms:swipe-mode'
 
 interface Category {
   id: string
@@ -39,6 +45,70 @@ export function ProductsClient({ initialProductsData, categories }: ProductsClie
 
   const [showFilters, setShowFilters] = useState(false)
   const [page, setPage] = useState(1)
+
+  const { addItem } = useCart()
+  const { addToWishlist, isInWishlist } = useWishlist()
+  const { showToast } = useToast()
+
+  // Swipe browsing is a small-screen mode. isSmallScreen gates the toggle so it
+  // never appears on a desktop that happens to have a touch screen; the
+  // preference itself is remembered per device.
+  const [isSmallScreen, setIsSmallScreen] = useState(false)
+  const [swipeMode, setSwipeMode] = useState(false)
+
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${SWIPE_MAX_WIDTH_PX}px)`)
+    const sync = () => setIsSmallScreen(mq.matches)
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [])
+
+  useEffect(() => {
+    // Storage can throw in private mode; a missing preference just means off.
+    try {
+      setSwipeMode(window.localStorage.getItem(SWIPE_MODE_KEY) === '1')
+    } catch {
+      /* keep the default */
+    }
+  }, [])
+
+  const toggleSwipeMode = useCallback((next: boolean) => {
+    setSwipeMode(next)
+    try {
+      window.localStorage.setItem(SWIPE_MODE_KEY, next ? '1' : '0')
+    } catch {
+      /* preference is a convenience, not state we must keep */
+    }
+  }, [])
+
+  const handleSwipeAddToCart = useCallback(async (product: Product) => {
+    try {
+      await addItem(product.id, 1, { price: Number(product.price), name: product.name })
+      showToast('success', `${product.name} added to cart`)
+      return true
+    } catch (error) {
+      showToast('error', error instanceof Error ? error.message : 'Could not add to cart')
+      return false
+    }
+  }, [addItem, showToast])
+
+  const handleSwipeAddToWishlist = useCallback(async (product: Product) => {
+    // Already saved counts as success — the product is where the customer
+    // wanted it, so the deck should still move on.
+    if (isInWishlist(product.id)) {
+      showToast('info', `${product.name} is already in your wishlist`)
+      return true
+    }
+    try {
+      await addToWishlist(product.id)
+      showToast('success', `${product.name} saved to wishlist`)
+      return true
+    } catch (error) {
+      showToast('error', error instanceof Error ? error.message : 'Could not save to wishlist')
+      return false
+    }
+  }, [addToWishlist, isInWishlist, showToast])
 
   const category = searchParams.get('category')
   const search = searchParams.get('search')
@@ -296,11 +366,30 @@ export function ProductsClient({ initialProductsData, categories }: ProductsClie
               </div>
             ) : (
               <>
-                <div className={`ms-product-grid${isFetching ? ' ms-product-grid--loading' : ''}`}>
-                  {products.map(product => (
-                    <ProductCard key={product.id} product={product} />
-                  ))}
-                </div>
+                {isSmallScreen && (
+                  <div className="ms-plp__swipe-toggle">
+                    <Switch
+                      checked={swipeMode}
+                      onCheckedChange={toggleSwipeMode}
+                      label="Swipe browsing"
+                      description="Swipe left/right to browse, up to save, down to add to cart"
+                    />
+                  </div>
+                )}
+
+                {isSmallScreen && swipeMode ? (
+                  <SwipeDeck
+                    products={products}
+                    onAddToCart={handleSwipeAddToCart}
+                    onAddToWishlist={handleSwipeAddToWishlist}
+                  />
+                ) : (
+                  <div className={`ms-product-grid${isFetching ? ' ms-product-grid--loading' : ''}`}>
+                    {products.map(product => (
+                      <ProductCard key={product.id} product={product} />
+                    ))}
+                  </div>
+                )}
 
                 {total > 12 && (
                   <div className="ms-pagination">

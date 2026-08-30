@@ -33,7 +33,7 @@ import { startWorker } from './queues/worker'
 import { errorHandler, notFound } from './middleware/error.middleware'
 import { FailOpenRedisStore } from './utils/rate-limit.store'
 import { reportRedisTarget } from './utils/redis'
-import { clerkSession, isClerkConfigured } from './middleware/clerk.middleware'
+import { clerkSession, clerkStatusLine } from './middleware/clerk.middleware'
 
 const app = express()
 const PORT = process.env.PORT || 4000
@@ -185,11 +185,7 @@ const startServer = async () => {
       console.log(`🏥 Health check at http://localhost:${PORT}/health`)
       console.log(`📦 Storage provider: ${providerLabels[provider]}`)
       reportRedisTarget()
-      console.log(
-        isClerkConfigured
-          ? '🔐 Clerk: session verification active (passive — JWT auth is still authoritative)'
-          : '🔐 Clerk: CLERK_SECRET_KEY unset — Clerk session verification disabled'
-      )
+      console.log(clerkStatusLine())
     })
 
     // Queue startup runs AFTER listen and swallows its own errors on purpose.

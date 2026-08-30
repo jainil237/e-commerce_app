@@ -28,6 +28,8 @@ export function Topbar() {
   const router = useRouter()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  // '' is the All option — searches every category.
+  const [searchCategory, setSearchCategory] = useState('')
   const [suggestions, setSuggestions] = useState<ProductSuggestion[]>([])
   const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false)
   const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(false)
@@ -57,7 +59,8 @@ export function Topbar() {
     const timeoutId = setTimeout(async () => {
       try {
         setIsFetchingSuggestions(true)
-        const res = await fetch(`/api/v1/products/suggestions?q=${encodeURIComponent(query)}&limit=8`)
+        const categoryParam = searchCategory ? `&category=${encodeURIComponent(searchCategory)}` : ''
+        const res = await fetch(`/api/v1/products/suggestions?q=${encodeURIComponent(query)}&limit=8${categoryParam}`)
         const data = await res.json()
         setSuggestions(data.data || [])
         setActiveSuggestionIndex(-1)
@@ -70,7 +73,7 @@ export function Topbar() {
     }, 220)
 
     return () => clearTimeout(timeoutId)
-  }, [searchQuery])
+  }, [searchQuery, searchCategory])
 
   useEffect(() => {
     const handleOutsideClick = (event: MouseEvent) => {
@@ -85,7 +88,11 @@ export function Topbar() {
 
   const goToSearchResults = (query: string) => {
     const value = query.trim()
-    router.push(value ? `/products?search=${encodeURIComponent(value)}` : '/products')
+    const params = new URLSearchParams()
+    if (value) params.set('search', value)
+    if (searchCategory) params.set('category', searchCategory)
+    const qs = params.toString()
+    router.push(qs ? `/products?${qs}` : '/products')
   }
 
   const selectSuggestion = (slug: string) => {
@@ -119,6 +126,22 @@ export function Topbar() {
       setActiveSuggestionIndex(-1)
     }
   }
+
+  // Native <select> — the platform already gives keyboard support, mobile
+  // pickers and screen-reader semantics a custom menu would have to re-implement.
+  const CategorySelect = () => (
+    <select
+      className="ms-search-scope"
+      value={searchCategory}
+      onChange={e => setSearchCategory(e.target.value)}
+      aria-label="Filter search by category"
+    >
+      <option value="">All</option>
+      {categories.map(c => (
+        <option key={c.slug} value={c.slug}>{c.name}</option>
+      ))}
+    </select>
+  )
 
   const SearchDropdown = ({ isMobile = false }: { isMobile?: boolean }) => (
     <div className="ms-search-dropdown" role="listbox">
@@ -170,18 +193,21 @@ export function Topbar() {
         {/* Search — desktop */}
         <div className="ms-topbar__search" ref={searchContainerRef}>
           <form onSubmit={onSearchSubmit} role="search">
-            <Input
-              type="text"
-              placeholder="Search products…"
-              value={searchQuery}
-              onFocus={() => setIsSuggestionsOpen(true)}
-              onChange={e => { setSearchQuery(e.target.value); setIsSuggestionsOpen(true) }}
-              onKeyDown={onSearchKeyDown}
-              leftIcon={<Search width={16} height={16} />}
-              aria-label="Search products"
-              aria-autocomplete="list"
-              aria-expanded={isSuggestionsOpen}
-            />
+            <div className="ms-search-row">
+              <CategorySelect />
+              <Input
+                type="text"
+                placeholder="Search products…"
+                value={searchQuery}
+                onFocus={() => setIsSuggestionsOpen(true)}
+                onChange={e => { setSearchQuery(e.target.value); setIsSuggestionsOpen(true) }}
+                onKeyDown={onSearchKeyDown}
+                leftIcon={<Search width={16} height={16} />}
+                aria-label="Search products"
+                aria-autocomplete="list"
+                aria-expanded={isSuggestionsOpen}
+              />
+            </div>
             {isSuggestionsOpen && <SearchDropdown />}
           </form>
         </div>
@@ -234,16 +260,19 @@ export function Topbar() {
         <div className="ms-topbar__mobile-menu">
           <div className="ms-topbar__mobile-search">
             <form onSubmit={onSearchSubmit} role="search">
-              <Input
-                type="text"
-                placeholder="Search products…"
-                value={searchQuery}
-                onFocus={() => setIsSuggestionsOpen(true)}
-                onChange={e => { setSearchQuery(e.target.value); setIsSuggestionsOpen(true) }}
-                onKeyDown={onSearchKeyDown}
-                leftIcon={<Search width={16} height={16} />}
-                aria-label="Search products"
-              />
+              <div className="ms-search-row">
+                <CategorySelect />
+                <Input
+                  type="text"
+                  placeholder="Search products…"
+                  value={searchQuery}
+                  onFocus={() => setIsSuggestionsOpen(true)}
+                  onChange={e => { setSearchQuery(e.target.value); setIsSuggestionsOpen(true) }}
+                  onKeyDown={onSearchKeyDown}
+                  leftIcon={<Search width={16} height={16} />}
+                  aria-label="Search products"
+                />
+              </div>
               {isSuggestionsOpen && <SearchDropdown isMobile />}
             </form>
           </div>

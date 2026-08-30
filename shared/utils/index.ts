@@ -32,3 +32,44 @@ export const parseTags = (tags: string[] | string | undefined | null): string[] 
   if (typeof tags === 'string') return tags.split(',').map(t => t.trim()).filter(Boolean);
   return [];
 };
+
+/**
+ * Password strength rules, shared so the UI checklist and the submit-time guard
+ * can never disagree about what "strong" means.
+ *
+ * Deliberately not applied at sign-in: an existing account's password must keep
+ * working even if it predates these rules, and telling someone their password is
+ * too weak while they are trying to log in helps an attacker, not them.
+ */
+export interface PasswordRule {
+  id: string
+  label: string
+  test: (value: string) => boolean
+}
+
+export const PASSWORD_MIN_LENGTH = 8
+
+export const PASSWORD_RULES: PasswordRule[] = [
+  { id: 'length', label: `At least ${PASSWORD_MIN_LENGTH} characters`, test: v => v.length >= PASSWORD_MIN_LENGTH },
+  { id: 'lower', label: 'One lowercase letter', test: v => /[a-z]/.test(v) },
+  { id: 'upper', label: 'One uppercase letter', test: v => /[A-Z]/.test(v) },
+  { id: 'number', label: 'One number', test: v => /\d/.test(v) },
+  { id: 'symbol', label: 'One symbol', test: v => /[^A-Za-z0-9]/.test(v) },
+]
+
+export interface PasswordCheck {
+  valid: boolean
+  /** Rules not yet satisfied, in the order they are shown to the user. */
+  failed: PasswordRule[]
+  /** 0–5, for a strength indicator. */
+  score: number
+}
+
+export const checkPassword = (value: string): PasswordCheck => {
+  const failed = PASSWORD_RULES.filter(rule => !rule.test(value))
+  return {
+    valid: failed.length === 0,
+    failed,
+    score: PASSWORD_RULES.length - failed.length,
+  }
+}

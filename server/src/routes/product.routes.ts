@@ -203,6 +203,8 @@ router.get('/suggestions', optionalAuth, async (req, res: Response, next) => {
   try {
     const q = (req.query.q as string || '').trim()
     const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 6, 1), 20)
+    // Category slug, so suggestions match the scope the search box is set to.
+    const category = (req.query.category as string || '').trim()
 
     if (q.length < 2) {
       res.json({
@@ -212,7 +214,9 @@ router.get('/suggestions', optionalAuth, async (req, res: Response, next) => {
       return
     }
 
-    const cacheKey = `products:suggestions:${q.toLowerCase()}:${limit}`
+    // Category is part of the key — without it, a search scoped to one category
+    // would be served another category's cached results.
+    const cacheKey = `products:suggestions:${q.toLowerCase()}:${limit}:${category || 'all'}`
     const cached = await cacheGet(cacheKey)
     if (cached) {
       res.json(cached)
@@ -222,11 +226,13 @@ router.get('/suggestions', optionalAuth, async (req, res: Response, next) => {
     const products = await prisma.product.findMany({
       where: {
         isActive: true,
+        ...(category ? { category: { slug: category } } : {}),
         OR: [
           { name: { contains: q } },
           { description: { contains: q } },
           { tags: { contains: q } },
-          { category: { name: { contains: q } } },
+          // Only meaningful when unscoped; a category filter already implies it.
+          ...(category ? [] : [{ category: { name: { contains: q } } }]),
         ],
       },
       take: limit,

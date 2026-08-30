@@ -1,26 +1,46 @@
 import bcrypt from 'bcrypt'
 import { PrismaClient } from '@prisma/client'
-import fs from 'fs'
-import path from 'path'
 
 const prisma = new PrismaClient()
 
 async function main() {
   console.log('🌱 Starting seed...')
 
-  // Load store config
-  const configPath = path.join(process.cwd(), '..', 'config', 'store.config.json')
-  const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'))
+  // Create admin user.
+  //
+  // The defaults are a development convenience and are published in this repo,
+  // so they are usable by anyone who can reach the site. Seeding a deployed
+  // database must therefore supply its own credentials; the guard below refuses
+  // the default rather than silently creating a known ADMIN login.
+  const DEV_ADMIN_PASSWORD = 'Admin@123'
+  const adminEmail = process.env.SEED_ADMIN_EMAIL || 'admin@store.in'
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD || DEV_ADMIN_PASSWORD
+  // phone is unique in the schema, so a custom email needs a custom phone too —
+  // otherwise the new row collides with the default admin's number.
+  const adminPhone = process.env.SEED_ADMIN_PHONE || '9999999999'
 
-  // Create admin user
-  const adminPasswordHash = await bcrypt.hash('Admin@123', 12)
+  if (adminPassword === DEV_ADMIN_PASSWORD) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'Refusing to seed a production database with the default admin password. ' +
+        'Set SEED_ADMIN_PASSWORD (and optionally SEED_ADMIN_EMAIL) and re-run.'
+      )
+    }
+    console.warn(
+      '⚠️  Seeding with the default admin password, which is public in this repo. ' +
+      'Never do this against a database a deployed site can reach — ' +
+      'set SEED_ADMIN_PASSWORD to choose your own.'
+    )
+  }
+
+  const adminPasswordHash = await bcrypt.hash(adminPassword, 12)
   const admin = await prisma.user.upsert({
-    where: { email: 'admin@store.in' },
+    where: { email: adminEmail },
     update: {},
     create: {
       name: 'Admin',
-      email: 'admin@store.in',
-      phone: '9999999999',
+      email: adminEmail,
+      phone: adminPhone,
       passwordHash: adminPasswordHash,
       role: 'ADMIN',
     },

@@ -1,0 +1,174 @@
+@use '../../../styles/mixins' as m;
+@use '../../../styles/variables' as v;
+
+.ms-hero-carousel {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-2);
+
+  &__viewport {
+    overflow: hidden;
+  }
+
+  &__track {
+    display: flex;
+    // Transform-only animation so slides do not repaint on every frame.
+    @include m.motion { transition: transform 500ms ease; }
+  }
+
+  &__slide {
+    position: relative;
+    flex: 0 0 100%;
+    display: block;
+    height: clamp(20rem, 46vw, 34rem);
+    text-decoration: none;
+    color: inherit;
+
+    &:focus-visible { @include m.focus-ring; }
+  }
+
+  &__image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+
+    &--fallback {
+      background: linear-gradient(135deg, var(--surface-3), var(--surface-2));
+    }
+  }
+
+  // Keeps the caption legible over an arbitrary product photo.
+  &__scrim {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      rgb(0 0 0 / 72%) 0%,
+      rgb(0 0 0 / 45%) 45%,
+      rgb(0 0 0 / 10%) 100%
+    );
+  }
+
+  &__content {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: var(--space-3, 0.75rem);
+    max-width: min(34rem, 80%);
+    padding: var(--space-8, 2rem) clamp(1.25rem, 5vw, 4rem);
+    color: #fff;
+  }
+
+  &__eyebrow {
+    @include m.eyebrow;
+    color: rgb(255 255 255 / 80%);
+  }
+
+  &__title {
+    margin: 0;
+    font-size: clamp(1.75rem, 4.5vw, 3.25rem);
+    font-weight: 800;
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+  }
+
+  &__price {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: var(--space-3, 0.75rem);
+    margin: 0;
+  }
+
+  &__price-now {
+    font-size: clamp(1.25rem, 2.5vw, 1.75rem);
+    font-weight: 700;
+  }
+
+  &__price-mrp {
+    text-decoration: line-through;
+    color: rgb(255 255 255 / 70%);
+  }
+
+  &__badge {
+    padding: 0.15rem 0.5rem;
+    border-radius: var(--radius-sm);
+    background: var(--brand-primary, #2563eb);
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  &__cta {
+    align-self: flex-start;
+    margin-top: var(--space-2, 0.5rem);
+    padding: 0.65rem 1.4rem;
+    border-radius: var(--radius-md);
+    background: #fff;
+    color: #111;
+    font-weight: 600;
+    @include m.motion { transition: transform 200ms ease; }
+  }
+
+  &__slide:hover &__cta {
+    transform: translateY(-2px);
+  }
+
+  &__nav {
+    position: absolute;
+    top: 50%;
+    translate: 0 -50%;
+    display: grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border: none;
+    border-radius: 50%;
+    background: rgb(255 255 255 / 88%);
+    color: #111;
+    cursor: pointer;
+    @include m.motion { transition: background 200ms ease; }
+
+    &:hover { background: #fff; }
+    &:focus-visible { @include m.focus-ring; }
+
+    &--prev { inset-inline-start: clamp(0.5rem, 2vw, 1.25rem); }
+    &--next { inset-inline-end: clamp(0.5rem, 2vw, 1.25rem); }
+
+    // Thumb targets are cramped on small screens; dots still work there.
+    @media (max-width: v.$bp-sm) {
+      display: none;
+    }
+  }
+
+  &__dots {
+    position: absolute;
+    inset-inline: 0;
+    bottom: var(--space-4, 1rem);
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  &__dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: rgb(255 255 255 / 50%);
+    cursor: pointer;
+    @include m.motion { transition: width 200ms ease, background 200ms ease; }
+
+    &:focus-visible { @include m.focus-ring; }
+
+    &--active {
+      width: 1.5rem;
+      border-radius: 1rem;
+      background: #fff;
+    }
+  }
+}

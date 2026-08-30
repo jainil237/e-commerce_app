@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Mail, Lock, Loader2, Store, KeyRound, ArrowLeft, Info } from 'lucide-react'
+import { Mail, Loader2, Store, KeyRound, ArrowLeft, Info } from 'lucide-react'
 import { useAuth, useToast } from '@/components/providers'
+import { PasswordField } from '@/components/ui/PasswordField'
+import { checkPassword } from '@shared/utils'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -74,6 +76,15 @@ export default function LoginPage() {
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Mirrors the API's Zod schema, so a password that cannot succeed is caught
+    // here rather than after a round trip that also burns the OTP attempt.
+    const check = checkPassword(newPassword)
+    if (!check.valid) {
+      showToast('error', `Password needs: ${check.failed.map(r => r.label.toLowerCase()).join(', ')}`)
+      return
+    }
+
     setIsLoading(true)
     try {
       const res = await fetch(`/api/v1/auth/reset-password`, {
@@ -139,22 +150,15 @@ export default function LoginPage() {
                 </div>
               </div>
  
-              <div>
-                <label htmlFor="password" className="block text-sm font-semibold mb-1.5 text-[var(--text-primary)]">Password</label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-tertiary)]" />
-                  <input
-                    id="password"
-                    name="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="input pl-10"
-                    required
-                  />
-                </div>
-              </div>
+              <PasswordField
+                id="password"
+                name="password"
+                label="Password"
+                value={password}
+                onChange={setPassword}
+                required
+                autoComplete="current-password"
+              />
 
               <div className="flex justify-end">
                 <button
@@ -266,25 +270,19 @@ export default function LoginPage() {
                 </div>
               </div>
  
-              <div>
-                <label htmlFor="new-password" className="block text-sm font-semibold mb-1.5 text-[var(--text-primary)]">New Password</label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-tertiary)]" />
-                  <input
-                    id="new-password"
-                    name="newPassword"
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="input pl-10"
-                    required
-                  />
-                </div>
-                <p className="text-[10px] text-[var(--text-tertiary)] mt-1.5 font-medium uppercase tracking-wider">
-                  Min 8 chars • uppercase • lowercase • number • special
-                </p>
-              </div>
+              {/* The static rule line here was decorative — nothing checked it
+                  client-side, so the first feedback was a rejection from the
+                  API. The live checklist replaces it. */}
+              <PasswordField
+                id="new-password"
+                name="newPassword"
+                label="New Password"
+                value={newPassword}
+                onChange={setNewPassword}
+                required
+                autoComplete="new-password"
+                showRequirements
+              />
  
               <button
                 type="submit"

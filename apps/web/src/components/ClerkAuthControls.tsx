@@ -18,7 +18,12 @@ import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton } from '@cl
 // Renders nothing when Clerk is not configured. Without a publishable key there
 // is no ClerkProvider above this component (see the root layout), and these
 // components throw outside a provider. The JWT-cookie controls remain either way.
-const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY)
+// Clerk is PARKED until the auth migration is planned properly — see
+// docs/drafts/clerk-auth-plan.md. It currently creates a Clerk session that does
+// not authenticate against the API, so the controls look functional and are not.
+// Set CLERK_PARKED to false to resume; the env check below is left intact.
+const CLERK_PARKED = true
+const clerkEnabled = !CLERK_PARKED && Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY)
 
 export function ClerkAuthControls() {
   if (!clerkEnabled) return null
