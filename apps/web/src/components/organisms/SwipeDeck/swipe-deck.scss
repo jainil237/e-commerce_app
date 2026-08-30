@@ -159,3 +159,32 @@
     &--cart:not(:disabled):hover { color: var(--brand-primary, #2563eb); }
   }
 }
+
+// In-deck confirmation, shown between the card and the controls so it appears
+// where the thumb already is. The global toast still fires; this is the copy
+// you cannot miss mid-gesture.
+.ms-swipe-deck__ack {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #fff;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 25%);
+  animation: ms-swipe-ack-in 200ms ease-out;
+
+  &--cart     { background: var(--brand-primary, #2563eb); }
+  &--wishlist { background: var(--error, #dc2626); }
+}
+
+@keyframes ms-swipe-ack-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.94); }
+  to   { opacity: 1; transform: none; }
+}
+
+// Respect a reduced-motion preference: appear, but do not animate in.
+@media (prefers-reduced-motion: reduce) {
+  .ms-swipe-deck__ack { animation: none; }
+}

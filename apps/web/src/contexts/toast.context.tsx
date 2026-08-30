@@ -52,7 +52,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         a live region has to exist in the DOM before content lands in it for
         assistive tech to announce the change reliably.
       */}
-      <div className="fixed top-4 right-4 z-50 space-y-2">
+      {/*
+        z-70 matches $z-toast in _variables.scss. It was z-50, the same level as
+        the swipe deck's lifted card, so a toast could be painted over by the
+        very card whose action it was confirming.
+      */}
+      <div className="fixed top-4 right-4 z-[70] space-y-2">
         {(['assertive', 'polite'] as const).map(politeness => (
           <div
             key={politeness}
