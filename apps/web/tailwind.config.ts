@@ -5,6 +5,10 @@ const config: Config = {
   content: [
     './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
+    // contexts/ was missing: classes used only there were never generated, so
+    // the toast's styling worked only when another scanned file happened to use
+    // the same class. z-[70] on the toast container was silently dropped.
+    './src/contexts/**/*.{js,ts,jsx,tsx,mdx}',
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
     '../../shared/**/*.{js,ts,jsx,tsx,mdx}',
   ],

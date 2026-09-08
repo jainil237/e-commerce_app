@@ -24,6 +24,10 @@ export function SwipeDeck({ products, onAddToCart, onAddToWishlist }: SwipeDeckP
   const [index, setIndex] = useState(0)
   const [drag, setDrag] = useState<{ x: number; y: number } | null>(null)
   const [leaving, setLeaving] = useState<SwipeAction | null>(null)
+  // In-deck confirmation. The global toast fires too, but it lands top-right —
+  // far from where a thumb is looking straight after a swipe.
+  const [ack, setAck] = useState<{ action: 'cart' | 'wishlist'; name: string } | null>(null)
+  const ackTimer = useRef<number | null>(null)
   const startRef = useRef<{ x: number; y: number } | null>(null)
   // The delta also lives in a ref: pointerup must read the latest value, and
   // React batches the setDrag from pointermove, so a fast flick would otherwise
@@ -49,7 +53,11 @@ export function SwipeDeck({ products, onAddToCart, onAddToWishlist }: SwipeDeckP
     // advancing past a product that was never saved would hide the failure.
     const run = action === 'cart' ? onAddToCart : onAddToWishlist
     void run(current).then(ok => {
-      if (ok && !atEnd) go(1)
+      if (!ok) return
+      setAck({ action, name: current.name })
+      if (ackTimer.current) window.clearTimeout(ackTimer.current)
+      ackTimer.current = window.setTimeout(() => setAck(null), 1800)
+      if (!atEnd) go(1)
     })
   }, [products, index, atStart, atEnd, go, onAddToCart, onAddToWishlist])
 
@@ -197,6 +205,18 @@ export function SwipeDeck({ products, onAddToCart, onAddToWishlist }: SwipeDeckP
         Buttons are not a fallback — they are the only way to reach these actions
         with a keyboard or a screen reader.
       */}
+      {/*
+        Confirms the action that just landed, next to the card rather than in a
+        corner. role="status" so it is announced once; the global toast carries
+        the same message for anyone who has scrolled away.
+      */}
+      {ack && (
+        <div className={`ms-swipe-deck__ack ms-swipe-deck__ack--${ack.action}`} role="status">
+          {ack.action === 'cart' ? <ShoppingCart width={16} height={16} /> : <Heart width={16} height={16} />}
+          <span>{ack.action === 'cart' ? 'Added to cart' : 'Saved to wishlist'}</span>
+        </div>
+      )}
+
       <div className="ms-swipe-deck__controls">
         <button type="button" className="ms-swipe-deck__control" onClick={() => runAction('prev')}
                 disabled={atStart} aria-label="Previous product">
