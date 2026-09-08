@@ -96,6 +96,10 @@ orchestration:
 - `server/tests/setup.ts` — new; pins `DATABASE_URL`/`TEST_DATABASE_URL`, `PAYMENTS_MOCK`-relevant env, and JWT secrets before `src/` loads (required because `config/env.ts`'s `dotenv.config()` does not overwrite already-set vars) — IDs: RI1
 - `server/tests/global-setup.ts` — new; drops and rebuilds the test schema per run via `prisma db push`, guarded to a `_test`-suffixed database name only — IDs: RI1
 - `server/tests/helpers/test-db-url.ts` — new; derives the test DB URL from `TEST_DATABASE_URL` or `DATABASE_URL`, never logs it — IDs: RI1, RI4
+- `server/tests/helpers/test-db-url.test.ts` — new; regression cover for the resolver's guard after the `_test`-name check alone let a production host through and the suite reset it (see incident note below) — IDs: RI1, RI4
+- `server/scripts/lib/local-db.ts` — new; single definition of "is this database local", shared by the test harness and the db:reset preflight — IDs: RI1, RI4
+- `server/scripts/guard-local-db.ts` — new; preflight for `npm run db:reset`, the destructive path the test harness never sees — IDs: RI1, RI4
+- `server/package.json` — `db:reset` runs the preflight before `prisma migrate reset --force` — IDs: RI1, RI4
 - `server/tests/helpers/factories.ts` — new; FK-ordered `resetDb`, user/address/product/order factories, direct session-cookie minting (bypasses `authLimiter`'s 5-per-15-min cap rather than poisoning it) — IDs: RI1
 - `server/tests/characterization/checkout.test.ts` — new; order creation, stock deduction (today's behavior, unmodified — Epic 2 territory, not touched), cancel, verify-payment happy path, coupon apply — IDs: RI1
 - `server/tests/security/payment-binding.test.ts` — new; documents SEC-1 (no order↔razorpayOrderId binding) and SEC-2/TD-2 (env-shape mock gate) as failing-today characterization, with `it.fails` placeholders for the Phase 2/3 fixed state — IDs: RI1
