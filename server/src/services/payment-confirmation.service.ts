@@ -38,80 +38,120 @@ interface ConfirmPaymentInput {
 // usage, and neither wrote an audit row. Both defects are structural once
 // there is only one place this logic lives.
 export async function confirmPayment(input: ConfirmPaymentInput) {
+  // Scoping the client lookup by userId is what stops a customer confirming
+  // someone else's order; the webhook has no session and is scoped by
+  // Razorpay's signature instead.
+  const orderWhere =
+    input.source === 'client'
+      ? { id: input.orderId, userId: input.actorUserId ?? undefined }
+      : { id: input.orderId }
+
+  const orderInclude = {
+    items: { include: { product: true } },
+    address: true,
+    user: true,
+  }
+
+  // The order read and the Razorpay verification below used to run *inside*
+  // the transaction. `razorpay.payments.fetch` is a call over the public
+  // internet, and on a slow one it burned the whole interactive-transaction
+  // budget — the transaction closed mid-flight and the next query died with
+  // "Transaction not found", rolling back a confirmation for a payment that
+  // had really been captured and leaving the order PENDING. Nothing that
+  // waits on a third party may sit inside a transaction holding row locks,
+  // so both moved out here; the transaction below re-checks and writes.
+  const preOrder = await prisma.order.findFirst({ where: orderWhere, include: orderInclude })
+
+  if (!preOrder) {
+    throw new PaymentConfirmationError('Order not found', 'ORDER_NOT_FOUND', 404)
+  }
+
+  // Idempotency: a webhook replay or a duplicate client confirmation is a
+  // no-op success, not an error.
+  if (preOrder.paymentStatus === 'PAID') {
+    return { order: preOrder, alreadyConfirmed: true as const }
+  }
+
+  // R1, layer 1 (always, offline): the razorpayOrderId being confirmed
+  // must be the one this order was actually created with. This alone
+  // closes the replay case — a valid signature for order A's Razorpay
+  // order can never be used to confirm order B.
+  if (preOrder.razorpayOrderId !== input.razorpayOrderId) {
+    throw new PaymentConfirmationError('Payment does not match this order', 'ORDER_MISMATCH', 400)
+  }
+
+  // R1, layer 2 (non-mock only, network): confirm the payment was actually
+  // captured, for this Razorpay order, for the correct amount. A stored
+  // amount comparison alone would only prove consistency with a value we
+  // wrote ourselves; fetching from Razorpay catches partial capture and
+  // out-of-band amount changes that layer 1 cannot see.
+  if (!isPaymentsMockMode()) {
+    let payment
+    try {
+      payment = await razorpay.payments.fetch(input.razorpayPaymentId)
+    } catch {
+      // Fetch failure must not confirm the order — leave it PENDING. The
+      // webhook remains the authoritative backstop, so a transient
+      // Razorpay outage delays confirmation rather than losing the
+      // payment or accepting one that was never verified.
+      throw new PaymentConfirmationError(
+        'Unable to verify payment with Razorpay',
+        'PAYMENT_VERIFICATION_UNAVAILABLE',
+        502
+      )
+    }
+
+    if (payment.status !== 'captured') {
+      throw new PaymentConfirmationError('Payment has not been captured', 'PAYMENT_NOT_CAPTURED', 400)
+    }
+    if (payment.order_id !== preOrder.razorpayOrderId) {
+      throw new PaymentConfirmationError('Payment does not match this order', 'ORDER_MISMATCH', 400)
+    }
+    const expectedAmount = Math.round(Number(preOrder.total) * 100)
+    if (Number(payment.amount) !== expectedAmount) {
+      throw new PaymentConfirmationError('Captured amount does not match order total', 'AMOUNT_MISMATCH', 400)
+    }
+  }
+
   return prisma.$transaction(async (tx) => {
-    const order = await tx.order.findFirst({
-      where:
-        input.source === 'client'
-          ? { id: input.orderId, userId: input.actorUserId ?? undefined }
-          : { id: input.orderId },
-      include: {
-        items: { include: { product: true } },
-        address: true,
-        user: true,
-      },
-    })
+    // Re-read inside the transaction. Everything above ran against a snapshot
+    // taken before it opened, with a network round-trip in between, so a
+    // concurrent confirmation (webhook racing the client) has to be caught
+    // here rather than trusted to the checks above.
+    const order = await tx.order.findFirst({ where: orderWhere, include: orderInclude })
 
     if (!order) {
       throw new PaymentConfirmationError('Order not found', 'ORDER_NOT_FOUND', 404)
     }
-
-    // Idempotency: a webhook replay or a duplicate client confirmation is a
-    // no-op success, not an error — this preserves the webhook's existing
-    // idempotency behavior and extends it to the client path.
     if (order.paymentStatus === 'PAID') {
       return { order, alreadyConfirmed: true as const }
     }
-
-    // R1, layer 1 (always, offline): the razorpayOrderId being confirmed
-    // must be the one this order was actually created with. This alone
-    // closes the replay case — a valid signature for order A's Razorpay
-    // order can never be used to confirm order B.
     if (order.razorpayOrderId !== input.razorpayOrderId) {
       throw new PaymentConfirmationError('Payment does not match this order', 'ORDER_MISMATCH', 400)
     }
 
-    // R1, layer 2 (non-mock only, network): confirm the payment was actually
-    // captured, for this Razorpay order, for the correct amount. A stored
-    // amount comparison alone would only prove consistency with a value we
-    // wrote ourselves; fetching from Razorpay catches partial capture and
-    // out-of-band amount changes that layer 1 cannot see.
-    if (!isPaymentsMockMode()) {
-      let payment
-      try {
-        payment = await razorpay.payments.fetch(input.razorpayPaymentId)
-      } catch {
-        // Fetch failure must not confirm the order — leave it PENDING. The
-        // webhook remains the authoritative backstop, so a transient
-        // Razorpay outage delays confirmation rather than losing the
-        // payment or accepting one that was never verified.
-        throw new PaymentConfirmationError(
-          'Unable to verify payment with Razorpay',
-          'PAYMENT_VERIFICATION_UNAVAILABLE',
-          502
-        )
-      }
-
-      if (payment.status !== 'captured') {
-        throw new PaymentConfirmationError('Payment has not been captured', 'PAYMENT_NOT_CAPTURED', 400)
-      }
-      if (payment.order_id !== order.razorpayOrderId) {
-        throw new PaymentConfirmationError('Payment does not match this order', 'ORDER_MISMATCH', 400)
-      }
-      const expectedAmount = Math.round(Number(order.total) * 100)
-      if (Number(payment.amount) !== expectedAmount) {
-        throw new PaymentConfirmationError('Captured amount does not match order total', 'AMOUNT_MISMATCH', 400)
-      }
-    }
-
     const fromState = order.paymentStatus
 
-    const updatedOrder = await tx.order.update({
-      where: { id: order.id },
+    // Conditional, not a plain update: the read above is an unlocked SELECT,
+    // so this is the only step that actually serializes two confirmations of
+    // the same order. Losing the race means someone else already marked it
+    // PAID — an idempotent no-op, not an error, and critically not a second
+    // pass through the stock conversion and coupon increment below.
+    const claimed = await tx.order.updateMany({
+      where: { id: order.id, paymentStatus: { not: 'PAID' } },
       data: {
         paymentStatus: 'PAID',
         status: 'CONFIRMED',
         razorpayPaymentId: input.razorpayPaymentId,
       },
+    })
+
+    if (claimed.count === 0) {
+      return { order, alreadyConfirmed: true as const }
+    }
+
+    const updatedOrder = await tx.order.findUniqueOrThrow({
+      where: { id: order.id },
       include: {
         items: { include: { product: { include: { images: true } } } },
         address: true,
@@ -243,5 +283,12 @@ export async function confirmPayment(input: ConfirmPaymentInput) {
     })
 
     return { order: updatedOrder, alreadyConfirmed: false as const }
+  }, {
+    // Prisma's 5s default was the ceiling this path kept hitting. What remains
+    // inside is all database work, but it is a dozen round trips against a
+    // remote MySQL, so the budget is sized for a slow link rather than a fast
+    // one — a confirmation that is merely slow must still complete.
+    timeout: 20_000,
+    maxWait: 10_000,
   })
 }
