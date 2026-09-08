@@ -1,3 +1,5 @@
+import { databaseHostFor, isLocalDatabaseHost } from '../../scripts/lib/local-db'
+
 // Derives the test database URL from TEST_DATABASE_URL if set, otherwise from
 // DATABASE_URL with `_test` appended to the database name. Never logs the
 // resulting URL (it carries credentials) — callers get the string only.
@@ -40,8 +42,7 @@ export function resolveTestDatabaseUrl(): string {
 // reset data on the production host anyway. A name is a claim about intent;
 // a host is a fact about blast radius. Both have to hold.
 function assertSafeTestDatabase(url: string) {
-  const parsed = new URL(url)
-  const dbName = parsed.pathname.replace(/^\//, '')
+  const dbName = new URL(url).pathname.replace(/^\//, '')
 
   if (!dbName.endsWith('_test')) {
     throw new Error(`Refusing to use "${dbName}" as a test database — name must end with "_test".`)
@@ -49,13 +50,12 @@ function assertSafeTestDatabase(url: string) {
 
   // Hostname only — never interpolate the URL itself into an error, it carries
   // credentials.
-  if (!LOCAL_HOSTS.has(parsed.hostname.toLowerCase())) {
+  if (!isLocalDatabaseHost(url)) {
     throw new Error(
-      `Refusing to run destructive tests against host "${parsed.hostname}" — ` +
+      `Refusing to run destructive tests against host "${databaseHostFor(url)}" — ` +
         'the suite resets the whole schema, so it only runs on a local database. ' +
         'Point TEST_DATABASE_URL at a local MySQL (its name must still end with "_test").'
     )
   }
 }
 
-const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]'])

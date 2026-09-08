@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { resolveTestDatabaseUrl } from './test-db-url'
+import { isLocalDatabaseHost } from '../../scripts/lib/local-db'
 
 // This guard is the only thing standing between `npm test` and a real
 // database: global-setup runs `prisma db push --force-reset` against whatever
@@ -57,5 +58,31 @@ describe('resolveTestDatabaseUrl — local hosts', () => {
 
   it('refuses when neither variable is set', () => {
     expect(() => resolveTestDatabaseUrl()).toThrow(/Neither TEST_DATABASE_URL nor DATABASE_URL/)
+  })
+})
+
+// The same helper gates `npm run db:reset` (scripts/guard-local-db.ts), which
+// runs `prisma migrate reset --force` with no prompt. A false positive here
+// drops a real database, so "unsure" must read as "not local".
+describe('isLocalDatabaseHost', () => {
+  it('accepts the local forms', () => {
+    for (const u of [
+      'mysql://root:pw@localhost:3306/db',
+      'mysql://root:pw@127.0.0.1:3306/db',
+      'mysql://root:pw@LOCALHOST:3306/db',
+    ]) expect(isLocalDatabaseHost(u)).toBe(true)
+  })
+
+  it('rejects remote hosts, including ones that merely contain "localhost"', () => {
+    for (const u of [
+      'mysql://u:p@gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000/test',
+      'mysql://u:p@localhost.evil.com:3306/db',
+      'mysql://u:p@notlocalhost:3306/db',
+    ]) expect(isLocalDatabaseHost(u)).toBe(false)
+  })
+
+  it('treats an unparseable URL as not local rather than assuming safety', () => {
+    expect(isLocalDatabaseHost('not a url')).toBe(false)
+    expect(isLocalDatabaseHost('')).toBe(false)
   })
 })
